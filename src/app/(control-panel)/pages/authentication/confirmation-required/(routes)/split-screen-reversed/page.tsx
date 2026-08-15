@@ -1,0 +1,3 @@
+import SplitScreenReversedConfirmationRequiredPageView from '../../components/views/SplitScreenReversedConfirmationRequiredPageView';
+
+export default SplitScreenReversedConfirmationRequiredPageView;

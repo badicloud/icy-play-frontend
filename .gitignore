@@ -1,0 +1,85 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+/node_modules
+/.yarn
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+Thumbs.db
+*.pem
+.eslintcache
+*.tsbuildinfo
+next-env.d.ts
+
+# environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+/.idea
+/.vscode
+
+/src/styles/tailwind.css
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+#amplify-do-not-edit-begin
+amplify/
+#amplify/\#current-cloud-backend
+#amplify/.config/local-*
+#amplify/logs
+#amplify/mock-data
+#amplify/mock-api-resources
+#amplify/backend/amplify-meta.json
+#amplify/backend/.temp
+build/
+dist/
+node_modules/
+aws-exports.js
+awsconfiguration.json
+amplifyconfiguration.json
+amplifyconfiguration.dart
+amplify-build-config.json
+amplify-gradle-config.json
+amplifytools.xcconfig
+.secret-*
+**.sample
+#amplify-do-not-edit-end
+
+# Keep shareable environment templates in version control
+!.env.example
+!.env.sample
+
+# Local Netlify folder
+.netlify
+
+# Vercel
+.vercel
+
+# Turborepo
+.turbo
