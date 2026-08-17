@@ -1,14 +1,20 @@
 import clsx from 'clsx';
+import { Montserrat } from 'next/font/google';
 import 'src/styles/splash-screen.css';
 import 'src/styles/index.css';
 import '../../public/assets/fonts/material-design-icons/MaterialIconsOutlined.css';
-import '../../public/assets/fonts/Geist/geist.css';
 import '../../public/assets/fonts/meteocons/style.css';
 import '../../public/assets/styles/prism.css';
 import { SessionProvider } from 'next-auth/react';
 import { auth } from '@auth/authJs';
 import generateMetadata from '../utils/generateMetadata';
 import App from './App';
+
+const montserrat = Montserrat({
+	subsets: ['latin'],
+	variable: '--font-montserrat',
+	display: 'swap'
+});
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const metadata = await generateMetadata({
@@ -56,7 +62,7 @@ export default async function RootLayout({
 			</head>
 			<body
 				id="root"
-				className={clsx('loading')}
+				className={clsx('loading', montserrat.className, montserrat.variable)}
 			>
 				<SessionProvider
 					basePath="/auth"

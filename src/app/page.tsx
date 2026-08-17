@@ -238,9 +238,9 @@ export default function LandingPage() {
 					aria-label="IcyPlay home"
 				>
 					<img
-						src="/assets/icons/IcyPlay_Pickleball_Logo.svg"
+						src="/assets/images/logo/IcyPlay%20Logo.png"
 						alt="IcyPlay"
-						className="h-24 w-auto object-contain"
+						className="h-20 w-auto object-contain"
 					/>
 				</Link>
 

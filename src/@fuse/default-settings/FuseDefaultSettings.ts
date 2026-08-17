@@ -119,7 +119,9 @@ export const defaultThemeOptions: DefaultThemeOptions = {
 	cssVariables: true,
 	spacing: '0.5rem',
 	typography: {
-		fontFamily: ['Geist', 'Roboto', '"Helvetica"', 'Arial', 'sans-serif'].join(','),
+		fontFamily: ['Montserrat', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'].join(
+			','
+		),
 		fontWeightLight: 300,
 		fontWeightRegular: 400,
 		fontWeightMedium: 500
@@ -912,6 +914,9 @@ export const defaultThemeOptions: DefaultThemeOptions = {
  */
 export const mustHaveThemeOptions = {
 	typography: {
+		fontFamily: ['Montserrat', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'].join(
+			','
+		),
 		htmlFontSize: 16,
 		fontSize: 13,
 		body1: {
