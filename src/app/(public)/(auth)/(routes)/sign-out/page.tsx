@@ -1,14 +1,9 @@
-'use client';
+"use client";
 
-import AuthGuardRedirect from '@auth/AuthGuardRedirect';
-import SignOutPageView from '../../components/views/SignOutPageView';
+import SignOutPageView from "../../components/views/SignOutPageView";
 
 function Page() {
-	return (
-		<AuthGuardRedirect auth={null}>
-			<SignOutPageView />
-		</AuthGuardRedirect>
-	);
+  return <SignOutPageView />;
 }
 
 export default Page;
