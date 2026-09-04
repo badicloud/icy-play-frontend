@@ -49,3 +49,29 @@ export async function registerAccount(payload: RegistrationPayload) {
     authenticated: false,
   });
 }
+
+export type ResendVerificationEmailResponse = {
+  message: string;
+};
+
+export type VerifyEmailResponse = {
+  email: string;
+  verifiedAt: string;
+  alreadyVerified: boolean;
+};
+
+export async function verifyEmail(token: string) {
+  return apiClient.post<VerifyEmailResponse, { token: string }>(
+    API_ENDPOINTS.AUTH.VERIFY_EMAIL,
+    { token },
+    { authenticated: false },
+  );
+}
+
+export async function resendVerificationEmail(email: string) {
+  return apiClient.post<ResendVerificationEmailResponse, { email: string }>(
+    API_ENDPOINTS.AUTH.RESEND_VERIFICATION_EMAIL,
+    { email },
+    { authenticated: false },
+  );
+}

@@ -121,11 +121,15 @@ function AuthJsCredentialsSignUpForm({
         acceptedTerms: formData.acceptTermsConditions,
         accountType,
       });
-      enqueueSnackbar("Account created successfully. You can now sign in.", {
+      sessionStorage.setItem(
+        "icyplay.pendingVerificationEmail",
+        formData.email.trim().toLowerCase(),
+      );
+      enqueueSnackbar("Account created. Check your email to verify it.", {
         variant: "success",
       });
       reset();
-      router.push("/sign-in");
+      router.push("/verify-email-sent");
       return true;
     } catch (error) {
       const apiError = error as RegistrationApiError;

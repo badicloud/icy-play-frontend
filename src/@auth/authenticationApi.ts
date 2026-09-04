@@ -41,9 +41,14 @@ export async function refreshAccessToken(refreshToken: string) {
 
 export async function logout(refreshToken: string) {
   try {
+    // The endpoint is anonymous and identifies the session by refresh token.
+    // Sending it unauthenticated keeps the access token from being refreshed
+    // first, which would rotate this refresh token and revoke it server-side
+    // before the logout request could consume it.
     await apiClient.post<void, { refreshToken: string }>(
       API_ENDPOINTS.AUTH.LOGOUT,
       { refreshToken },
+      { authenticated: false },
     );
   } finally {
     apiClient.clearAccessToken();

@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig, NextAuthResult } from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Facebook from "next-auth/providers/facebook";
 import Google from "next-auth/providers/google";
@@ -74,4 +74,9 @@ export const authJsProviderMap: AuthJsProvider[] = providers
   })
   .filter((provider) => provider.id !== "credentials");
 
-export const { handlers, auth, signIn, signOut } = NextAuth(config);
+const nextAuthResult: NextAuthResult = NextAuth(config);
+
+export const handlers: NextAuthResult["handlers"] = nextAuthResult.handlers;
+export const auth: NextAuthResult["auth"] = nextAuthResult.auth;
+export const signIn: NextAuthResult["signIn"] = nextAuthResult.signIn;
+export const signOut: NextAuthResult["signOut"] = nextAuthResult.signOut;

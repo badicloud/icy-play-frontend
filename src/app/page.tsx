@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import HeaderAccountMenu from './components/ui/HeaderAccountMenu';
 
 const navItems = ['Courts', 'How It Works', 'For Facility Owners', 'Pricing', 'Help Center'];
 
@@ -15,7 +16,7 @@ const sports = [
 	{ name: 'Pickleball', icon: 'pickleball' },
 	{ name: 'Tennis', icon: 'tennis' },
 	{ name: 'Volleyball', icon: 'volleyball' },
-	{ name: 'Beach Volleyball', icon: 'beach' }
+	{ name: 'Taekwondo', icon: 'taekwondo' }
 ];
 
 const features = [
@@ -258,17 +259,12 @@ export default function LandingPage() {
 
 				<div className="flex items-center gap-3">
 					<Link
-						href="/sign-in"
-						className="hidden rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:inline-flex"
-					>
-						Login / Register
-					</Link>
-					<Link
 						href="/dashboards/project"
 						className="rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
 					>
 						Become a Partner
 					</Link>
+					<HeaderAccountMenu />
 				</div>
 			</header>
 

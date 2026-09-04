@@ -12,7 +12,7 @@ import { Alert } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/services/api";
-import { login } from "../authenticationApi";
+import { useIcyPlayAuth } from "../contexts/IcyPlayAuthContext/useIcyPlayAuth";
 
 /**
  * Form Validation Schema
@@ -39,6 +39,7 @@ const defaultValues = {
 
 function AuthJsCredentialsSignInForm() {
   const { enqueueSnackbar } = useSnackbar();
+  const { signIn } = useIcyPlayAuth();
   const router = useRouter();
   const { control, formState, handleSubmit, setError } = useForm<FormType>({
     mode: "onChange",
@@ -52,7 +53,7 @@ function AuthJsCredentialsSignInForm() {
     const { email, password } = formData;
 
     try {
-      await login({ email, password });
+      await signIn(email, password);
       enqueueSnackbar("Signed in successfully.", { variant: "success" });
       router.push("/");
       return true;

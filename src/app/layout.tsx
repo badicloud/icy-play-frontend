@@ -7,6 +7,7 @@ import '../../public/assets/fonts/meteocons/style.css';
 import '../../public/assets/styles/prism.css';
 import { SessionProvider } from 'next-auth/react';
 import { auth } from '@auth/authJs';
+import { IcyPlayAuthProvider } from '@auth/contexts/IcyPlayAuthContext/IcyPlayAuthProvider';
 import generateMetadata from '../utils/generateMetadata';
 import App from './App';
 
@@ -68,7 +69,9 @@ export default async function RootLayout({
 					basePath="/auth"
 					session={session}
 				>
-					<App>{children}</App>
+					<IcyPlayAuthProvider>
+						<App>{children}</App>
+					</IcyPlayAuthProvider>
 				</SessionProvider>
 			</body>
 		</html>
