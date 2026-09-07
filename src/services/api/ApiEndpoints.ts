@@ -19,4 +19,7 @@ export const API_ENDPOINTS = {
     REVOKE_OTHER_SESSIONS: `${AUTH_BASE}/sessions/revoke-others`,
     REVOKE_ALL_SESSIONS: `${AUTH_BASE}/sessions/revoke-all`,
   },
+  ADMIN: {
+    USERS: `${API_V1}/admin/users`,
+  },
 } as const;

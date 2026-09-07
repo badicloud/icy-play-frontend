@@ -23,6 +23,24 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4.5 w-4.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 3l7 3v5.5c0 4.2-2.9 7.9-7 9.5-4.1-1.6-7-5.3-7-9.5V6z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
 function AccountIcon() {
   return (
     <svg
@@ -78,6 +96,7 @@ function getFirstName(fullName: string) {
 
 function HeaderAccountMenu() {
   const { user, isAuthenticated, isLoading, signOut } = useIcyPlayAuth();
+  const isPlatformAdmin = Boolean(user?.roles.includes("PlatformAdmin"));
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,6 +190,18 @@ function HeaderAccountMenu() {
             <p className="truncate text-sm font-bold text-slate-800">{user.fullName}</p>
             <p className="truncate text-xs text-slate-500">{user.email}</p>
           </div>
+
+          {isPlatformAdmin && (
+            <Link
+              href="/admin"
+              role="menuitem"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm font-semibold text-[#071955] transition hover:bg-slate-50 hover:text-[#2563EB]"
+            >
+              <ShieldIcon />
+              Admin
+            </Link>
+          )}
 
           <Link
             href="/account"
