@@ -90,7 +90,7 @@ function AdminUsersView() {
   const pagination = users.data?.pagination;
 
   return (
-    <main className="min-h-screen bg-[#f5f9ff] text-slate-950">
+    <main className="text-slate-950">
       <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
         <Link
           href="/admin"

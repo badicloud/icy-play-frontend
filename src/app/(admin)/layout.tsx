@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import RoleGuard from '@auth/RoleGuard';
+import AdminShell from './components/AdminShell';
 
 export const metadata: Metadata = {
 	title: 'Platform admin',
@@ -7,7 +8,11 @@ export const metadata: Metadata = {
 };
 
 function Layout({ children }: { children: React.ReactNode }) {
-	return <RoleGuard roles={['PlatformAdmin']}>{children}</RoleGuard>;
+	return (
+		<RoleGuard roles={['PlatformAdmin']}>
+			<AdminShell>{children}</AdminShell>
+		</RoleGuard>
+	);
 }
 
 export default Layout;

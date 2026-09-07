@@ -52,16 +52,9 @@ function AdminDashboardView() {
   const { user } = useIcyPlayAuth();
 
   return (
-    <main className="min-h-screen bg-[#f5f9ff] text-slate-950">
+    <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
-        <Link
-          href="/"
-          className="text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
-        >
-          &larr; Back to home
-        </Link>
-
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
             Platform admin
           </h1>
