@@ -82,11 +82,7 @@ export type FormType = {
   acceptTermsConditions: boolean;
 };
 
-function AuthJsCredentialsSignUpForm({
-  accountType = "user",
-}: {
-  accountType?: "user" | "facility-owner";
-}) {
+function AuthJsCredentialsSignUpForm() {
   const { enqueueSnackbar } = useSnackbar();
   const router = useRouter();
   const { control, formState, handleSubmit, watch, reset } = useForm({
@@ -119,7 +115,6 @@ function AuthJsCredentialsSignUpForm({
         ...formData,
         captchaToken,
         acceptedTerms: formData.acceptTermsConditions,
-        accountType,
       });
       sessionStorage.setItem(
         "icyplay.pendingVerificationEmail",

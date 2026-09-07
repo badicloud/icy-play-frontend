@@ -8,11 +8,10 @@ import signinErrors from "./signinErrors";
 
 type AuthJsFormProps = {
   formType: "signin" | "signup";
-  accountType?: "user" | "facility-owner";
 };
 
 function AuthJsForm(props: AuthJsFormProps) {
-  const { formType = "signin", accountType } = props;
+  const { formType = "signin" } = props;
 
   const searchParams = useSearchParams();
 
@@ -55,7 +54,7 @@ function AuthJsForm(props: AuthJsFormProps) {
       )}
       {formType === "signup" && (
         <div className="flex flex-col gap-3">
-          <AuthJsCredentialsSignUpForm accountType={accountType} />
+          <AuthJsCredentialsSignUpForm />
           <p className="text-center text-[0.95rem] text-slate-500">
             Already have an account?{" "}
             <Link

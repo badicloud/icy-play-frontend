@@ -1,7 +1,5 @@
 import { apiClient, ApiError, API_ENDPOINTS } from "@/services/api";
 
-export type RegistrationAccountType = "user" | "facility-owner";
-
 export type RegistrationPayload = {
   displayName: string;
   email: string;
@@ -9,7 +7,6 @@ export type RegistrationPayload = {
   password: string;
   acceptedTerms: boolean;
   captchaToken: string;
-  accountType: RegistrationAccountType;
 };
 
 export type RegistrationResponse = {
@@ -19,35 +16,25 @@ export type RegistrationResponse = {
 
 export { ApiError as RegistrationApiError };
 
+/**
+ * Sign-up creates a customer. Facility owners are encoded by the platform team
+ * from the admin console, so there is no self-service path for them.
+ */
 export async function registerAccount(payload: RegistrationPayload) {
-  const endpoint =
-    payload.accountType === "facility-owner"
-      ? API_ENDPOINTS.AUTH.REGISTER_FACILITY_OWNER
-      : API_ENDPOINTS.AUTH.REGISTER_CUSTOMER;
-  const body =
-    payload.accountType === "facility-owner"
-      ? {
-          fullName: payload.displayName,
-          email: payload.email,
-          password: payload.password,
-          businessName: payload.displayName,
-          billingEmail: payload.email,
-          billingPhone: payload.phone,
-          acceptedTerms: payload.acceptedTerms,
-          captchaToken: payload.captchaToken,
-        }
-      : {
-          fullName: payload.displayName,
-          email: payload.email,
-          password: payload.password,
-          phoneNumber: payload.phone,
-          acceptedTerms: payload.acceptedTerms,
-          captchaToken: payload.captchaToken,
-        };
+  const body = {
+    fullName: payload.displayName,
+    email: payload.email,
+    password: payload.password,
+    phoneNumber: payload.phone,
+    acceptedTerms: payload.acceptedTerms,
+    captchaToken: payload.captchaToken,
+  };
 
-  return apiClient.post<RegistrationResponse, typeof body>(endpoint, body, {
-    authenticated: false,
-  });
+  return apiClient.post<RegistrationResponse, typeof body>(
+    API_ENDPOINTS.AUTH.REGISTER_CUSTOMER,
+    body,
+    { authenticated: false },
+  );
 }
 
 export type ResendVerificationEmailResponse = {

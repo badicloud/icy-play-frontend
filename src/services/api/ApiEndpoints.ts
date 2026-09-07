@@ -8,7 +8,6 @@ export const API_ENDPOINTS = {
     ME: `${AUTH_BASE}/me`,
     REFRESH: `${AUTH_BASE}/refresh`,
     REGISTER_CUSTOMER: `${AUTH_BASE}/register/customer`,
-    REGISTER_FACILITY_OWNER: `${AUTH_BASE}/register/facility-owner`,
     RESEND_VERIFICATION_EMAIL: `${AUTH_BASE}/resend-verification`,
     VERIFY_EMAIL: `${AUTH_BASE}/verify-email`,
     FORGOT_PASSWORD: `${AUTH_BASE}/forgot-password`,

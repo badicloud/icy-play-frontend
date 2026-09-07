@@ -1,41 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import AuthJsForm from "@auth/forms/AuthJsForm";
 
-type AccountType = "user" | "facility-owner";
 type IcyPlayAuthPageProps = { mode: "signin" | "signup" };
 
-function AccountIcon({ facility = false }: { facility?: boolean }) {
-  return facility ? (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden
-    >
-      <path d="M4 20V8l8-4 8 4v12M8 20v-5h8v5M8 10h.01M12 10h.01M16 10h.01" />
-    </svg>
-  ) : (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden
-    >
-      <circle cx="12" cy="8" r="3.25" />
-      <path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6" />
-    </svg>
-  );
-}
-
 function IcyPlayAuthPage({ mode }: IcyPlayAuthPageProps) {
-  const [accountType, setAccountType] = useState<AccountType>("user");
   const isSignUp = mode === "signup";
 
   return (
@@ -235,35 +205,8 @@ function IcyPlayAuthPage({ mode }: IcyPlayAuthPageProps) {
                   : "Access your account and manage your bookings."}
               </p>
 
-              {isSignUp && (
-                <div
-                  className="mt-6 grid grid-cols-2 gap-3"
-                  role="group"
-                  aria-label="Account type"
-                >
-                  {(["user", "facility-owner"] as const).map((type) => {
-                    const selected = accountType === type;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setAccountType(type)}
-                        aria-pressed={selected}
-                        className={`flex min-h-16 items-center justify-center gap-2 rounded-2xl border px-3 text-sm font-bold transition ${selected ? "border-[#2563EB] bg-blue-50 text-[#1257d5] shadow-sm" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}
-                      >
-                        <AccountIcon facility={type === "facility-owner"} />
-                        {type === "user" ? "User" : "Facility Owner"}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
               <div className="mt-6 [&_.MuiButton-contained]:bg-[#1257d5] [&_.MuiButton-contained]:font-bold [&_.MuiButton-contained]:normal-case [&_.MuiButton-contained]:shadow-none [&_.MuiButton-contained:hover]:bg-[#071955] [&_.MuiInputBase-root]:rounded-xl">
-                <AuthJsForm
-                  formType={mode}
-                  accountType={isSignUp ? accountType : undefined}
-                />
+                <AuthJsForm formType={mode} />
               </div>
 
               {!isSignUp && (
