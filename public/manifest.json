@@ -1,15 +1,25 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "name": "IcyPlay - Booking",
+  "short_name": "IcyPlay",
+  "description": "Discover and reserve badminton, basketball, pickleball, tennis and volleyball courts near you.",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/images/logo/IcyPlay%20Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "start_url": "./index.html",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#2563EB",
+  "background_color": "#ffffff",
+  "categories": ["sports", "lifestyle", "productivity"]
 }

@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import HeaderAccountMenu from './components/ui/HeaderAccountMenu';
+import generateMetadata from '@/utils/generateMetadata';
+
+export const metadata = generateMetadata({ path: '/' });
 
 const navItems = ['Courts', 'How It Works', 'For Facility Owners', 'Pricing', 'Help Center'];
 

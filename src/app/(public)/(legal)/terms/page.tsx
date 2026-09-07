@@ -1,4 +1,12 @@
 import LegalPageLayout from "../LegalPageLayout";
+import generateMetadata from "@/utils/generateMetadata";
+
+export const metadata = generateMetadata({
+  title: "Terms of Service",
+  description:
+    "The terms that govern your use of IcyPlay for booking sports courts and managing facilities.",
+  path: "/terms",
+});
 
 const sections = [
   {

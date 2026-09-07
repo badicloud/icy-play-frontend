@@ -1,3 +1,4 @@
+import type { Viewport } from 'next';
 import clsx from 'clsx';
 import { Montserrat } from 'next/font/google';
 import 'src/styles/splash-screen.css';
@@ -18,14 +19,14 @@ const montserrat = Montserrat({
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const metadata = await generateMetadata({
-	title: 'Fuse React - NextJS',
-	description: 'Fuse React - NextJS by FuseTech',
-	cardImage: '/card.png',
-	robots: 'follow, index',
-	favicon: '/favicon.ico',
-	url: 'https://react-material.fusetheme.com'
-});
+export const metadata = generateMetadata();
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const viewport: Viewport = {
+	width: 'device-width',
+	initialScale: 1,
+	themeColor: '#2563EB'
+};
 
 export default async function RootLayout({
 	children
@@ -38,27 +39,11 @@ export default async function RootLayout({
 		<html lang="en">
 			<head>
 				<meta charSet="utf-8" />
-				<meta
-					name="viewport"
-					content="width=device-width, initial-scale=1, shrink-to-fit=no"
-				/>
-				<meta
-					name="theme-color"
-					content="#000000"
-				/>
 				<base href="/" />
 				{/*
 					manifest.json provides metadata used when your web app is added to the
 					homescreen on Android. See https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/
 				*/}
-				<link
-					rel="manifest"
-					href="/manifest.json"
-				/>
-				<link
-					rel="shortcut icon"
-					href="/favicon.ico"
-				/>
 				<noscript id="emotion-insertion-point" />
 			</head>
 			<body

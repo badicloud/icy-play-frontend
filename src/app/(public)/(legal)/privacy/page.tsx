@@ -1,4 +1,12 @@
 import LegalPageLayout from "../LegalPageLayout";
+import generateMetadata from "@/utils/generateMetadata";
+
+export const metadata = generateMetadata({
+  title: "Privacy Policy",
+  description:
+    "How IcyPlay collects, uses and protects your personal information when you book a court.",
+  path: "/privacy",
+});
 
 const sections = [
   {
@@ -38,6 +46,12 @@ const sections = [
           Technical and usage data, such as IP address, device/browser
           information, timestamps, authentication events, logs, cookies, and
           interactions needed for security and operation.
+        </li>
+        <li>
+          Session records for each device you sign in from, including the
+          browser and operating system reported by that device, its IP address,
+          and when the session was created and last used. You can view and end
+          these sessions at any time from your account page.
         </li>
         <li>
           Communications, support requests, reports, feedback, and content you
