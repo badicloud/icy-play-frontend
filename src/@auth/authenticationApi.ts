@@ -3,6 +3,8 @@ import { apiClient, API_ENDPOINTS } from "@/services/api";
 export type LoginRequest = {
   email: string;
   password: string;
+  captchaToken: string;
+  rememberMe: boolean;
 };
 
 export type TokenResponse = {

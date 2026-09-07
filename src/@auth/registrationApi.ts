@@ -68,10 +68,13 @@ export async function verifyEmail(token: string) {
   );
 }
 
-export async function resendVerificationEmail(email: string) {
-  return apiClient.post<ResendVerificationEmailResponse, { email: string }>(
+export async function resendVerificationEmail(email: string, captchaToken: string) {
+  return apiClient.post<
+    ResendVerificationEmailResponse,
+    { email: string; captchaToken: string }
+  >(
     API_ENDPOINTS.AUTH.RESEND_VERIFICATION_EMAIL,
-    { email },
+    { email, captchaToken },
     { authenticated: false },
   );
 }

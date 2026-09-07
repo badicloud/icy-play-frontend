@@ -10,6 +10,7 @@ import SearchOutlined from "@mui/icons-material/SearchOutlined";
 import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
 import HeadsetMicOutlined from "@mui/icons-material/HeadsetMicOutlined";
 import { ApiError } from "@/services/api";
+import { executeRecaptcha, preloadRecaptcha } from "@auth/recaptchaV3";
 import { resendVerificationEmail } from "@auth/registrationApi";
 
 const pendingEmailKey = "icyplay.pendingVerificationEmail";
@@ -69,6 +70,9 @@ export default function VerifyEmailSentPage() {
 
   useEffect(() => {
     setEmail(sessionStorage.getItem(pendingEmailKey) ?? "");
+    void preloadRecaptcha().catch(() => {
+      // A failed preload is retried when the resend is actually requested.
+    });
   }, []);
 
   useEffect(() => {
@@ -85,7 +89,8 @@ export default function VerifyEmailSentPage() {
 
     setIsSending(true);
     try {
-      await resendVerificationEmail(email);
+      const captchaToken = await executeRecaptcha("resend_verification");
+      await resendVerificationEmail(email, captchaToken);
       setCooldown(resendCooldownSeconds);
       enqueueSnackbar("A new verification email has been sent.", {
         variant: "success",

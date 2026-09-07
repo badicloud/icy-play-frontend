@@ -8,6 +8,7 @@ import HeadsetMicOutlined from "@mui/icons-material/HeadsetMicOutlined";
 import LoginOutlined from "@mui/icons-material/LoginOutlined";
 import SendOutlined from "@mui/icons-material/SendOutlined";
 import { ApiError } from "@/services/api";
+import { executeRecaptcha } from "@auth/recaptchaV3";
 import { resendVerificationEmail, verifyEmail } from "@auth/registrationApi";
 
 const pendingEmailKey = "icyplay.pendingVerificationEmail";
@@ -175,7 +176,8 @@ export default function VerifyEmailPage() {
     setIsSending(true);
 
     try {
-      await resendVerificationEmail(resendEmail);
+      const captchaToken = await executeRecaptcha("resend_verification");
+      await resendVerificationEmail(resendEmail, captchaToken);
       setCooldown(resendCooldownSeconds);
       enqueueSnackbar("A new verification email has been sent.", { variant: "success" });
     } catch (error) {

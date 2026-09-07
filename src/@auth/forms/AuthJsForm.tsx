@@ -26,10 +26,15 @@ function AuthJsForm(props: AuthJsFormProps) {
         <Alert
           className="mt-4"
           severity="error"
-          sx={(theme) => ({
-            backgroundColor: theme.palette.error.light,
-            color: theme.palette.error.dark,
-          })}
+          variant="outlined"
+          sx={{
+            borderRadius: "12px",
+            borderColor: "#fecaca",
+            backgroundColor: "#fef2f2",
+            color: "#b91c1c",
+            fontWeight: 600,
+            "& .MuiAlert-icon": { color: "#dc2626" },
+          }}
         >
           {error}
         </Alert>

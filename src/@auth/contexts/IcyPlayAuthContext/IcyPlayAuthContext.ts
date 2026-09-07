@@ -7,7 +7,12 @@ export type IcyPlayAuthContextType = {
   isAuthenticated: boolean;
   /** True while the stored session is being restored on first render. */
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<CurrentUserResponse>;
+  signIn: (
+    email: string,
+    password: string,
+    captchaToken: string,
+    rememberMe: boolean,
+  ) => Promise<CurrentUserResponse>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<CurrentUserResponse | null>;
 };

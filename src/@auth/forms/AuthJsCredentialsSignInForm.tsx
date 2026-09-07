@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import { Alert } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/services/api";
+import { executeRecaptcha, preloadRecaptcha } from "../recaptchaV3";
 import { useIcyPlayAuth } from "../contexts/IcyPlayAuthContext/useIcyPlayAuth";
 
 /**
@@ -49,11 +51,19 @@ function AuthJsCredentialsSignInForm() {
 
   const { isValid, dirtyFields, errors, isSubmitting } = formState;
 
+  useEffect(() => {
+    // Warm the reCAPTCHA script so the first sign-in is not held up by it.
+    void preloadRecaptcha().catch(() => {
+      // A failed preload is retried when the form is actually submitted.
+    });
+  }, []);
+
   async function onSubmit(formData: FormType) {
-    const { email, password } = formData;
+    const { email, password, remember } = formData;
 
     try {
-      await signIn(email, password);
+      const captchaToken = await executeRecaptcha("login");
+      await signIn(email, password, captchaToken, remember ?? false);
       enqueueSnackbar("Signed in successfully.", { variant: "success" });
       router.push("/");
       return true;
@@ -75,10 +85,15 @@ function AuthJsCredentialsSignInForm() {
         <Alert
           className="mb-8"
           severity="error"
-          sx={(theme) => ({
-            backgroundColor: theme.palette.error.light,
-            color: theme.palette.error.dark,
-          })}
+          variant="outlined"
+          sx={{
+            borderRadius: "12px",
+            borderColor: "#fecaca",
+            backgroundColor: "#fef2f2",
+            color: "#b91c1c",
+            fontWeight: 600,
+            "& .MuiAlert-icon": { color: "#dc2626" },
+          }}
         >
           {errors?.root?.message}
         </Alert>
@@ -126,13 +141,19 @@ function AuthJsCredentialsSignInForm() {
             <FormControl>
               <FormControlLabel
                 label="Remember me"
-                control={<Checkbox size="small" {...field} />}
+                control={
+                  <Checkbox
+                    size="small"
+                    {...field}
+                    checked={field.value ?? false}
+                  />
+                }
               />
             </FormControl>
           )}
         />
 
-        <Link className="text-md font-medium" to="/#">
+        <Link className="text-md font-medium" to="/forgot-password">
           Forgot password?
         </Link>
       </div>

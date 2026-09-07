@@ -32,7 +32,7 @@ export function IcyPlayAuthProvider({ children }: IcyPlayAuthProviderProps) {
   const sessionRef = useRef<IcyPlaySession | null>(null);
   const refreshRef = useRef<Promise<IcyPlaySession | null> | null>(null);
 
-  const applyTokens = useCallback((tokens: TokenResponse) => {
+  const applyTokens = useCallback((tokens: TokenResponse, remember?: boolean) => {
     const session: IcyPlaySession = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -40,7 +40,7 @@ export function IcyPlayAuthProvider({ children }: IcyPlayAuthProviderProps) {
     };
 
     sessionRef.current = session;
-    storeSession(session);
+    storeSession(session, remember);
     apiClient.setAccessToken(session.accessToken);
     return session;
   }, []);
@@ -97,9 +97,9 @@ export function IcyPlayAuthProvider({ children }: IcyPlayAuthProviderProps) {
   }, []);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
-      const tokens = await login({ email, password });
-      applyTokens(tokens);
+    async (email: string, password: string, captchaToken: string, rememberMe: boolean) => {
+      const tokens = await login({ email, password, captchaToken, rememberMe });
+      applyTokens(tokens, rememberMe);
 
       const currentUser = await getCurrentUser();
       setUser(currentUser);
