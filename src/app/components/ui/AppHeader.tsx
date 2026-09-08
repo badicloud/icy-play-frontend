@@ -10,6 +10,8 @@ type AppHeaderProps = {
   badge?: string;
   /** Anything that sits to the left of the account menu. */
   actions?: React.ReactNode;
+  /** The centre menu. The account area carries the public one; admin has none. */
+  nav?: React.ReactNode;
 };
 
 /**
@@ -17,7 +19,7 @@ type AppHeaderProps = {
  * the account and admin areas cannot drift apart, and so a change to one is a
  * change to both.
  */
-function AppHeader({ homeHref = "/", badge, actions }: AppHeaderProps) {
+function AppHeader({ homeHref = "/", badge, actions, nav }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3 lg:px-8">
@@ -33,6 +35,8 @@ function AppHeader({ homeHref = "/", badge, actions }: AppHeaderProps) {
             </span>
           )}
         </Link>
+
+        {nav}
 
         <div className="flex items-center gap-3">
           {actions}

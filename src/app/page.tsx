@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import HeaderAccountMenu from './components/ui/HeaderAccountMenu';
+import PublicNav from './components/ui/PublicNav';
 import generateMetadata from '@/utils/generateMetadata';
 
 export const metadata = generateMetadata({ path: '/' });
-
-const navItems = ['Courts', 'How It Works', 'For Facility Owners', 'Pricing', 'Help Center'];
 
 const searchFields = [
 	{ label: 'Type of Court', value: 'Select sport', icon: 'court' },
@@ -248,17 +247,7 @@ export default function LandingPage() {
 					/>
 				</Link>
 
-				<nav className="hidden items-center gap-10 text-base font-semibold text-slate-700 lg:flex">
-					{navItems.map((item) => (
-						<Link
-							key={item}
-							href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
-							className="transition hover:text-[#2563EB]"
-						>
-							{item}
-						</Link>
-					))}
-				</nav>
+				<PublicNav />
 
 				<div className="flex items-center gap-3">
 					<Link
