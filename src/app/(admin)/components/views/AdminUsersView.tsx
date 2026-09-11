@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
 import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
 import ErrorOutlineOutlined from "@mui/icons-material/ErrorOutlineOutlined";
 import SearchOutlined from "@mui/icons-material/SearchOutlined";
 import { roleLabels, type AdminUser } from "@auth/adminApi";
 import { useAdminUsers } from "@auth/hooks/useAdminUsers";
+import AdminBreadcrumbs from "../AdminBreadcrumbs";
 
 const pageSize = 20;
 
@@ -92,12 +92,9 @@ function AdminUsersView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
-        <Link
-          href="/admin"
-          className="text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
-        >
-          &larr; Platform admin
-        </Link>
+        <AdminBreadcrumbs
+          trail={[{ label: "Platform admin", href: "/admin" }, { label: "Users" }]}
+        />
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Users</h1>

@@ -32,12 +32,14 @@ const sections: AdminSection[] = [
     title: "Facility owner onboarding",
     description:
       "Encode a new facility owner: business details, permits, and the contract that commences them.",
+    href: "/admin/facility-owners/new",
     icon: <BadgeOutlined />,
   },
   {
     title: "Facility owners",
     description:
       "Everyone you have onboarded, their contract status, and who is live right now.",
+    href: "/admin/facility-owners",
     icon: <GroupsOutlined />,
   },
   {
