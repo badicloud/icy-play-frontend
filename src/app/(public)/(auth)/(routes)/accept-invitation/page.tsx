@@ -6,21 +6,17 @@ import { useSnackbar } from "notistack";
 import ArrowBackOutlined from "@mui/icons-material/ArrowBackOutlined";
 import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
 import HeadsetMicOutlined from "@mui/icons-material/HeadsetMicOutlined";
+import LockOutlined from "@mui/icons-material/LockOutlined";
 import LoginOutlined from "@mui/icons-material/LoginOutlined";
 import RadioButtonUncheckedOutlined from "@mui/icons-material/RadioButtonUncheckedOutlined";
-import SendOutlined from "@mui/icons-material/SendOutlined";
 import VisibilityOffOutlined from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlined from "@mui/icons-material/VisibilityOutlined";
 import { ApiError } from "@/services/api";
-import {
-  checkPasswordResetToken,
-  isPasswordValid,
-  passwordRules,
-  resetPassword,
-} from "@auth/passwordResetApi";
+import { acceptInvitation, checkInvitation, type InvitationDetails } from "@auth/invitationApi";
+import { isPasswordValid, passwordRules } from "@auth/passwordResetApi";
 import AuthShieldIllustration from "../../components/ui/AuthShieldIllustration";
 
-type Status = "checking" | "form" | "success" | "expired" | "invalid";
+type Status = "checking" | "form" | "success" | "used" | "expired" | "invalid";
 
 const primaryButtonClass =
   "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#1264f7] px-5 text-lg font-bold text-white shadow-[0_12px_28px_rgba(18,100,247,0.25)] transition hover:bg-[#071955] disabled:cursor-not-allowed disabled:bg-blue-300";
@@ -31,10 +27,25 @@ const secondaryButtonClass =
 const inputClass =
   "mt-2 min-h-14 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-lg text-[#071955] shadow-sm outline-none transition focus:border-[#1264f7] focus:ring-2 focus:ring-blue-200";
 
-export default function ResetPasswordPage() {
+/**
+ * Read-only, and locked for a reason: these details were encoded by the IcyPlay
+ * team, and the invitation is bound to this email. Correcting one here would
+ * quietly disagree with the record the platform holds.
+ */
+function EncodedDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-slate-100 py-2.5 last:border-b-0">
+      <span className="text-sm text-slate-500">{label}</span>
+      <span className="font-bold break-all text-[#071955]">{value}</span>
+    </div>
+  );
+}
+
+export default function AcceptInvitationPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [status, setStatus] = useState<Status>("checking");
   const [token, setToken] = useState("");
+  const [details, setDetails] = useState<InvitationDetails | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -45,25 +56,23 @@ export default function ResetPasswordPage() {
     const value = new URLSearchParams(window.location.search).get("token");
 
     if (!value) {
-      setFailureMessage("This link is missing its reset code.");
+      setFailureMessage("This link is missing its invitation code.");
       setStatus("invalid");
       return;
     }
 
     setToken(value);
 
-    // Validate before showing the form: a spent or expired link should read as
-    // dead on arrival, not after the visitor has typed a new password.
+    // Checked before the form is shown, so a spent or expired invitation reads
+    // as dead on arrival rather than after a password has been typed.
     async function check() {
       try {
-        await checkPasswordResetToken(value!);
+        setDetails(await checkInvitation(value!));
         setStatus("form");
       } catch (error) {
         const apiError = error as ApiError;
         setFailureMessage(apiError.message);
-        setStatus(
-          apiError.code === "AUTH_EXPIRED_PASSWORD_RESET_TOKEN" ? "expired" : "invalid",
-        );
+        setStatus("invalid");
       }
     }
 
@@ -83,16 +92,18 @@ export default function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      await resetPassword(token, password);
-      enqueueSnackbar("Your password has been changed.", { variant: "success" });
+      await acceptInvitation(token, password);
+      enqueueSnackbar("Your account is ready.", { variant: "success" });
       setStatus("success");
     } catch (error) {
       const apiError = error as ApiError;
       setFailureMessage(apiError.message);
 
-      if (apiError.code === "AUTH_EXPIRED_PASSWORD_RESET_TOKEN") {
+      if (apiError.code === "AUTH_INVITATION_ALREADY_ACCEPTED") {
+        setStatus("used");
+      } else if (apiError.code === "AUTH_EXPIRED_INVITATION_TOKEN") {
         setStatus("expired");
-      } else if (apiError.code === "AUTH_INVALID_PASSWORD_RESET_TOKEN") {
+      } else if (apiError.code === "AUTH_INVALID_INVITATION_TOKEN") {
         setStatus("invalid");
       }
     } finally {
@@ -121,41 +132,65 @@ export default function ResetPasswordPage() {
               <div
                 className="h-16 w-16 animate-spin rounded-full border-4 border-blue-100 border-t-[#1264f7]"
                 role="status"
-                aria-label="Checking your reset link"
+                aria-label="Checking your invitation"
               />
               <h1 className="mt-8 text-4xl font-black tracking-tight text-[#071955] sm:text-5xl">
-                Checking your link...
+                Checking your invitation...
               </h1>
               <p className="mt-3 max-w-lg text-lg leading-8 text-slate-600">
-                One moment while we make sure this reset link is still valid.
+                One moment while we look up the account waiting for you.
               </p>
             </>
           )}
 
-          {status === "form" && (
+          {status === "form" && details && (
             <>
               <AuthShieldIllustration accent="#2563eb" />
               <h1 className="mt-1 text-4xl font-black tracking-tight text-[#071955] sm:text-5xl">
-                Set a new password
+                Activate your account
               </h1>
               <p className="mt-2 text-xl font-bold text-[#071955]">
-                Choose something <span className="text-[#1264f7]">only you</span> would know.
+                {details.businessName ? (
+                  <>
+                    Your account for{" "}
+                    <span className="text-[#1264f7]">{details.businessName}</span> is ready.
+                  </>
+                ) : (
+                  <>
+                    Just pick a <span className="text-[#1264f7]">password</span>.
+                  </>
+                )}
               </p>
               <div className="mt-5 h-1 w-14 rounded-full bg-[#1264f7]" />
 
-              <form onSubmit={handleSubmit} className="mt-7 w-full text-left">
+              <div className="mt-6 w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm">
+                <p className="mb-1 text-sm font-bold uppercase tracking-[0.1em] text-slate-500">
+                  Encoded by the IcyPlay team
+                </p>
+                <EncodedDetail label="Name" value={details.fullName} />
+                <EncodedDetail label="Email" value={details.email} />
+                {details.phoneNumber && (
+                  <EncodedDetail label="Mobile" value={details.phoneNumber} />
+                )}
+                <p className="mt-3 text-sm text-slate-500">
+                  Something wrong here? Contact us and we will correct it before you continue.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="mt-6 w-full text-left">
                 <div className="relative">
                   <label
                     htmlFor="password"
                     className="block text-base font-extrabold text-[#071955]"
                   >
-                    New password
+                    Choose a password
                   </label>
                   <input
                     id="password"
                     type={isVisible ? "text" : "password"}
                     autoFocus
                     required
+                    autoComplete="new-password"
                     value={password}
                     onChange={(event) => {
                       setPassword(event.target.value);
@@ -199,12 +234,13 @@ export default function ResetPasswordPage() {
                     htmlFor="confirm-password"
                     className="block text-base font-extrabold text-[#071955]"
                   >
-                    Confirm new password
+                    Confirm password
                   </label>
                   <input
                     id="confirm-password"
                     type={isVisible ? "text" : "password"}
                     required
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     className={inputClass}
@@ -226,17 +262,14 @@ export default function ResetPasswordPage() {
                 )}
 
                 <button type="submit" disabled={!canSubmit} className={`mt-5 ${primaryButtonClass}`}>
-                  {isSubmitting ? "Saving..." : "Change password"}
+                  <LockOutlined fontSize="small" />
+                  {isSubmitting ? "Activating..." : "Activate my account"}
                 </button>
               </form>
 
               <p className="mt-4 text-base leading-7 text-slate-600">
-                Changing your password signs you out on every device.
+                Nobody at IcyPlay knows this password, and nobody can see it after you set it.
               </p>
-
-              <Link href="/sign-in" className={`mt-3 ${secondaryButtonClass}`}>
-                <ArrowBackOutlined fontSize="small" /> Back to login
-              </Link>
             </>
           )}
 
@@ -244,14 +277,15 @@ export default function ResetPasswordPage() {
             <>
               <AuthShieldIllustration accent="#16a34a" />
               <h1 className="mt-1 text-4xl font-black tracking-tight text-[#071955] sm:text-5xl">
-                Password changed
+                Your account is ready
               </h1>
               <p className="mt-2 text-xl font-bold text-[#071955]">
-                You&apos;re all <span className="text-[#1264f7]">set</span>.
+                Your email is <span className="text-[#1264f7]">confirmed</span> too.
               </p>
               <div className="mt-5 h-1 w-14 rounded-full bg-[#1264f7]" />
               <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
-                Sign in with your new password. Every other device has been signed out.
+                Opening this link confirmed your email address, so there is nothing else to do.
+                Sign in and your facility is waiting.
               </p>
 
               <Link href="/sign-in" className={`mt-7 ${primaryButtonClass}`}>
@@ -263,25 +297,50 @@ export default function ResetPasswordPage() {
             </>
           )}
 
+          {status === "used" && (
+            <>
+              <AuthShieldIllustration accent="#16a34a" />
+              <h1 className="mt-1 text-4xl font-black tracking-tight text-[#071955] sm:text-5xl">
+                Already activated
+              </h1>
+              <p className="mt-2 text-xl font-bold text-[#071955]">
+                This account is <span className="text-[#1264f7]">yours</span> already.
+              </p>
+              <div className="mt-5 h-1 w-14 rounded-full bg-[#1264f7]" />
+              <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
+                Someone has already set a password with this invitation. Sign in, or use Forgot
+                password if you cannot remember it.
+              </p>
+
+              <Link href="/sign-in" className={`mt-7 ${primaryButtonClass}`}>
+                <LoginOutlined fontSize="small" /> Continue to login
+              </Link>
+              <Link href="/forgot-password" className={`mt-3 ${secondaryButtonClass}`}>
+                I forgot my password
+              </Link>
+            </>
+          )}
+
           {status === "expired" && (
             <>
               <AuthShieldIllustration accent="#f59e0b" />
               <h1 className="mt-1 text-4xl font-black tracking-tight text-[#071955] sm:text-5xl">
-                Link expired
+                Invitation expired
               </h1>
               <p className="mt-2 text-xl font-bold text-[#071955]">
-                Reset links are valid for <span className="text-[#1264f7]">60 minutes</span>.
+                Invitations are valid for <span className="text-[#1264f7]">7 days</span>.
               </p>
               <div className="mt-5 h-1 w-14 rounded-full bg-[#1264f7]" />
               <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
-                Your password has not changed. Request a fresh link and it will work right away.
+                Your account is still there, waiting. Ask the IcyPlay team for a new invitation
+                and it will work right away.
               </p>
 
-              <Link href="/forgot-password" className={`mt-7 ${primaryButtonClass}`}>
-                <SendOutlined fontSize="small" /> Request a new link
-              </Link>
-              <Link href="/sign-in" className={`mt-3 ${secondaryButtonClass}`}>
-                <ArrowBackOutlined fontSize="small" /> Back to login
+              <a href="mailto:icyplaybooking@gmail.com" className={`mt-7 ${primaryButtonClass}`}>
+                <HeadsetMicOutlined fontSize="small" /> Ask for a new invitation
+              </a>
+              <Link href="/" className={`mt-3 ${secondaryButtonClass}`}>
+                <ArrowBackOutlined fontSize="small" /> Back to home
               </Link>
             </>
           )}
@@ -293,18 +352,17 @@ export default function ResetPasswordPage() {
                 Link not valid
               </h1>
               <p className="mt-2 text-xl font-bold text-[#071955]">
-                We couldn&apos;t use this <span className="text-[#1264f7]">reset link</span>.
+                We couldn&apos;t use this <span className="text-[#1264f7]">invitation</span>.
               </p>
               <div className="mt-5 h-1 w-14 rounded-full bg-[#1264f7]" />
               <p className="mt-5 max-w-lg text-lg leading-8 text-slate-600">
                 {failureMessage ||
-                  "The link may have already been used, or a newer one was sent to your inbox."}{" "}
-                Your password has not changed.
+                  "The invitation may have expired, already been used, or been replaced by a newer one."}
               </p>
 
-              <Link href="/forgot-password" className={`mt-7 ${primaryButtonClass}`}>
-                <SendOutlined fontSize="small" /> Request a new link
-              </Link>
+              <a href="mailto:icyplaybooking@gmail.com" className={`mt-7 ${primaryButtonClass}`}>
+                <HeadsetMicOutlined fontSize="small" /> Ask for a new invitation
+              </a>
               <Link href="/sign-in" className={`mt-3 ${secondaryButtonClass}`}>
                 <ArrowBackOutlined fontSize="small" /> Back to login
               </Link>
