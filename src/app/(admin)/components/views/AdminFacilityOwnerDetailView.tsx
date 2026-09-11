@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import AddOutlined from "@mui/icons-material/AddOutlined";
+import EditOutlined from "@mui/icons-material/EditOutlined";
 import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
 import MailOutlineOutlined from "@mui/icons-material/MailOutlineOutlined";
 import SendOutlined from "@mui/icons-material/SendOutlined";
@@ -9,6 +12,7 @@ import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import ErrorOutlineOutlined from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
 import PlaceOutlined from "@mui/icons-material/PlaceOutlined";
+import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import { useSnackbar } from "notistack";
 import {
   facilityOwnerStatusLabels,
@@ -21,6 +25,13 @@ import {
 import { useAdminFacilityOwner } from "@auth/hooks/useAdminFacilityOwner";
 import { useResendInvitation } from "@auth/hooks/useResendInvitation";
 import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import ActivityTimeline from "../ActivityTimeline";
+import BusinessEditDialog from "../edit/BusinessEditDialog";
+import CancelContractDialog from "../edit/CancelContractDialog";
+import ReplaceAgreementDialog from "../edit/ReplaceAgreementDialog";
+import FacilityEditDialog from "../edit/FacilityEditDialog";
+import HoursEditDialog from "../edit/HoursEditDialog";
+import RenewContractDialog from "../edit/RenewContractDialog";
 import { dayNames, directionsUrl } from "../onboarding/draft";
 import { documentTypes } from "../onboarding/DocumentUploader";
 
@@ -57,12 +68,37 @@ function documentLabel(documentType: string) {
   return documentTypes.find((type) => type.value === documentType)?.label ?? documentType;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.1em] text-slate-500">{title}</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-slate-500">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
+  );
+}
+
+function EditButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-[#164eaa] transition hover:border-slate-300 hover:bg-slate-50"
+    >
+      <EditOutlined sx={{ fontSize: 15 }} />
+      Edit
+      <span className="sr-only"> {label}</span>
+    </button>
   );
 }
 
@@ -79,7 +115,15 @@ function Blank() {
   return <span className="font-normal text-slate-400">Not set</span>;
 }
 
-function FacilityPanel({ facility }: { facility: FacilityDetail }) {
+function FacilityPanel({
+  facility,
+  onEditDetails,
+  onEditHours,
+}: {
+  facility: FacilityDetail;
+  onEditDetails: () => void;
+  onEditHours: () => void;
+}) {
   const address = [
     facility.addressLine1,
     facility.addressLine2,
@@ -93,15 +137,17 @@ function FacilityPanel({ facility }: { facility: FacilityDetail }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3">
-        <h3 className="text-xl font-bold tracking-tight text-slate-950">{facility.name}</h3>
-        {!facility.isActive && (
-          <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-            Inactive
-          </span>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-xl font-bold tracking-tight text-slate-950">{facility.name}</h3>
+          {!facility.isActive && (
+            <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              Inactive
+            </span>
+          )}
+        </div>
+        <EditButton label="facility details" onClick={onEditDetails} />
       </div>
-      <p className="mt-1 break-all text-sm text-slate-500">/{facility.slug}</p>
 
       <div className="mt-4">
         <Row label="Address" value={address} />
@@ -158,7 +204,10 @@ function FacilityPanel({ facility }: { facility: FacilityDetail }) {
       </div>
 
       <div className="mt-5">
-        <h4 className="text-sm font-bold text-[#071955]">Opening hours</h4>
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-sm font-bold text-[#071955]">Opening hours</h4>
+          <EditButton label="opening hours" onClick={onEditHours} />
+        </div>
         <div className="mt-1">
           {facility.operatingHours.map((hour) => (
             <Row
@@ -220,7 +269,15 @@ function DocumentRow({ document }: { document: OwnerDocumentDetail }) {
   );
 }
 
-function ContractRow({ contract }: { contract: ContractDetail }) {
+function ContractRow({
+  contract,
+  onCancel,
+  onReplaceAgreement,
+}: {
+  contract: ContractDetail;
+  onCancel: () => void;
+  onReplaceAgreement: () => void;
+}) {
   return (
     <li className="border-b border-slate-100 py-3 last:border-b-0">
       <div className="flex flex-wrap items-center gap-2">
@@ -242,6 +299,45 @@ function ContractRow({ contract }: { contract: ContractDetail }) {
         {formatDate(contract.createdAt)}
       </p>
       {contract.notes && <p className="mt-1 text-sm text-slate-600">{contract.notes}</p>}
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {contract.document ? (
+          <>
+            <a
+              href={contract.document.secureUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-bold text-[#2563EB] transition hover:text-[#071955]"
+            >
+              <GavelOutlined sx={{ fontSize: 15 }} />
+              {contract.document.fileName}
+              <OpenInNewOutlined sx={{ fontSize: 13 }} />
+            </a>
+            <button
+              type="button"
+              onClick={onReplaceAgreement}
+              className="text-sm font-bold text-slate-500 transition hover:text-[#071955]"
+            >
+              Replace
+            </button>
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+            <GavelOutlined sx={{ fontSize: 13 }} />
+            No signed agreement
+          </span>
+        )}
+      </div>
+
+      {!contract.cancelledAt && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-1.5 text-sm font-bold text-red-700 transition hover:text-red-900"
+        >
+          Cancel this term
+        </button>
+      )}
     </li>
   );
 }
@@ -316,9 +412,49 @@ function InvitationPanel({
   );
 }
 
+type OpenDialog = "business" | "facility" | "hours" | "renew" | null;
+
 function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: string }) {
   const owner = useAdminFacilityOwner(facilityOwnerId);
   const detail = owner.data;
+  const [dialog, setDialog] = useState<OpenDialog>(null);
+  const [editingFacilityId, setEditingFacilityId] = useState<string | null>(null);
+  // Cancelling ends a contract and can take a facility off the booking portal,
+  // so it is confirmed rather than fired from the row it sits on.
+  const [cancelling, setCancelling] = useState<ContractDetail | null>(null);
+  const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
+
+  // Read from the term in force, falling back to the newest one when none is
+  // live: the badge should describe the contract the status came from.
+  const currentContract =
+    detail?.contracts.find((contract) => contract.isLiveToday) ?? detail?.contracts[0];
+  const agreementOnFile = currentContract?.document != null;
+
+  const editingFacility = detail?.facilities.find(
+    (facility) => facility.id === editingFacilityId,
+  );
+
+  // The day after the last live term ends, so a renewal does not default to a
+  // range the server will refuse as overlapping.
+  const suggestedStart = (() => {
+    const live = detail?.contracts.filter((contract) => !contract.cancelledAt) ?? [];
+    if (live.length === 0) {
+      return null;
+    }
+
+    const latest = live
+      .map((contract) => contract.endDate)
+      .sort()
+      .at(-1)!;
+    const next = new Date(latest);
+    next.setDate(next.getDate() + 1);
+    return next.toISOString().slice(0, 10);
+  })();
+
+  function openFacilityDialog(facilityId: string, which: "facility" | "hours") {
+    setEditingFacilityId(facilityId);
+    setDialog(which);
+  }
 
   return (
     <main className="text-slate-950">
@@ -359,6 +495,22 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyles[detail.status]}`}
               >
                 {facilityOwnerStatusLabels[detail.status] ?? detail.status}
+              </span>
+              {/* Whether the paperwork matches the status. A commenced owner
+                  with no agreement on file is the pairing worth spotting from
+                  the top of the page. */}
+              <span
+                title={
+                  agreementOnFile
+                    ? "The signed agreement for the live term is attached."
+                    : "No signed agreement is attached to the term in force."
+                }
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                  agreementOnFile ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                <GavelOutlined sx={{ fontSize: 13 }} />
+                {agreementOnFile ? "Agreement on file" : "No agreement"}
               </span>
             </div>
             <p className="mt-2 text-slate-500">{statusHints[detail.status]}</p>
@@ -408,7 +560,10 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 />
               </Section>
 
-              <Section title="Business">
+              <Section
+                title="Business"
+                action={<EditButton label="business details" onClick={() => setDialog("business")} />}
+              >
                 <Row label="Business name" value={detail.businessName} />
                 <Row
                   label="Registration number"
@@ -431,7 +586,19 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 )}
               </Section>
 
-              <Section title={`Contracts (${detail.contracts.length})`}>
+              <Section
+                title={`Contracts (${detail.contracts.length})`}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setDialog("renew")}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-[#164eaa] transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <AddOutlined sx={{ fontSize: 15 }} />
+                    Commence a term
+                  </button>
+                }
+              >
                 {detail.contracts.length === 0 ? (
                   <p className="text-sm text-slate-400">
                     No contract yet, so this owner is not bookable.
@@ -439,7 +606,12 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 ) : (
                   <ul>
                     {detail.contracts.map((contract) => (
-                      <ContractRow key={contract.id} contract={contract} />
+                      <ContractRow
+                        key={contract.id}
+                        contract={contract}
+                        onCancel={() => setCancelling(contract)}
+                        onReplaceAgreement={() => setReplacingAgreement(contract)}
+                      />
                     ))}
                   </ul>
                 )}
@@ -451,12 +623,71 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 ) : (
                   <div className="space-y-8">
                     {detail.facilities.map((facility) => (
-                      <FacilityPanel key={facility.id} facility={facility} />
+                      <FacilityPanel
+                        key={facility.id}
+                        facility={facility}
+                        onEditDetails={() => openFacilityDialog(facility.id, "facility")}
+                        onEditHours={() => openFacilityDialog(facility.id, "hours")}
+                      />
                     ))}
                   </div>
                 )}
               </Section>
+              <Section title="Activity">
+                <ActivityTimeline facilityOwnerId={facilityOwnerId} />
+              </Section>
             </div>
+
+            <BusinessEditDialog
+              detail={detail}
+              open={dialog === "business"}
+              onClose={() => setDialog(null)}
+            />
+
+            <ReplaceAgreementDialog
+              facilityOwnerId={facilityOwnerId}
+              contract={replacingAgreement}
+              onClose={() => setReplacingAgreement(null)}
+            />
+
+            <CancelContractDialog
+              facilityOwnerId={facilityOwnerId}
+              contract={cancelling}
+              isLastLiveTerm={
+                detail.contracts.filter(
+                  (contract) => !contract.cancelledAt && contract.isLiveToday,
+                ).length <= 1
+              }
+              onClose={() => setCancelling(null)}
+            />
+
+            <RenewContractDialog
+              facilityOwnerId={facilityOwnerId}
+              suggestedStart={suggestedStart}
+              open={dialog === "renew"}
+              onClose={() => setDialog(null)}
+            />
+
+            {editingFacility && (
+              <>
+                {/* Keyed on the facility so reopening a dialog starts from what
+                    is stored now, not from what was loaded the first time. */}
+                <FacilityEditDialog
+                  key={`facility-${editingFacility.id}-${editingFacility.updatedAt}`}
+                  facilityOwnerId={facilityOwnerId}
+                  facility={editingFacility}
+                  open={dialog === "facility"}
+                  onClose={() => setDialog(null)}
+                />
+                <HoursEditDialog
+                  key={`hours-${editingFacility.id}-${editingFacility.updatedAt}`}
+                  facilityOwnerId={facilityOwnerId}
+                  facility={editingFacility}
+                  open={dialog === "hours"}
+                  onClose={() => setDialog(null)}
+                />
+              </>
+            )}
           </>
         )}
       </div>

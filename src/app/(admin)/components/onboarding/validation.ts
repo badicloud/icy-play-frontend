@@ -143,6 +143,12 @@ function validHours(draft: OnboardingDraft) {
 
 function validContract(draft: OnboardingDraft) {
   const errors: FieldErrors = {};
+
+  // A term without the signed agreement is a claim, not a record.
+  if (draft.contract.document === null) {
+    errors.document = "Attach the signed agreement.";
+  }
+
   required(errors, "startDate", draft.contract.startDate, "A start date");
   required(errors, "endDate", draft.contract.endDate, "An end date");
 

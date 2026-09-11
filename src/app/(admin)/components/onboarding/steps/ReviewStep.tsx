@@ -5,6 +5,7 @@ import EditOutlined from "@mui/icons-material/EditOutlined";
 import { dayNames, type OnboardingDraft } from "../draft";
 import type { FieldErrors } from "../validation";
 import { StepHeading, TextAreaField, TextField } from "../FormControls";
+import AgreementUploader from "../AgreementUploader";
 import { documentTypes } from "../DocumentUploader";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -103,6 +104,19 @@ function ReviewStep({
               value={contract.notes}
               onChange={(next) => onContractChange({ ...contract, notes: next })}
               placeholder="Agreement reference, or anything the next admin should know."
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <p className="mb-1.5 text-sm font-bold text-[#071955]">
+              Signed agreement
+              <span className="ml-1 font-bold text-red-600" aria-hidden>
+                *
+              </span>
+            </p>
+            <AgreementUploader
+              value={contract.document}
+              onChange={(document) => onContractChange({ ...contract, document })}
+              error={errors.document}
             />
           </div>
         </div>

@@ -26,6 +26,20 @@ export const API_ENDPOINTS = {
     FACILITY_OWNER: (id: string) => `${API_V1}/admin/facility-owners/${id}`,
     RESEND_INVITATION: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/resend-invitation`,
+    FACILITY_OWNER_BUSINESS: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/business`,
+    FACILITY_OWNER_FACILITY: (id: string, facilityId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}`,
+    FACILITY_OWNER_FACILITY_HOURS: (id: string, facilityId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/hours`,
+    FACILITY_OWNER_CONTRACTS: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts`,
+    CONTRACT_DOCUMENT: (id: string, contractId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
+    CANCEL_CONTRACT: (id: string, contractId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/cancel`,
+    FACILITY_OWNER_ACTIVITY: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/activity`,
     AMENITIES: `${API_V1}/admin/amenities`,
     UPLOAD_SIGNATURE: `${API_V1}/admin/assets/upload-signature`,
   },

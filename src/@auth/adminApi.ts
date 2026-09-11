@@ -112,6 +112,126 @@ export const facilityOwnerStatusLabels: Record<FacilityOwnerStatus, string> = {
   Suspended: "Suspended",
 };
 
+
+export type UpdateBusinessPayload = {
+  businessName: string;
+  billingEmail: string;
+  billingPhone: string | null;
+  businessRegistrationNumber: string | null;
+  reason: string | null;
+};
+
+export function updateFacilityOwnerBusiness(id: string, payload: UpdateBusinessPayload) {
+  return apiClient.put<void, UpdateBusinessPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_BUSINESS(id),
+    payload,
+  );
+}
+
+export type UpdateFacilityPayload = {
+  name: string;
+  description: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  province: string;
+  postalCode: string | null;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+  timeZone: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  safetyMeasures: string | null;
+  houseRules: string | null;
+  amenityIds: string[];
+  reason: string | null;
+};
+
+export function updateFacility(id: string, facilityId: string, payload: UpdateFacilityPayload) {
+  return apiClient.put<void, UpdateFacilityPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_FACILITY(id, facilityId),
+    payload,
+  );
+}
+
+export type UpdateHoursPayload = {
+  operatingHours: { dayOfWeek: number; opensAt: string | null; closesAt: string | null }[];
+  reason: string | null;
+};
+
+export function updateFacilityHours(id: string, facilityId: string, payload: UpdateHoursPayload) {
+  return apiClient.put<void, UpdateHoursPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_FACILITY_HOURS(id, facilityId),
+    payload,
+  );
+}
+
+export type RenewContractPayload = {
+  startDate: string;
+  endDate: string;
+  notes: string | null;
+  document: UploadedFile;
+  reason: string | null;
+};
+
+export function renewContract(id: string, payload: RenewContractPayload) {
+  return apiClient.post<void, RenewContractPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_CONTRACTS(id),
+    payload,
+  );
+}
+
+export function replaceContractDocument(
+  id: string,
+  contractId: string,
+  payload: { document: UploadedFile; reason: string | null },
+) {
+  return apiClient.put<void, { document: UploadedFile; reason: string | null }>(
+    API_ENDPOINTS.ADMIN.CONTRACT_DOCUMENT(id, contractId),
+    payload,
+  );
+}
+
+export function cancelContract(id: string, contractId: string, reason: string | null) {
+  return apiClient.post<void, { reason: string | null }>(
+    API_ENDPOINTS.ADMIN.CANCEL_CONTRACT(id, contractId),
+    { reason },
+  );
+}
+
+/** One recorded change. Old and new carry only the fields that moved. */
+export type ActivityEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorRole: string;
+  oldValuesJson: string | null;
+  newValuesJson: string | null;
+  reason: string | null;
+  createdAt: string;
+};
+
+export function getFacilityOwnerActivity(id: string) {
+  return apiClient.get<ActivityEntry[]>(API_ENDPOINTS.ADMIN.FACILITY_OWNER_ACTIVITY(id));
+}
+
+/** Plain English for what the trail records, so a reader is not left with a constant. */
+export const activityActionLabels: Record<string, string> = {
+  FacilityOwnerOnboarded: "Onboarded",
+  FacilityOwnerBusinessUpdated: "Business details changed",
+  FacilityOwnerInvitationSent: "Invitation sent",
+  FacilityUpdated: "Facility details changed",
+  FacilityAmenitiesUpdated: "Amenities changed",
+  FacilityHoursUpdated: "Opening hours changed",
+  ContractCommenced: "Contract commenced",
+  ContractCancelled: "Contract cancelled",
+  ContractDocumentReplaced: "Signed agreement replaced",
+};
+
 export const roleLabels: Record<string, string> = {
   Customer: "Customer",
   FacilityOwner: "Facility owner",
@@ -135,7 +255,10 @@ export function getAmenities() {
  * The signature commits to the folder, so a free-text destination would let a
  * caller scatter uploads anywhere in the Cloudinary account.
  */
-export type UploadPurpose = "facility-owner-document" | "facility-photo";
+export type UploadPurpose =
+  | "facility-owner-document"
+  | "facility-photo"
+  | "contract-document";
 
 export function createUploadSignature(purpose: UploadPurpose) {
   return apiClient.post<UploadSignature, { purpose: UploadPurpose }>(
@@ -203,6 +326,15 @@ export type FacilityDetail = {
   updatedAt: string | null;
 };
 
+/** A file already in Cloudinary, described by what the browser posted back. */
+export type UploadedFile = {
+  publicId: string;
+  secureUrl: string;
+  fileName: string;
+  contentType: string;
+  sizeInBytes: number;
+};
+
 export type ContractDetail = {
   id: string;
   startDate: string;
@@ -212,6 +344,8 @@ export type ContractDetail = {
   commencedByName: string | null;
   cancelledAt: string | null;
   isLiveToday: boolean;
+  /** Null on terms commenced before an agreement was required. */
+  document: UploadedFile | null;
   createdAt: string;
 };
 
@@ -291,7 +425,12 @@ export type OnboardFacilityOwnerPayload = {
     opensAt: string | null;
     closesAt: string | null;
   }[];
-  contract: { startDate: string; endDate: string; notes: string | null };
+  contract: {
+    startDate: string;
+    endDate: string;
+    notes: string | null;
+    document: UploadedFile;
+  };
 };
 
 export type OnboardedFacilityOwner = {

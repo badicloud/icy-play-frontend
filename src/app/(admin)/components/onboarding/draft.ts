@@ -1,4 +1,4 @@
-import type { OnboardFacilityOwnerPayload } from "@auth/adminApi";
+import type { OnboardFacilityOwnerPayload, UploadedFile } from "@auth/adminApi";
 
 export type UploadedDocument = {
   documentType: string;
@@ -50,7 +50,13 @@ export type OnboardingDraft = {
   safetyMeasures: string;
   houseRules: string;
   operatingHours: DayHours[];
-  contract: { startDate: string; endDate: string; notes: string };
+  contract: {
+    startDate: string;
+    endDate: string;
+    notes: string;
+    /** The signed agreement. Required before a term can be commenced. */
+    document: UploadedFile | null;
+  };
 };
 
 export const dayNames = [
@@ -107,7 +113,12 @@ export function createEmptyDraft(): OnboardingDraft {
       opensAt: "06:00",
       closesAt: "22:00",
     })),
-    contract: { startDate: today(), endDate: oneYearFromToday(), notes: "" },
+    contract: {
+      startDate: today(),
+      endDate: oneYearFromToday(),
+      notes: "",
+      document: null,
+    },
   };
 }
 
@@ -201,6 +212,7 @@ export function toPayload(draft: OnboardingDraft): OnboardFacilityOwnerPayload {
       startDate: draft.contract.startDate,
       endDate: draft.contract.endDate,
       notes: trimmedOrNull(draft.contract.notes),
+      document: draft.contract.document!,
     },
   };
 }
