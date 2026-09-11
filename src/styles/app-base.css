@@ -160,3 +160,18 @@ body.no-animate *::after {
 .fc-scrollgrid-section-liquid {
   height: 1px !important;
 }
+
+/*
+ * Tailwind v4 dropped the pointer cursor that buttons used to get from
+ * preflight, so every button in the app reads as plain text under the mouse.
+ * Restored here once rather than as a utility on each button: that is a class
+ * everyone has to remember, and nobody notices it missing until they hover.
+ *
+ * Disabled controls are excluded, so the not-allowed and wait cursors set
+ * alongside them still apply.
+ */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
