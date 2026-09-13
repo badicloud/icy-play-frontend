@@ -38,6 +38,20 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/cancel`,
+    SPORTS: `${API_V1}/admin/sports`,
+    SPORT: (id: string) => `${API_V1}/admin/sports/${id}`,
+    SPORT_RETIRE: (id: string) => `${API_V1}/admin/sports/${id}/retire`,
+    SPORT_REINSTATE: (id: string) => `${API_V1}/admin/sports/${id}/reinstate`,
+    FACILITIES: `${API_V1}/admin/facilities`,
+    COURTS: `${API_V1}/admin/courts`,
+    FACILITY_COURTS: (facilityId: string) =>
+      `${API_V1}/admin/facilities/${facilityId}/courts`,
+    FACILITY_MAINTENANCE: (facilityId: string) =>
+      `${API_V1}/admin/facilities/${facilityId}/maintenance`,
+    COURT_MAINTENANCE: (courtId: string) =>
+      `${API_V1}/admin/courts/${courtId}/maintenance`,
+    LIFT_MAINTENANCE: (periodId: string) =>
+      `${API_V1}/admin/maintenance/${periodId}/lift`,
     FACILITY_OWNER_ACTIVITY: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/activity`,
     AMENITIES: `${API_V1}/admin/amenities`,

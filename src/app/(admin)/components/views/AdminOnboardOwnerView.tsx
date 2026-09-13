@@ -309,6 +309,10 @@ function AdminOnboardOwnerView() {
                   value={draft.facility}
                   errors={errors}
                   onChange={(facility) => setDraft((current) => ({ ...current, facility }))}
+                  photos={draft.facilityPhotos}
+                  onPhotosChange={(facilityPhotos) =>
+                    setDraft((current) => ({ ...current, facilityPhotos }))
+                  }
                 />
               ) : step === 3 ? (
                 <AmenitiesStep

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
 import PlaceOutlined from "@mui/icons-material/PlaceOutlined";
+import PhotoUploader, { type DraftPhoto } from "../../courts/PhotoUploader";
 import { directionsUrl, parseCoordinates, type OnboardingDraft } from "../draft";
 import type { FieldErrors } from "../validation";
 import { RequiredMark, StepHeading, TextAreaField, TextField } from "../FormControls";
@@ -14,9 +15,21 @@ type FacilityStepProps = {
   value: OnboardingDraft["facility"];
   errors: FieldErrors;
   onChange: (facility: OnboardingDraft["facility"]) => void;
+  /** The court wizard embeds this under a heading of its own. */
+  hideHeading?: boolean;
+  /** Omitted by the court wizard, which collects photos in a later step. */
+  photos?: DraftPhoto[];
+  onPhotosChange?: (photos: DraftPhoto[]) => void;
 };
 
-function FacilityStep({ value, errors, onChange }: FacilityStepProps) {
+function FacilityStep({
+  value,
+  errors,
+  onChange,
+  hideHeading = false,
+  photos,
+  onPhotosChange,
+}: FacilityStepProps) {
   const [pasted, setPasted] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
 
@@ -44,10 +57,12 @@ function FacilityStep({ value, errors, onChange }: FacilityStepProps) {
 
   return (
     <div>
-      <StepHeading
+      {!hideHeading && (
+        <StepHeading
         title="The facility"
         description="The venue customers will book. Its address is what they search and travel to."
       />
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -223,6 +238,22 @@ function FacilityStep({ value, errors, onChange }: FacilityStepProps) {
           </a>
         )}
       </div>
+
+      {photos && onPhotosChange && (
+        <div className="mt-8">
+          <h3 className="text-sm font-bold text-[#071955]">Photos</h3>
+          <p className="mt-1 mb-3 text-sm text-slate-500">
+            Pictures of the venue itself. The cover is the one customers see
+            first when they browse. Each court gets its own photos later.
+          </p>
+          <PhotoUploader
+            id="facility-photos"
+            purpose="facility-photo"
+            photos={photos}
+            onChange={onPhotosChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

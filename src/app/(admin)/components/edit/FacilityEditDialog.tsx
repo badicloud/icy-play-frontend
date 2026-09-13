@@ -6,6 +6,7 @@ import CheckOutlined from "@mui/icons-material/CheckOutlined";
 import type { FacilityDetail } from "@auth/adminApi";
 import { useAmenities } from "@auth/hooks/useAmenities";
 import { useUpdateFacility } from "@auth/hooks/useFacilityOwnerEdits";
+import PhotoUploader, { type DraftPhoto } from "../courts/PhotoUploader";
 import { parseCoordinates } from "../onboarding/draft";
 import { TextAreaField, TextField } from "../onboarding/FormControls";
 import EditDialog from "./EditDialog";
@@ -52,6 +53,14 @@ function FacilityEditDialog({
     houseRules: facility.houseRules ?? "",
   });
   const [amenityIds, setAmenityIds] = useState(facility.amenities.map((amenity) => amenity.id));
+  const [photos, setPhotos] = useState<DraftPhoto[]>(() =>
+    facility.photos.map((photo) => ({
+      publicId: photo.publicId,
+      secureUrl: photo.secureUrl,
+      caption: photo.caption ?? "",
+      isCover: photo.isCover,
+    })),
+  );
   const [pasted, setPasted] = useState("");
   const [reason, setReason] = useState("");
 
@@ -106,6 +115,14 @@ function FacilityEditDialog({
         safetyMeasures: trimmedOrNull(form.safetyMeasures),
         houseRules: trimmedOrNull(form.houseRules),
         amenityIds,
+        // Position is the display order, so dragging later needs no extra field.
+        photos: photos.map((photo, index) => ({
+          publicId: photo.publicId,
+          secureUrl: photo.secureUrl,
+          caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
+          displayOrder: index,
+          isCover: photo.isCover,
+        })),
         reason: trimmedOrNull(reason),
       });
       enqueueSnackbar("The facility is saved.", { variant: "success" });
@@ -258,6 +275,16 @@ function FacilityEditDialog({
             error={halfAPin && longitude === "" ? "A latitude needs a longitude." : undefined}
           />
         </div>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="mb-2 text-sm font-bold text-[#071955]">Photos</h3>
+        <PhotoUploader
+          id="edit-facility-photos"
+          purpose="facility-photo"
+          photos={photos}
+          onChange={setPhotos}
+        />
       </div>
 
       <div className="mt-6">

@@ -145,6 +145,7 @@ export type UpdateFacilityPayload = {
   safetyMeasures: string | null;
   houseRules: string | null;
   amenityIds: string[];
+  photos: PhotoPayload[];
   reason: string | null;
 };
 
@@ -226,6 +227,7 @@ export const activityActionLabels: Record<string, string> = {
   FacilityOwnerInvitationSent: "Invitation sent",
   FacilityUpdated: "Facility details changed",
   FacilityAmenitiesUpdated: "Amenities changed",
+  FacilityPhotosUpdated: "Photos changed",
   FacilityHoursUpdated: "Opening hours changed",
   ContractCommenced: "Contract commenced",
   ContractCancelled: "Contract cancelled",
@@ -258,6 +260,7 @@ export function getAmenities() {
 export type UploadPurpose =
   | "facility-owner-document"
   | "facility-photo"
+  | "court-photo"
   | "contract-document";
 
 export function createUploadSignature(purpose: UploadPurpose) {
@@ -320,10 +323,30 @@ export type FacilityDetail = {
   safetyMeasures: string | null;
   houseRules: string | null;
   isActive: boolean;
+  photos: PhotoItem[];
   amenities: FacilityAmenityDetail[];
   operatingHours: FacilityOperatingHourDetail[];
   createdAt: string;
   updatedAt: string | null;
+};
+
+/** A picture being sent to the API: what the browser got back from Cloudinary. */
+export type PhotoPayload = {
+  publicId: string;
+  secureUrl: string;
+  caption: string | null;
+  displayOrder: number;
+  isCover: boolean;
+};
+
+/** A picture already stored, as the API reads it back. */
+export type PhotoItem = {
+  id: string;
+  publicId: string;
+  secureUrl: string;
+  caption: string | null;
+  displayOrder: number;
+  isCover: boolean;
 };
 
 /** A file already in Cloudinary, described by what the browser posted back. */
@@ -419,6 +442,7 @@ export type OnboardFacilityOwnerPayload = {
     safetyMeasures: string | null;
     houseRules: string | null;
     amenityIds: string[];
+    photos: PhotoPayload[];
   };
   operatingHours: {
     dayOfWeek: number;

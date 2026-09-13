@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import AddOutlined from "@mui/icons-material/AddOutlined";
@@ -12,6 +12,7 @@ import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import ErrorOutlineOutlined from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
 import PlaceOutlined from "@mui/icons-material/PlaceOutlined";
+import StarOutlined from "@mui/icons-material/StarOutlined";
 import GavelOutlined from "@mui/icons-material/GavelOutlined";
 import { useSnackbar } from "notistack";
 import {
@@ -26,6 +27,7 @@ import { useAdminFacilityOwner } from "@auth/hooks/useAdminFacilityOwner";
 import { useResendInvitation } from "@auth/hooks/useResendInvitation";
 import AdminBreadcrumbs from "../AdminBreadcrumbs";
 import ActivityTimeline from "../ActivityTimeline";
+import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
 import CancelContractDialog from "../edit/CancelContractDialog";
 import ReplaceAgreementDialog from "../edit/ReplaceAgreementDialog";
@@ -117,10 +119,12 @@ function Blank() {
 
 function FacilityPanel({
   facility,
+  facilityOwnerId,
   onEditDetails,
   onEditHours,
 }: {
   facility: FacilityDetail;
+  facilityOwnerId: string;
   onEditDetails: () => void;
   onEditHours: () => void;
 }) {
@@ -136,7 +140,9 @@ function FacilityPanel({
     .join(", ");
 
   return (
-    <div>
+    // Named so the facility inventory can link straight at this venue; the
+    // scroll margin keeps the heading clear of the sticky header.
+    <div id={`facility-${facility.id}`} className="scroll-mt-24">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-xl font-bold tracking-tight text-slate-950">{facility.name}</h3>
@@ -185,6 +191,53 @@ function FacilityPanel({
       )}
 
       <div className="mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-sm font-bold text-[#071955]">
+            Photos{facility.photos.length > 0 && ` (${facility.photos.length})`}
+          </h4>
+          <EditButton label="facility photos" onClick={onEditDetails} />
+        </div>
+        {facility.photos.length === 0 ? (
+          <p className="mt-1 text-sm text-slate-400">
+            No photos yet, so the booking list has nothing to show for this venue.
+          </p>
+        ) : (
+          <ul className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {facility.photos.map((photo) => (
+              <li
+                key={photo.id}
+                className={`overflow-hidden rounded-xl border bg-white ${
+                  photo.isCover ? "border-[#2563EB] ring-2 ring-blue-200" : "border-slate-200"
+                }`}
+              >
+                <a href={photo.secureUrl} target="_blank" rel="noreferrer" title="Open the full picture">
+                  <img
+                    src={photo.secureUrl}
+                    alt={photo.caption ?? facility.name}
+                    className="h-28 w-full object-cover transition hover:opacity-90"
+                  />
+                </a>
+                {(photo.isCover || photo.caption) && (
+                  <div className="px-2.5 py-1.5">
+                    {photo.isCover ? (
+                      // Named, not merely outlined: which picture leads is the
+                      // one thing this list has to answer.
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
+                        <StarOutlined sx={{ fontSize: 13 }} aria-hidden />
+                        Primary
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">{photo.caption}</span>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-5">
         <h4 className="text-sm font-bold text-[#071955]">Amenities</h4>
         {facility.amenities.length === 0 ? (
           <p className="mt-1 text-sm text-slate-400">None recorded.</p>
@@ -224,6 +277,12 @@ function FacilityPanel({
           ))}
         </div>
       </div>
+
+      <CourtsPanel
+        facilityId={facility.id}
+        facilityName={facility.name}
+        facilityOwnerId={facilityOwnerId}
+      />
 
       {(facility.safetyMeasures || facility.houseRules) && (
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -417,12 +476,26 @@ type OpenDialog = "business" | "facility" | "hours" | "renew" | null;
 function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: string }) {
   const owner = useAdminFacilityOwner(facilityOwnerId);
   const detail = owner.data;
+  const facilityCount = detail?.facilities.length ?? 0;
   const [dialog, setDialog] = useState<OpenDialog>(null);
   const [editingFacilityId, setEditingFacilityId] = useState<string | null>(null);
   // Cancelling ends a contract and can take a facility off the booking portal,
   // so it is confirmed rather than fired from the row it sits on.
   const [cancelling, setCancelling] = useState<ContractDetail | null>(null);
   const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
+
+  // The facilities arrive with the query, not with the markup, so the browser
+  // has nothing to scroll to when it first reads the hash. Doing it here is
+  // what makes a link from the facility inventory land on its own venue.
+  useEffect(() => {
+    if (facilityCount === 0 || !window.location.hash.startsWith("#facility-")) {
+      return;
+    }
+
+    document
+      .getElementById(window.location.hash.slice(1))
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [facilityCount]);
 
   // Read from the term in force, falling back to the newest one when none is
   // live: the badge should describe the contract the status came from.
@@ -486,10 +559,12 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
           <p className="mt-6 text-slate-500">Loading…</p>
         ) : (
           <>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-                {detail.businessName}
-              </h1>
+            <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                    {detail.businessName}
+                  </h1>
               <span
                 title={statusHints[detail.status]}
                 className={`rounded-full px-3 py-1 text-xs font-bold ${statusStyles[detail.status]}`}
@@ -509,11 +584,25 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                   agreementOnFile ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
                 }`}
               >
-                <GavelOutlined sx={{ fontSize: 13 }} />
-                {agreementOnFile ? "Agreement on file" : "No agreement"}
-              </span>
+                  <GavelOutlined sx={{ fontSize: 13 }} />
+                  {agreementOnFile ? "Agreement on file" : "No agreement"}
+                </span>
+                </div>
+                <p className="mt-2 text-slate-500">{statusHints[detail.status]}</p>
+              </div>
+
+              {/* Beside the heading, not buried in a facility panel: an owner
+                  with no facility yet has nowhere else to start from. */}
+              <Link
+                href={`/admin/facility-owners/${facilityOwnerId}/courts/new`}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+              >
+                <AddOutlined sx={{ fontSize: 18 }} />
+                {detail.facilities.length === 0
+                  ? "Add the first facility and court"
+                  : "Add a facility or court"}
+              </Link>
             </div>
-            <p className="mt-2 text-slate-500">{statusHints[detail.status]}</p>
 
             <div className="mt-6 grid gap-4">
               <Section title="Owner">
@@ -624,8 +713,9 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                   <div className="space-y-8">
                     {detail.facilities.map((facility) => (
                       <FacilityPanel
-                        key={facility.id}
+key={facility.id}
                         facility={facility}
+                        facilityOwnerId={facilityOwnerId}
                         onEditDetails={() => openFacilityDialog(facility.id, "facility")}
                         onEditHours={() => openFacilityDialog(facility.id, "hours")}
                       />

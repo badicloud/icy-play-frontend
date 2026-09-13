@@ -12,9 +12,11 @@ type HoursStepProps = {
   value: DayHours[];
   errors: FieldErrors;
   onChange: (hours: DayHours[]) => void;
+  /** The court wizard embeds this under a heading of its own. */
+  hideHeading?: boolean;
 };
 
-function HoursStep({ value, errors, onChange }: HoursStepProps) {
+function HoursStep({ value, errors, onChange, hideHeading = false }: HoursStepProps) {
   function setDay(dayOfWeek: number, change: Partial<DayHours>) {
     onChange(value.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...change } : day)));
   }
@@ -30,10 +32,12 @@ function HoursStep({ value, errors, onChange }: HoursStepProps) {
 
   return (
     <div>
-      <StepHeading
+      {!hideHeading && (
+        <StepHeading
         title="Opening hours"
         description="The facility's normal week. A court that keeps different hours can override this later."
       />
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200">
         {value.map((day) => {

@@ -1,4 +1,5 @@
 import type { OnboardFacilityOwnerPayload, UploadedFile } from "@auth/adminApi";
+import type { DraftPhoto } from "../courts/PhotoUploader";
 
 export type UploadedDocument = {
   documentType: string;
@@ -47,6 +48,8 @@ export type OnboardingDraft = {
     contactEmail: string;
   };
   amenityIds: string[];
+  /** The venue's own pictures. Courts get theirs in the court wizard. */
+  facilityPhotos: DraftPhoto[];
   safetyMeasures: string;
   houseRules: string;
   operatingHours: DayHours[];
@@ -105,6 +108,7 @@ export function createEmptyDraft(): OnboardingDraft {
       contactEmail: "",
     },
     amenityIds: [],
+    facilityPhotos: [],
     safetyMeasures: "",
     houseRules: "",
     operatingHours: dayNames.map((_, dayOfWeek) => ({
@@ -202,6 +206,14 @@ export function toPayload(draft: OnboardingDraft): OnboardFacilityOwnerPayload {
       safetyMeasures: trimmedOrNull(draft.safetyMeasures),
       houseRules: trimmedOrNull(draft.houseRules),
       amenityIds: draft.amenityIds,
+      // Position is the display order, so reordering later needs no new field.
+      photos: draft.facilityPhotos.map((photo, index) => ({
+        publicId: photo.publicId,
+        secureUrl: photo.secureUrl,
+        caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
+        displayOrder: index,
+        isCover: photo.isCover,
+      })),
     },
     operatingHours: draft.operatingHours.map((day) => ({
       dayOfWeek: day.dayOfWeek,

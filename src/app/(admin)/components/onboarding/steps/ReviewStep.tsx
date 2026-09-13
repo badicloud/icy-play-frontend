@@ -173,6 +173,14 @@ function ReviewStep({
           />
           <Row label="Time zone" value={facility.timeZone} />
           <Row
+            label="Photos"
+            value={
+              draft.facilityPhotos.length === 0
+                ? "None"
+                : `${draft.facilityPhotos.length} uploaded`
+            }
+          />
+          <Row
             label="Map pin"
             value={
               facility.latitude && facility.longitude

@@ -5,6 +5,7 @@ import ApartmentOutlined from "@mui/icons-material/ApartmentOutlined";
 import BadgeOutlined from "@mui/icons-material/BadgeOutlined";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import PeopleAltOutlined from "@mui/icons-material/PeopleAltOutlined";
+import SportsBasketballOutlined from "@mui/icons-material/SportsBasketballOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 
@@ -43,9 +44,17 @@ const sections: AdminSection[] = [
     icon: <GroupsOutlined />,
   },
   {
+    title: "Sports",
+    description:
+      "What a court can be listed as, and what customers filter on. Seeded, and yours to extend.",
+    href: "/admin/sports",
+    icon: <SportsBasketballOutlined />,
+  },
+  {
     title: "Facility inventory",
     description:
       "Every facility and court on the platform, with its owner and booking status.",
+    href: "/admin/facility-inventory",
     icon: <ApartmentOutlined />,
   },
 ];

@@ -28,6 +28,8 @@ type EditDialogProps = {
    * change most worth explaining is the one that removes something.
    */
   reasonRequired?: boolean;
+  /** For edits small enough that a reason per save would be noise. */
+  hideReason?: boolean;
   children: React.ReactNode;
 };
 
@@ -53,6 +55,7 @@ function EditDialog({
   reasonLabel = "Why are you changing this?",
   reasonHint = "Recorded with the change, so the trail explains itself later.",
   reasonRequired = false,
+  hideReason = false,
   children,
 }: EditDialogProps) {
   const dialog = useRef<HTMLDivElement>(null);
@@ -114,7 +117,7 @@ function EditDialog({
         <div className="px-6 py-5">
           {children}
 
-          <div className="mt-6 border-t border-slate-100 pt-5">
+          <div className="mt-6 border-t border-slate-100 pt-5" hidden={hideReason}>
             <TextField
               id="edit-reason"
               label={reasonLabel}

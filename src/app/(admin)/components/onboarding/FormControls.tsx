@@ -55,7 +55,7 @@ type TextFieldProps = {
   error?: string;
   hint?: string;
   required?: boolean;
-  type?: "text" | "email" | "tel" | "date";
+  type?: "text" | "email" | "tel" | "date" | "datetime-local";
   placeholder?: string;
 };
 
