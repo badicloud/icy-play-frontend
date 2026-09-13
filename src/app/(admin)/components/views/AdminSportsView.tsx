@@ -5,7 +5,7 @@ import { useSnackbar } from "notistack";
 import AddOutlined from "@mui/icons-material/AddOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { ApiError } from "@/services/api";
-import { sportCategories, type Sport } from "@auth/courtApi";
+import { activityKindHints, activityKinds, sportCategories, type Sport } from "@auth/courtApi";
 import { useCreateSport, useSetSportActive, useSports, useUpdateSport } from "@auth/hooks/useSports";
 import AdminBreadcrumbs from "../AdminBreadcrumbs";
 import { TextField } from "../onboarding/FormControls";
@@ -31,13 +31,14 @@ function SportDialog({
 
   const [name, setName] = useState(sport?.name ?? "");
   const [category, setCategory] = useState(sport?.category ?? sportCategories[0]);
+  const [kind, setKind] = useState<string>(sport?.kind ?? "Sport");
   const [displayOrder, setDisplayOrder] = useState(String(sport?.displayOrder ?? 10));
 
   const order = Number(displayOrder);
   const canSave = name.trim() !== "" && Number.isInteger(order) && order >= 0;
 
   async function handleSave() {
-    const payload = { name: name.trim(), category, displayOrder: order };
+    const payload = { name: name.trim(), category, displayOrder: order, kind };
 
     try {
       if (sport) {
@@ -88,6 +89,30 @@ function SportDialog({
         </div>
 
         <div>
+          <label htmlFor="sport-kind" className="block text-sm font-bold text-[#071955]">
+            Is this a sport or an event?
+          </label>
+          <select
+            id="sport-kind"
+            value={kind}
+            onChange={(event) => {
+              setKind(event.target.value);
+              // An event that sits under "Racket sports" would be filed where
+              // nobody looks for it.
+              if (event.target.value === "Event") {
+                setCategory("Events");
+              }
+            }}
+            className="mb-1.5 mt-1.5 min-h-13 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-[#071955] shadow-sm outline-none transition focus:border-[#1264f7] focus:ring-2 focus:ring-blue-200"
+          >
+            {activityKinds.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <p className="mb-4 text-sm text-slate-500">{activityKindHints[kind]}</p>
+
           <label htmlFor="sport-category" className="block text-sm font-bold text-[#071955]">
             Category
             <span className="ml-1 font-bold text-red-600" aria-hidden>
@@ -158,9 +183,12 @@ function AdminSportsView() {
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Sports</h1>
-            <p className="mt-2 text-slate-500">
-              What a court can be listed as. Seeded with the common ones, and yours to extend.
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Sports and events
+            </h1>
+            <p className="mt-2 max-w-2xl text-slate-500">
+              What a court can be booked for — the games played on it, and the occasions
+              the floor is hired for. Seeded with the common ones, and yours to extend.
             </p>
           </div>
 
@@ -170,7 +198,7 @@ function AdminSportsView() {
             className="inline-flex items-center gap-1.5 rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
           >
             <AddOutlined sx={{ fontSize: 18 }} />
-            Add a sport
+            Add a sport or event
           </button>
         </div>
 
@@ -181,12 +209,12 @@ function AdminSportsView() {
             onChange={(event) => setIncludeRetired(event.target.checked)}
             className="size-4 rounded border-slate-300 text-[#2563EB]"
           />
-          Show retired sports
+          Show retired entries
         </label>
 
         {sports.isError ? (
           <p className="mt-6 font-semibold text-red-700">
-            We couldn&apos;t load the sports. Please refresh the page.
+            We couldn&apos;t load the list. Please refresh the page.
           </p>
         ) : sports.isPending ? (
           <p className="mt-6 text-slate-500">Loading…</p>

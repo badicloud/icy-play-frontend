@@ -69,12 +69,6 @@ function validBusiness(draft: OnboardingDraft) {
     errors.billingEmail = "Enter a valid email address.";
   }
 
-  // An owner encoded without proof of who they are is the thing admin-led
-  // onboarding exists to prevent, so the server refuses it too.
-  if (draft.documents.length === 0) {
-    errors.documents = "Attach at least one verification document.";
-  }
-
   return errors;
 }
 

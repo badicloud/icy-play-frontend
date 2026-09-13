@@ -148,7 +148,7 @@ function ReviewStep({
 
         <Panel title="Documents" onEdit={() => onEditStep(1)}>
           {draft.documents.length === 0 ? (
-            <p className="text-sm text-red-700">None attached.</p>
+            <p className="text-sm text-slate-500">None attached.</p>
           ) : (
             draft.documents.map((document) => (
               <Row

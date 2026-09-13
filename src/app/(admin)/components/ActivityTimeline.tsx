@@ -27,6 +27,8 @@ const fieldLabels: Record<string, string> = {
   safetyMeasures: "Safety measures",
   houseRules: "House rules",
   amenityIds: "Amenities",
+  platformHourlyRate: "Platform rate per hour",
+  commissionPercentage: "Commission",
   photos: "Photo count",
   cover: "Cover photo",
   facilityName: "Facility",

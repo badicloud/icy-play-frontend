@@ -8,6 +8,8 @@ export type Sport = {
   key: string;
   name: string;
   category: string;
+  /** "Sport" for something played, "Event" for something the floor is hired for. */
+  kind: string;
   displayOrder: number;
   isActive: boolean;
   /** How many courts list it, so retiring one is a decision with a number on it. */
@@ -18,6 +20,7 @@ export const sportCategories = [
   "Court sports",
   "Racket sports",
   "Combat",
+  "Events",
   "Other",
 ] as const;
 
@@ -27,7 +30,19 @@ export function getSports(includeRetired = false) {
   });
 }
 
-export type SportPayload = { name: string; category: string; displayOrder: number };
+export type SportPayload = {
+  name: string;
+  category: string;
+  displayOrder: number;
+  kind: string;
+};
+
+export const activityKinds = ["Sport", "Event"] as const;
+
+export const activityKindHints: Record<string, string> = {
+  Sport: "Something played on the court.",
+  Event: "Something the floor is hired for — a party, a tournament, a show.",
+};
 
 export function createSport(payload: SportPayload) {
   return apiClient.post<string, SportPayload>(API_ENDPOINTS.ADMIN.SPORTS, payload);
@@ -80,13 +95,88 @@ export function getFacilityInventory(query: { search?: string; page?: number; pa
   });
 }
 
-export type CourtSportItem = {
+/**
+  * The four rates a court can charge for one sport. Only the standard one is
+  * stored when a venue charges the same all week: the rest fall back to it, so
+  * a blank means "same as standard" rather than "free".
+  */
+export type SportRates = {
+  standardHourlyRate: number | null;
+  peakHourlyRate: number | null;
+  weekendRate: number | null;
+  holidayRate: number | null;
+};
+
+export type CourtSportItem = SportRates & {
   sportId: string;
   key: string;
   name: string;
   category: string;
+  kind: string;
   isPrimary: boolean;
+  /** How many playable courts this one makes for this sport. One means whole. */
+  divisions: number;
 };
+
+/**
+ * One sport on a court, and how many playable courts it makes when set up for
+ * it. A full basketball court is three pickleball courts across, and each of
+ * those is booked and paid for on its own.
+ */
+export type CourtSportPayload = { sportId: string; divisions: number };
+
+export const maximumDivisions = 12;
+
+/**
+ * What one division is called. Derived rather than stored, so renaming the
+ * court renames its divisions with it instead of leaving a name that lies.
+ */
+export function divisionName(
+  courtName: string,
+  sportName: string,
+  number: number,
+  divisions: number,
+) {
+  return divisions <= 1 ? courtName : `${courtName} · ${sportName} ${number}`;
+}
+
+export type SportPricingPayload = SportRates & { sportId: string };
+
+/**
+ * When the peak rate applies. On the court rather than on each sport, because a
+ * venue is busy at the same hours whatever is being played on it.
+ */
+export type PeakWindowPayload = {
+  startsAt: string | null;
+  endsAt: string | null;
+  onWeekdays: boolean;
+  onWeekends: boolean;
+};
+
+export type UpdateCourtPricingPayload = {
+  sports: SportPricingPayload[];
+  peakWindow: PeakWindowPayload | null;
+  reason: string | null;
+};
+
+export type UpdateCourtDivisionsPayload = {
+  sports: CourtSportPayload[];
+  reason: string | null;
+};
+
+export function updateCourtDivisions(courtId: string, payload: UpdateCourtDivisionsPayload) {
+  return apiClient.put<void, UpdateCourtDivisionsPayload>(
+    API_ENDPOINTS.ADMIN.COURT_DIVISIONS(courtId),
+    payload,
+  );
+}
+
+export function updateCourtPricing(courtId: string, payload: UpdateCourtPricingPayload) {
+  return apiClient.put<void, UpdateCourtPricingPayload>(
+    API_ENDPOINTS.ADMIN.COURT_PRICING(courtId),
+    payload,
+  );
+}
 
 /**
  * Why a court is out of service, and at which level. A closure set on the
@@ -104,6 +194,8 @@ export type Court = {
   id: string;
   facilityId: string;
   facilityName: string;
+  /** Carried so a court page can find its way back to the owner. */
+  facilityOwnerId: string;
   name: string;
   displayOrder: number;
   description: string | null;
@@ -118,6 +210,11 @@ export type Court = {
   bufferMinutes: number;
   usesFacilityHours: boolean;
   isActive: boolean;
+  /** When the peak rate applies. Null until a peak rate is set. */
+  peakStartsAt: string | null;
+  peakEndsAt: string | null;
+  peakOnWeekdays: boolean;
+  peakOnWeekends: boolean;
   sports: CourtSportItem[];
   photos: PhotoItem[];
   /** Already resolved: the facility's hours when the court follows them. */
@@ -128,6 +225,42 @@ export type Court = {
 
 export function getCourts(facilityId: string) {
   return apiClient.get<Court[]>(API_ENDPOINTS.ADMIN.FACILITY_COURTS(facilityId));
+}
+
+export function getCourt(courtId: string) {
+  return apiClient.get<Court>(API_ENDPOINTS.ADMIN.COURT(courtId));
+}
+
+/**
+ * The court answered whole, the same shape the wizard created it with, so one
+ * screen can add a court and another can correct it without the two drifting.
+ */
+export type UpdateCourtPayload = {
+  court: {
+    name: string;
+    displayOrder: number;
+    description: string | null;
+    sports: CourtSportPayload[];
+    primarySportId: string;
+    venueType: string;
+    surface: string | null;
+    hasLighting: boolean;
+    sizeLabel: string | null;
+    capacity: number | null;
+    equipment: string | null;
+    slotLengthMinutes: number;
+    minimumDurationMinutes: number;
+    bufferMinutes: number;
+    usesFacilityHours: boolean;
+    operatingHours: { dayOfWeek: number; opensAt: string | null; closesAt: string | null }[];
+    photos: PhotoPayload[];
+  };
+  isActive: boolean;
+  reason: string | null;
+};
+
+export function updateCourt(courtId: string, payload: UpdateCourtPayload) {
+  return apiClient.put<void, UpdateCourtPayload>(API_ENDPOINTS.ADMIN.COURT(courtId), payload);
 }
 
 export const venueTypes = ["Indoor", "Covered", "Outdoor"] as const;
@@ -182,7 +315,7 @@ export type CreateCourtPayload = {
     name: string;
     displayOrder: number;
     description: string | null;
-    sportIds: string[];
+    sports: CourtSportPayload[];
     primarySportId: string;
     venueType: string;
     surface: string | null;

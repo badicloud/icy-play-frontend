@@ -1,13 +1,20 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCourt,
+  getCourt,
   getCourts,
   getFacilityInventory,
   liftMaintenance,
   setCourtMaintenance,
   setFacilityMaintenance,
+  updateCourt,
+  updateCourtDivisions,
+  updateCourtPricing,
   type CreateCourtPayload,
   type SetMaintenancePayload,
+  type UpdateCourtPayload,
+  type UpdateCourtDivisionsPayload,
+  type UpdateCourtPricingPayload,
 } from "../courtApi";
 import { adminFacilityOwnersQueryKey } from "./useAdminFacilityOwners";
 
@@ -20,6 +27,53 @@ export function useCourts(facilityId: string) {
     queryKey: courtsQueryKey(facilityId),
     queryFn: () => getCourts(facilityId),
     enabled: facilityId !== "",
+  });
+}
+
+export function courtQueryKey(courtId: string) {
+  return [...adminFacilityOwnersQueryKey, "court", courtId] as const;
+}
+
+export function useCourt(courtId: string) {
+  return useQuery({
+    queryKey: courtQueryKey(courtId),
+    queryFn: () => getCourt(courtId),
+    enabled: courtId !== "",
+  });
+}
+
+export function useUpdateCourt(courtId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCourtPayload) => updateCourt(courtId, payload),
+    // A court's name, sports and photos all show on the facility's page and in
+    // the inventory, so everything under the owners key is now stale.
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
+      await queryClient.invalidateQueries({ queryKey: facilityInventoryQueryKey });
+    },
+  });
+}
+
+export function useUpdateCourtDivisions(courtId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCourtDivisionsPayload) =>
+      updateCourtDivisions(courtId, payload),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey }),
+  });
+}
+
+export function useUpdateCourtPricing(courtId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCourtPricingPayload) => updateCourtPricing(courtId, payload),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey }),
   });
 }
 
@@ -36,8 +90,19 @@ export function useCreateCourt() {
 }
 
 /**
- * Both levels invalidate the same court list: closing a facility changes every
- * court inside it, and the list is what shows that.
+ * Closing anything is read in three places — the court's own page, the
+ * facility's list of courts, and the inventory's bookable column — so all
+ * three are refreshed rather than only the one the button was pressed on.
+ */
+async function refreshClosures(queryClient: ReturnType<typeof useQueryClient>) {
+  await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
+  await queryClient.invalidateQueries({ queryKey: facilityInventoryQueryKey });
+}
+
+/**
+ * Both levels go through here: closing a facility changes every court inside
+ * it, and a court page that still reads "Bookable" afterwards is worse than no
+ * page at all.
  */
 export function useSetMaintenance(facilityId: string) {
   const queryClient = useQueryClient();
@@ -54,7 +119,7 @@ export function useSetMaintenance(facilityId: string) {
       courtId === null
         ? setFacilityMaintenance(facilityId, payload)
         : setCourtMaintenance(courtId, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: courtsQueryKey(facilityId) }),
+    onSuccess: () => refreshClosures(queryClient),
   });
 }
 
@@ -63,7 +128,7 @@ export function useLiftMaintenance(facilityId: string) {
 
   return useMutation({
     mutationFn: (periodId: string) => liftMaintenance(periodId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: courtsQueryKey(facilityId) }),
+    onSuccess: () => refreshClosures(queryClient),
   });
 }
 

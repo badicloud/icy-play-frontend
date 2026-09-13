@@ -32,7 +32,7 @@ function MaintenanceBadge({ court }: { court: Court }) {
   );
 }
 
-function CourtRow({
+function CourtCard({
   court,
   facilityId,
   onSetMaintenance,
@@ -64,107 +64,127 @@ function CourtRow({
   }
 
   return (
-    <li className="flex gap-4 border-b border-slate-100 py-4 last:border-b-0">
+    <li
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-white transition hover:shadow-md ${
+        closure ? "border-amber-200" : "border-slate-200"
+      }`}
+    >
       {cover ? (
         <img
           src={cover.secureUrl}
           alt={cover.caption ?? court.name}
-          className="h-20 w-28 shrink-0 rounded-xl object-cover"
+          className="h-36 w-full object-cover"
         />
       ) : (
-        <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400">
+        <div className="flex h-36 w-full items-center justify-center bg-slate-100 text-xs font-semibold text-slate-400">
           No photo
         </div>
       )}
 
-      <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="font-bold text-[#071955]">{court.name}</p>
-        {!court.isActive && (
-          <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-            Inactive
-          </span>
-        )}
-        {closure && <MaintenanceBadge court={court} />}
-      </div>
-
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {court.sports.map((sport) => (
-          <span
-            key={sport.sportId}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-              sport.isPrimary ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-[#1257d5]"
-            }`}
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/courts/${court.id}`}
+            className="font-bold text-[#2563EB] transition hover:text-[#071955] hover:underline"
           >
-            {sport.isPrimary && <StarOutlined sx={{ fontSize: 12 }} aria-hidden />}
-            {sport.name}
-          </span>
-        ))}
-      </div>
-
-      <p className="mt-1.5 text-sm text-slate-500">
-        {court.venueType}
-        {court.surface && ` · ${court.surface}`}
-        {court.hasLighting && (
-          <span className="ml-1 inline-flex items-center gap-0.5">
-            <LightbulbOutlined sx={{ fontSize: 13 }} />
-            Lit
-          </span>
-        )}
-        {" · "}
-        {court.slotLengthMinutes}-minute slots, {court.minimumDurationMinutes} minute minimum
-        {court.bufferMinutes > 0 && `, ${court.bufferMinutes} minute buffer`}
-      </p>
-
-      <p className="mt-0.5 text-sm text-slate-400">
-        {court.usesFacilityHours ? "Facility hours" : "Own hours"} ·{" "}
-        {openDays.length === 0
-          ? "closed every day"
-          : `open ${openDays.length} ${openDays.length === 1 ? "day" : "days"} a week`}
-      </p>
-
-      {closure && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          &ldquo;{closure.reason}&rdquo; — from {format(new Date(closure.startsAt), "d MMM yyyy")}
-          {closure.endsAt
-            ? ` until ${format(new Date(closure.endsAt), "d MMM yyyy")}`
-            : ", until further notice"}
-        </p>
-      )}
-
-      <div className="mt-2 flex flex-wrap gap-3">
-        {closure ? (
-          closure.appliesToWholeFacility ? (
-            <span className="text-sm text-slate-400">
-              Reopen the facility to reopen this court.
+            {court.name}
+          </Link>
+          {!court.isActive && (
+            <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              Inactive
             </span>
+          )}
+        </div>
+
+        {closure && (
+          <div className="mt-1.5">
+            <MaintenanceBadge court={court} />
+          </div>
+        )}
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {court.sports.map((sport) => (
+            <span
+              key={sport.sportId}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                sport.isPrimary ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-[#1257d5]"
+              }`}
+            >
+              {sport.isPrimary && <StarOutlined sx={{ fontSize: 12 }} aria-hidden />}
+              {sport.name}
+            </span>
+          ))}
+        </div>
+
+        <p className="mt-1.5 text-sm text-slate-500">
+          {court.venueType}
+          {court.surface && ` · ${court.surface}`}
+          {court.hasLighting && (
+            <span className="ml-1 inline-flex items-center gap-0.5">
+              <LightbulbOutlined sx={{ fontSize: 13 }} />
+              Lit
+            </span>
+          )}
+          {" · "}
+          {court.slotLengthMinutes}-minute slots, {court.minimumDurationMinutes} minute minimum
+          {court.bufferMinutes > 0 && `, ${court.bufferMinutes} minute buffer`}
+        </p>
+
+        <p className="mt-0.5 text-sm text-slate-400">
+          {court.usesFacilityHours ? "Facility hours" : "Own hours"} ·{" "}
+          {openDays.length === 0
+            ? "closed every day"
+            : `open ${openDays.length} ${openDays.length === 1 ? "day" : "days"} a week`}
+        </p>
+
+        {closure && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            &ldquo;{closure.reason}&rdquo; — from {format(new Date(closure.startsAt), "d MMM yyyy")}
+            {closure.endsAt
+              ? ` until ${format(new Date(closure.endsAt), "d MMM yyyy")}`
+              : ", until further notice"}
+          </p>
+        )}
+
+        <div className="mt-auto flex flex-wrap items-center gap-3 pt-3">
+          <Link
+            href={`/admin/courts/${court.id}`}
+            className="text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
+          >
+            View &amp; edit
+          </Link>
+          {closure ? (
+            closure.appliesToWholeFacility ? (
+              <span className="text-sm text-slate-400">
+                Reopen the facility to reopen this court.
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleLift()}
+                disabled={lift.isPending}
+                className="text-sm font-bold text-green-700 transition hover:text-green-900 disabled:cursor-wait disabled:text-slate-400"
+              >
+                End maintenance
+              </button>
+            )
           ) : (
             <button
               type="button"
-              onClick={() => void handleLift()}
-              disabled={lift.isPending}
-              className="text-sm font-bold text-green-700 transition hover:text-green-900 disabled:cursor-wait disabled:text-slate-400"
+              onClick={() =>
+                onSetMaintenance({
+                  facilityId,
+                  courtId: court.id,
+                  name: court.name,
+                  courtCount: 1,
+                })
+              }
+              className="text-sm font-bold text-amber-700 transition hover:text-amber-900"
             >
-              End maintenance
+              Set maintenance
             </button>
-          )
-        ) : (
-          <button
-            type="button"
-            onClick={() =>
-              onSetMaintenance({
-                facilityId,
-                courtId: court.id,
-                name: court.name,
-                courtCount: 1,
-              })
-            }
-            className="text-sm font-bold text-amber-700 transition hover:text-amber-900"
-          >
-            Set maintenance
-          </button>
-        )}
-      </div>
+          )}
+        </div>
       </div>
     </li>
   );
@@ -257,9 +277,9 @@ function CourtsPanel({
           No courts yet, so nothing here can be booked.
         </p>
       ) : (
-        <ul className="mt-1">
+        <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((court) => (
-            <CourtRow
+            <CourtCard
               key={court.id}
               court={court}
               facilityId={facilityId}

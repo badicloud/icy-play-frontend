@@ -6,6 +6,7 @@ import BadgeOutlined from "@mui/icons-material/BadgeOutlined";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import PeopleAltOutlined from "@mui/icons-material/PeopleAltOutlined";
 import SportsBasketballOutlined from "@mui/icons-material/SportsBasketballOutlined";
+import EventOutlined from "@mui/icons-material/EventOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 
@@ -44,11 +45,18 @@ const sections: AdminSection[] = [
     icon: <GroupsOutlined />,
   },
   {
-    title: "Sports",
+    title: "Sports and events",
     description:
-      "What a court can be listed as, and what customers filter on. Seeded, and yours to extend.",
+      "The games a court is played for and the occasions it is hired for, and what customers filter on.",
     href: "/admin/sports",
     icon: <SportsBasketballOutlined />,
+  },
+  {
+    title: "Holidays",
+    description:
+      "The days courts charge a holiday rate on. The movable ones need adding each year.",
+    href: "/admin/holidays",
+    icon: <EventOutlined />,
   },
   {
     title: "Facility inventory",

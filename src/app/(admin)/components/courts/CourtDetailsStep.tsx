@@ -6,6 +6,7 @@ import { useSports } from "@auth/hooks/useSports";
 import type { FieldErrors } from "../onboarding/validation";
 import { StepHeading, TextAreaField, TextField } from "../onboarding/FormControls";
 import type { CourtDraft } from "./courtDraft";
+import SportDivisions from "./SportDivisions";
 
 type CourtDetailsStepProps = {
   draft: CourtDraft;
@@ -79,19 +80,19 @@ function CourtDetailsStep({ draft, errors, onChange }: CourtDetailsStepProps) {
 
       <div className="mt-8">
         <h3 className="text-sm font-bold text-[#071955]">
-          Sports this court can take
+          What this court can be booked for
           <span className="ml-1 font-bold text-red-600" aria-hidden>
             *
           </span>
         </h3>
         <p className="mt-1 mb-3 text-sm text-slate-500">
-          Pick every sport the court is used for. A covered court often takes three.
+          Every sport played on it, and every kind of event the floor is hired for.
         </p>
 
         {sports.isError ? (
           <p className="font-semibold text-red-700">We couldn&apos;t load the sports.</p>
         ) : sports.isPending ? (
-          <p className="text-sm text-slate-500">Loading sports…</p>
+          <p className="text-sm text-slate-500">Loading…</p>
         ) : (
           <div className="space-y-4">
             {Object.entries(grouped).map(([category, items]) => (
@@ -163,10 +164,23 @@ function CourtDetailsStep({ draft, errors, onChange }: CourtDetailsStepProps) {
         </div>
       )}
 
+      {court.sportIds.length > 0 && (
+        <div className="mt-8">
+          <SportDivisions
+            courtName={court.name}
+            sportIds={court.sportIds}
+            primarySportId={court.primarySportId}
+            divisions={court.divisions ?? {}}
+            sports={sports.data}
+            onChange={(divisions) => onChange({ ...court, divisions })}
+          />
+        </div>
+      )}
+
       {court.sportIds.length > 1 && (
         <p className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm text-[#164eaa]">
           Each of these {court.sportIds.length} sports will get its own price on this court when
-          pricing is set up.
+          pricing is set up. A divided court is priced per court, not for the whole floor.
         </p>
       )}
     </div>

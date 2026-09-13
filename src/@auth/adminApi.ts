@@ -232,6 +232,7 @@ export const activityActionLabels: Record<string, string> = {
   ContractCommenced: "Contract commenced",
   ContractCancelled: "Contract cancelled",
   ContractDocumentReplaced: "Signed agreement replaced",
+  ContractRatesUpdated: "Platform rates changed",
 };
 
 export const roleLabels: Record<string, string> = {
@@ -369,8 +370,35 @@ export type ContractDetail = {
   isLiveToday: boolean;
   /** Null on terms commenced before an agreement was required. */
   document: UploadedFile | null;
+  /** Pesos added to every booked hour, on top of the court's own rate. */
+  platformHourlyRate: number;
+  /** Per cent of each billing kept for maintenance and commission. */
+  commissionPercentage: number;
   createdAt: string;
 };
+
+/** What IcyPlay charges unless a term says otherwise. */
+export const platformRateDefaults = {
+  hourlyRate: 15,
+  commissionPercentage: 3,
+};
+
+export type ContractRatesPayload = {
+  platformHourlyRate: number;
+  commissionPercentage: number;
+  reason: string | null;
+};
+
+export function updateContractRates(
+  id: string,
+  contractId: string,
+  payload: ContractRatesPayload,
+) {
+  return apiClient.put<void, ContractRatesPayload>(
+    API_ENDPOINTS.ADMIN.CONTRACT_RATES(id, contractId),
+    payload,
+  );
+}
 
 /** Where the owner sits between "encoded by an admin" and "signed in". */
 export type InvitationStatus = {

@@ -36,14 +36,23 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts`,
     CONTRACT_DOCUMENT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
+    CONTRACT_RATES: (id: string, contractId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/cancel`,
     SPORTS: `${API_V1}/admin/sports`,
     SPORT: (id: string) => `${API_V1}/admin/sports/${id}`,
     SPORT_RETIRE: (id: string) => `${API_V1}/admin/sports/${id}/retire`,
     SPORT_REINSTATE: (id: string) => `${API_V1}/admin/sports/${id}/reinstate`,
+    HOLIDAYS: `${API_V1}/admin/holidays`,
+    HOLIDAY: (id: string) => `${API_V1}/admin/holidays/${id}`,
+    HOLIDAY_RETIRE: (id: string) => `${API_V1}/admin/holidays/${id}/retire`,
+    HOLIDAY_REINSTATE: (id: string) => `${API_V1}/admin/holidays/${id}/reinstate`,
     FACILITIES: `${API_V1}/admin/facilities`,
     COURTS: `${API_V1}/admin/courts`,
+    COURT: (courtId: string) => `${API_V1}/admin/courts/${courtId}`,
+    COURT_PRICING: (courtId: string) => `${API_V1}/admin/courts/${courtId}/pricing`,
+    COURT_DIVISIONS: (courtId: string) => `${API_V1}/admin/courts/${courtId}/divisions`,
     FACILITY_COURTS: (facilityId: string) =>
       `${API_V1}/admin/facilities/${facilityId}/courts`,
     FACILITY_MAINTENANCE: (facilityId: string) =>

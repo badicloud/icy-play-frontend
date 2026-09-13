@@ -19,6 +19,8 @@ export type CourtDraft = {
     displayOrder: string;
     description: string;
     sportIds: string[];
+    /** How many courts each sport makes here, keyed by sport. Absent means one. */
+    divisions: Record<string, number>;
     primarySportId: string;
     venueType: string;
     surface: string;
@@ -53,6 +55,7 @@ export function createEmptyCourtDraft(facilityOwnerId: string): CourtDraft {
       displayOrder: "1",
       description: "",
       sportIds: [],
+      divisions: {},
       primarySportId: "",
       venueType: "Covered",
       surface: "",
@@ -136,7 +139,12 @@ export function toCourtPayload(draft: CourtDraft): CreateCourtPayload {
       name: court.name.trim(),
       displayOrder: Number(court.displayOrder) || 0,
       description: trimmedOrNull(court.description),
-      sportIds: court.sportIds,
+      sports: court.sportIds.map((sportId) => ({
+        sportId,
+        // A draft saved before divisions existed has none, and a court played
+        // whole is one court.
+        divisions: court.divisions?.[sportId] ?? 1,
+      })),
       primarySportId: court.primarySportId,
       venueType: court.venueType,
       surface: trimmedOrNull(court.surface),

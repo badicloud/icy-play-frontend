@@ -2,7 +2,7 @@
 
 import type { OnboardingDraft, UploadedDocument } from "../draft";
 import type { FieldErrors } from "../validation";
-import { RequiredMark, StepHeading, TextField } from "../FormControls";
+import { StepHeading, TextField } from "../FormControls";
 import DocumentUploader from "../DocumentUploader";
 
 type BusinessStepProps = {
@@ -66,13 +66,10 @@ function BusinessStep({
       </div>
 
       <div className="mt-8">
-        <h3 className="text-sm font-bold text-[#071955]">
-          Verification documents
-          <RequiredMark />
-        </h3>
+        <h3 className="text-sm font-bold text-[#071955]">Verification documents</h3>
         <p className="mt-1 mb-3 text-sm text-slate-500">
-          At least one is required. Customers pay this owner directly, so nobody goes live
-          unverified.
+          Customers pay this owner directly, so a permit or ID is worth having. It can be
+          added later from the owner&apos;s page.
         </p>
         <DocumentUploader
           documents={documents}

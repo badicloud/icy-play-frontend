@@ -101,6 +101,20 @@ function CourtReviewStep({ draft, facilities, onEditStep }: CourtReviewStepProps
             label="Sports"
             value={sportNames.length === 0 ? "None picked" : sportNames.join(", ")}
           />
+          <Row
+            label="Divided into"
+            value={
+              court.sportIds.every((id) => (court.divisions?.[id] ?? 1) <= 1)
+                ? "Played whole"
+                : court.sportIds
+                    .filter((id) => (court.divisions?.[id] ?? 1) > 1)
+                    .map((id) => {
+                      const name = sports.data?.find((sport) => sport.id === id)?.name ?? "Unknown";
+                      return `${name}: ${court.divisions[id]} courts`;
+                    })
+                    .join(", ")
+            }
+          />
         </Panel>
 
         <Panel title="The space" onEdit={() => onEditStep(2)}>

@@ -30,6 +30,7 @@ import ActivityTimeline from "../ActivityTimeline";
 import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
 import CancelContractDialog from "../edit/CancelContractDialog";
+import ContractRatesDialog from "../edit/ContractRatesDialog";
 import ReplaceAgreementDialog from "../edit/ReplaceAgreementDialog";
 import FacilityEditDialog from "../edit/FacilityEditDialog";
 import HoursEditDialog from "../edit/HoursEditDialog";
@@ -328,14 +329,23 @@ function DocumentRow({ document }: { document: OwnerDocumentDetail }) {
   );
 }
 
+function peso(amount: number) {
+  return `₱${amount.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function ContractRow({
   contract,
   onCancel,
   onReplaceAgreement,
+  onEditRates,
 }: {
   contract: ContractDetail;
   onCancel: () => void;
   onReplaceAgreement: () => void;
+  onEditRates: () => void;
 }) {
   return (
     <li className="border-b border-slate-100 py-3 last:border-b-0">
@@ -385,6 +395,27 @@ function ContractRow({
             <GavelOutlined sx={{ fontSize: 13 }} />
             No signed agreement
           </span>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+        <p className="text-sm text-slate-600">
+          <span className="font-bold text-[#071955]">
+            {peso(contract.platformHourlyRate)}
+          </span>{" "}
+          an hour billed to the owner
+          <span className="text-slate-400"> · </span>
+          <span className="font-bold text-[#071955]">{contract.commissionPercentage}%</span> of that
+          bill for maintenance
+        </p>
+        {!contract.cancelledAt && (
+          <button
+            type="button"
+            onClick={onEditRates}
+            className="text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
+          >
+            Change rates
+          </button>
         )}
       </div>
 
@@ -483,6 +514,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
   // so it is confirmed rather than fired from the row it sits on.
   const [cancelling, setCancelling] = useState<ContractDetail | null>(null);
   const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
+  const [editingRates, setEditingRates] = useState<ContractDetail | null>(null);
 
   // The facilities arrive with the query, not with the markup, so the browser
   // has nothing to scroll to when it first reads the hash. Doing it here is
@@ -700,6 +732,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                         contract={contract}
                         onCancel={() => setCancelling(contract)}
                         onReplaceAgreement={() => setReplacingAgreement(contract)}
+                        onEditRates={() => setEditingRates(contract)}
                       />
                     ))}
                   </ul>
@@ -733,6 +766,16 @@ key={facility.id}
               open={dialog === "business"}
               onClose={() => setDialog(null)}
             />
+
+            {editingRates && (
+              <ContractRatesDialog
+                key={editingRates.id}
+                facilityOwnerId={facilityOwnerId}
+                contract={editingRates}
+                open
+                onClose={() => setEditingRates(null)}
+              />
+            )}
 
             <ReplaceAgreementDialog
               facilityOwnerId={facilityOwnerId}
