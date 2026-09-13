@@ -20,6 +20,11 @@ export const API_ENDPOINTS = {
     REVOKE_OTHER_SESSIONS: `${AUTH_BASE}/sessions/revoke-others`,
     REVOKE_ALL_SESSIONS: `${AUTH_BASE}/sessions/revoke-all`,
   },
+  CATALOG: {
+    ACTIVITIES: `${API_V1}/catalog/activities`,
+    COURTS: `${API_V1}/catalog/courts`,
+    COURT: (courtId: string) => `${API_V1}/catalog/courts/${courtId}`,
+  },
   ADMIN: {
     USERS: `${API_V1}/admin/users`,
     FACILITY_OWNERS: `${API_V1}/admin/facility-owners`,
@@ -36,6 +41,8 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts`,
     CONTRACT_DOCUMENT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
+    CONTRACT_TERM: (id: string, contractId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}`,
     CONTRACT_RATES: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>

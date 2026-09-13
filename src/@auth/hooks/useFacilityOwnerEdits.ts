@@ -5,6 +5,7 @@ import {
   renewContract,
   replaceContractDocument,
   updateContractRates,
+  updateContractTerm,
   updateFacility,
   updateFacilityHours,
   updateFacilityOwnerBusiness,
@@ -68,6 +69,16 @@ export function useReplaceAgreement(id: string) {
     ({ contractId, document, reason }) =>
       replaceContractDocument(id, contractId, { document, reason }),
   );
+}
+
+export function useUpdateContractTerm(id: string) {
+  return useEdit<{
+    contractId: string;
+    startDate: string;
+    endDate: string;
+    notes: string | null;
+    reason: string | null;
+  }>(id, ({ contractId, ...payload }) => updateContractTerm(id, contractId, payload));
 }
 
 export function useUpdateContractRates(id: string) {

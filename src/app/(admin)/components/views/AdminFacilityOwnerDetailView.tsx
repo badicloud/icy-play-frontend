@@ -31,6 +31,7 @@ import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
 import CancelContractDialog from "../edit/CancelContractDialog";
 import ContractRatesDialog from "../edit/ContractRatesDialog";
+import ContractTermDialog from "../edit/ContractTermDialog";
 import ReplaceAgreementDialog from "../edit/ReplaceAgreementDialog";
 import FacilityEditDialog from "../edit/FacilityEditDialog";
 import HoursEditDialog from "../edit/HoursEditDialog";
@@ -341,11 +342,13 @@ function ContractRow({
   onCancel,
   onReplaceAgreement,
   onEditRates,
+  onEditTerm,
 }: {
   contract: ContractDetail;
   onCancel: () => void;
   onReplaceAgreement: () => void;
   onEditRates: () => void;
+  onEditTerm: () => void;
 }) {
   return (
     <li className="border-b border-slate-100 py-3 last:border-b-0">
@@ -353,6 +356,15 @@ function ContractRow({
         <span className="font-bold text-[#071955]">
           {formatDate(contract.startDate)} – {formatDate(contract.endDate)}
         </span>
+        {!contract.cancelledAt && (
+          <button
+            type="button"
+            onClick={onEditTerm}
+            className="text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
+          >
+            Edit dates
+          </button>
+        )}
         {contract.cancelledAt ? (
           <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
             Cancelled {formatDate(contract.cancelledAt)}
@@ -515,6 +527,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
   const [cancelling, setCancelling] = useState<ContractDetail | null>(null);
   const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
   const [editingRates, setEditingRates] = useState<ContractDetail | null>(null);
+  const [editingTerm, setEditingTerm] = useState<ContractDetail | null>(null);
 
   // The facilities arrive with the query, not with the markup, so the browser
   // has nothing to scroll to when it first reads the hash. Doing it here is
@@ -733,6 +746,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                         onCancel={() => setCancelling(contract)}
                         onReplaceAgreement={() => setReplacingAgreement(contract)}
                         onEditRates={() => setEditingRates(contract)}
+                        onEditTerm={() => setEditingTerm(contract)}
                       />
                     ))}
                   </ul>
@@ -766,6 +780,16 @@ key={facility.id}
               open={dialog === "business"}
               onClose={() => setDialog(null)}
             />
+
+            {editingTerm && (
+              <ContractTermDialog
+                key={editingTerm.id}
+                facilityOwnerId={facilityOwnerId}
+                contract={editingTerm}
+                open
+                onClose={() => setEditingTerm(null)}
+              />
+            )}
 
             {editingRates && (
               <ContractRatesDialog

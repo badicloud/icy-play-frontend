@@ -1,32 +1,11 @@
-import Link from 'next/link';
-import HeaderAccountMenu from './components/ui/HeaderAccountMenu';
-import PublicNav from './components/ui/PublicNav';
+import PublicHeader from './components/ui/PublicHeader';
+import ActivityCatalog from './components/ui/ActivityCatalog';
+import PublicFooter from './components/ui/PublicFooter';
 import generateMetadata from '@/utils/generateMetadata';
 
 export const metadata = generateMetadata({ path: '/' });
 
-const searchFields = [
-	{ label: 'Type of Court', value: 'Select sport', icon: 'court' },
-	{ label: 'Date', value: 'Select date', icon: 'calendar' },
-	{ label: 'Time', value: 'Select time', icon: 'clock' },
-	{ label: 'Location', value: 'Enter location', icon: 'pin' }
-];
-
-const sports = [
-	{ name: 'Badminton', icon: 'badminton' },
-	{ name: 'Basketball', icon: 'basketball' },
-	{ name: 'Pickleball', icon: 'pickleball' },
-	{ name: 'Tennis', icon: 'tennis' },
-	{ name: 'Volleyball', icon: 'volleyball' },
-	{ name: 'Taekwondo', icon: 'taekwondo' }
-];
-
 const features = [
-	{
-		title: 'Thousands of Courts',
-		description: 'Discover verified sports courts nearby, from neighborhood gyms to premium clubs.',
-		icon: 'map'
-	},
 	{
 		title: 'Real-Time Availability',
 		description: 'See open slots instantly and reserve the exact time your group needs.',
@@ -220,60 +199,26 @@ function Icon({ name, className = 'h-6 w-6' }: { name: string; className?: strin
 	}
 }
 
-function SportIcon({ name }: { name: string }) {
-	return (
-		<img
-			src={`/assets/icons/${name}.svg`}
-			alt=""
-			className="h-10 w-10 object-contain"
-			aria-hidden
-		/>
-	);
-}
-
 export default function LandingPage() {
 	return (
 		<main className="min-h-screen bg-white text-slate-950">
-			<header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-8">
-				<Link
-					href="/"
-					className="flex items-center"
-					aria-label="IcyPlay home"
-				>
-					<img
-						src="/assets/images/logo/IcyPlay%20Logo.png"
-						alt="IcyPlay"
-						className="h-20 w-auto object-contain"
-					/>
-				</Link>
-
-				<PublicNav />
-
-				<div className="flex items-center gap-3">
-					<Link
-						href="/dashboards/project"
-						className="rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-					>
-						Become a Partner
-					</Link>
-					<HeaderAccountMenu />
-				</div>
-			</header>
+			<PublicHeader />
 
 			<section className="mx-auto max-w-7xl px-6 pb-12 pt-0 lg:px-8 lg:pb-16">
 				<div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
 					<div>
 						<div className="mb-7 inline-flex rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#2563EB]">
-							Play more. Manage less.
+							Play more. Host more. Manage less.
 						</div>
 
 						<h1 className="max-w-4xl text-[40px] font-bold leading-[1.08] tracking-normal text-slate-950 sm:text-[52px] lg:text-[62px]">
-							Find. Book. <span className="text-[#2563EB]">Play.</span> Any Court, Anytime.
+							Find. Book. <span className="text-[#2563EB]">Play.</span> Any Court, Any Event.
 						</h1>
 
 						<p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
-							Discover and reserve your favorite sports courts with ease. IcyPlay brings court discovery,
-							availability, bookings, and payment verification into one seamless experience.
+							Book a court for your game, or hire the whole floor for a party, a tournament or a
+							corporate day. IcyPlay brings discovery, availability, bookings and payment
+							verification into one seamless experience.
 						</p>
 
 					</div>
@@ -288,85 +233,21 @@ export default function LandingPage() {
 				</div>
 
 				<section
-					id="search"
-					className="relative z-10 mt-8 rounded-[18px] border border-blue-100 bg-white p-3 shadow-[0_22px_70px_rgba(37,99,235,0.12)]"
-				>
-					<div className="grid gap-0 lg:grid-cols-[repeat(4,minmax(0,1fr))_210px]">
-						{searchFields.map((field, index) => (
-							<button
-								key={field.label}
-								type="button"
-								className="group flex min-h-[74px] items-center justify-between gap-4 px-6 py-3 text-left transition hover:bg-blue-50/50 lg:border-r lg:border-blue-100"
-							>
-								<span className="flex min-w-0 items-center gap-5">
-									<span className="flex h-11 w-11 shrink-0 items-center justify-center text-[#2563EB] transition group-hover:scale-105">
-										<Icon
-											name={field.icon}
-											className="h-9 w-9"
-										/>
-									</span>
-									<span className="min-w-0">
-										<span className="block text-sm font-bold text-[#071A55]">{field.label}</span>
-										<span className="mt-1 block truncate text-base font-medium text-[#4B5C93]">
-											{field.value}
-										</span>
-									</span>
-								</span>
-								{index < searchFields.length && (
-									<Icon
-										name="chevron"
-										className="h-5 w-5 shrink-0 text-[#4B5C93]"
-									/>
-								)}
-							</button>
-						))}
-
-						<button
-							type="button"
-							className="flex min-h-[74px] items-center justify-center gap-4 rounded-xl bg-[#2563EB] px-7 py-3 text-lg font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-						>
-							<Icon
-								name="search"
-								className="h-8 w-8"
-							/>
-							Find Courts
-						</button>
-					</div>
-				</section>
-
-				<section
 					id="courts"
 					className="pt-16"
 				>
-					<div className="mb-7 flex items-end justify-between gap-4">
+					<div className="mb-7">
 						<div>
-							<p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#2563EB]">Popular sports</p>
-							<h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">Choose your court</h2>
+							<p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#2563EB]">
+								Sports and events
+							</p>
+							<h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">
+								Choose what you are booking
+							</h2>
 						</div>
-						<Link
-							href="#"
-							className="hidden items-center gap-2 text-sm font-semibold text-[#2563EB] sm:flex"
-						>
-							View all
-							<Icon
-								name="arrow"
-								className="h-4 w-4"
-							/>
-						</Link>
 					</div>
 
-					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-						{sports.map((sport) => (
-							<button
-								key={sport.name}
-								type="button"
-								className="flex min-h-[116px] flex-col items-start justify-between rounded-[24px] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70"
-							>
-								<SportIcon name={sport.icon} />
-								<span className="text-base font-semibold text-slate-950">{sport.name}</span>
-							</button>
-						))}
-					</div>
+					<ActivityCatalog />
 				</section>
 
 				<section
@@ -374,7 +255,7 @@ export default function LandingPage() {
 					className="pt-16"
 				>
 					<div className="rounded-[24px] border border-slate-200 bg-slate-50 p-6 lg:p-8">
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 							{features.map((feature) => (
 								<div
 									key={feature.title}
@@ -391,6 +272,8 @@ export default function LandingPage() {
 					</div>
 				</section>
 			</section>
+
+			<PublicFooter />
 		</main>
 	);
 }

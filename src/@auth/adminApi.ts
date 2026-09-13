@@ -233,6 +233,7 @@ export const activityActionLabels: Record<string, string> = {
   ContractCancelled: "Contract cancelled",
   ContractDocumentReplaced: "Signed agreement replaced",
   ContractRatesUpdated: "Platform rates changed",
+  ContractTermUpdated: "Contract dates changed",
 };
 
 export const roleLabels: Record<string, string> = {
@@ -382,6 +383,24 @@ export const platformRateDefaults = {
   hourlyRate: 15,
   commissionPercentage: 3,
 };
+
+export type ContractTermPayload = {
+  startDate: string;
+  endDate: string;
+  notes: string | null;
+  reason: string | null;
+};
+
+export function updateContractTerm(
+  id: string,
+  contractId: string,
+  payload: ContractTermPayload,
+) {
+  return apiClient.put<void, ContractTermPayload>(
+    API_ENDPOINTS.ADMIN.CONTRACT_TERM(id, contractId),
+    payload,
+  );
+}
 
 export type ContractRatesPayload = {
   platformHourlyRate: number;

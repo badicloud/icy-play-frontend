@@ -5,13 +5,7 @@ import Link from "next/link";
  * here rather than in the page so the header can carry the same menu wherever
  * a signed-in customer happens to be.
  */
-export const publicNavItems = [
-  "Courts",
-  "How It Works",
-  "For Facility Owners",
-  "Pricing",
-  "Help Center",
-];
+export const publicNavItems = ["Courts", "How It Works", "Help Center"];
 
 /**
  * Every item is an anchor on the landing page, so the link is rooted at "/".

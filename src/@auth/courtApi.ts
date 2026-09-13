@@ -227,6 +227,55 @@ export function getCourts(facilityId: string) {
   return apiClient.get<Court[]>(API_ENDPOINTS.ADMIN.FACILITY_COURTS(facilityId));
 }
 
+/**
+ * One court, read across the whole platform rather than through its facility.
+ * An admin correcting a court should not have to remember which venue it is in.
+ */
+export type CourtInventoryItem = {
+  id: string;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+  facilityId: string;
+  facilityName: string;
+  facilityOwnerId: string;
+  businessName: string;
+  city: string;
+  province: string;
+  venueType: string;
+  coverPhotoUrl: string | null;
+  sports: CourtSportItem[];
+  /** Every division of every sport: what a customer could actually book here. */
+  bookableUnits: number;
+  maintenance: MaintenanceStatus | null;
+};
+
+export type CourtInventoryQuery = {
+  search?: string;
+  facilityOwnerId?: string;
+  facilityId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+type CourtInventoryResponse = {
+  data: CourtInventoryItem[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+};
+
+export function getCourtInventory(query: CourtInventoryQuery) {
+  return apiClient.get<CourtInventoryResponse>(API_ENDPOINTS.ADMIN.COURTS, {
+    query: {
+      search: query.search || undefined,
+      facilityOwnerId: query.facilityOwnerId || undefined,
+      facilityId: query.facilityId || undefined,
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    unwrapData: false,
+  });
+}
+
 export function getCourt(courtId: string) {
   return apiClient.get<Court>(API_ENDPOINTS.ADMIN.COURT(courtId));
 }

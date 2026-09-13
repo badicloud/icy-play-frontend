@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import {
   createCourt,
   getCourt,
+  getCourtInventory,
   getCourts,
   getFacilityInventory,
   liftMaintenance,
@@ -14,6 +15,7 @@ import {
   type SetMaintenancePayload,
   type UpdateCourtPayload,
   type UpdateCourtDivisionsPayload,
+  type CourtInventoryQuery,
   type UpdateCourtPricingPayload,
 } from "../courtApi";
 import { adminFacilityOwnersQueryKey } from "./useAdminFacilityOwners";
@@ -129,6 +131,17 @@ export function useLiftMaintenance(facilityId: string) {
   return useMutation({
     mutationFn: (periodId: string) => liftMaintenance(periodId),
     onSuccess: () => refreshClosures(queryClient),
+  });
+}
+
+export const courtInventoryQueryKey = ["admin", "court-inventory"] as const;
+
+export function useCourtInventory(query: CourtInventoryQuery) {
+  return useQuery({
+    queryKey: [...courtInventoryQueryKey, query],
+    queryFn: () => getCourtInventory(query),
+    // Keeps the current page on screen while the next one loads.
+    placeholderData: keepPreviousData,
   });
 }
 
