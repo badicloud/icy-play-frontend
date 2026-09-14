@@ -263,7 +263,8 @@ export type UploadPurpose =
   | "facility-owner-document"
   | "facility-photo"
   | "court-photo"
-  | "contract-document";
+  | "contract-document"
+  | "gcash-qr-code";
 
 export function createUploadSignature(purpose: UploadPurpose) {
   return apiClient.post<UploadSignature, { purpose: UploadPurpose }>(
@@ -419,6 +420,128 @@ export function updateContractRates(
   );
 }
 
+/**
+ * Where a venue takes its money, and how long it holds a court while waiting.
+ *
+ * Either half of the GCash details is enough to be paid by — a number to type,
+ * or a code to scan — but a venue with neither cannot take a booking to the end.
+ */
+export type PaymentDetailsPayload = {
+  gcashNumber: string | null;
+  gcashAccountName: string | null;
+  gcashQrCodeUrl: string | null;
+  partialBookingExpiryMinutes: number;
+  reason: string | null;
+};
+
+export function updatePaymentDetails(id: string, payload: PaymentDetailsPayload) {
+  return apiClient.put<void, PaymentDetailsPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_PAYMENT_DETAILS(id),
+    payload,
+  );
+}
+
+/**
+ * Somebody who works a venue's desk: checks the GCash receipts that come in and
+ * confirms the bookings behind them.
+ *
+ * The owner is on this list with a null id. They attend every venue they own by
+ * owning it, so there is no row to remove and no invitation to send.
+ */
+export type FacilityAttendantDetail = {
+  id: string | null;
+  userId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  isOwner: boolean;
+  /** Whether they have set a password and taken over the account. */
+  hasAccepted: boolean;
+  /** False when the address already had an account, so no invitation was sent. */
+  wasInvited: boolean;
+  /** How many invitations have gone to them, the first one included. */
+  invitationsSent: number;
+  /** When the newest of those was issued. */
+  lastInvitedAt: string | null;
+  addedAt: string | null;
+};
+
+/**
+ * What the console may do with an address, asked while it is being typed.
+ *
+ * The server is the one that knows: the roster in the browser shows this
+ * venue's desk, and an address can belong to an account that has never been
+ * near it.
+ */
+export type AttendantEmailCheck = {
+  email: string;
+  status: "Available" | "AlreadyAttending" | "IsTheOwner" | "AlreadyRegistered";
+  /** The name on the account, when there is one. */
+  fullName: string | null;
+  canBeAdded: boolean;
+};
+
+export type InviteAttendantPayload = {
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  reason: string | null;
+};
+
+export function getFacilityAttendants(id: string, facilityId: string) {
+  return apiClient.get<FacilityAttendantDetail[]>(
+    API_ENDPOINTS.ADMIN.FACILITY_ATTENDANTS(id, facilityId),
+  );
+}
+
+export function checkAttendantEmail(id: string, facilityId: string, email: string) {
+  return apiClient.get<AttendantEmailCheck>(
+    API_ENDPOINTS.ADMIN.FACILITY_ATTENDANT_EMAIL_CHECK(id, facilityId),
+    { query: { email } },
+  );
+}
+
+export function inviteAttendant(
+  id: string,
+  facilityId: string,
+  payload: InviteAttendantPayload,
+) {
+  return apiClient.post<FacilityAttendantDetail, InviteAttendantPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_ATTENDANTS(id, facilityId),
+    payload,
+  );
+}
+
+export function resendAttendantInvitation(
+  id: string,
+  facilityId: string,
+  attendantId: string,
+) {
+  return apiClient.post<void>(
+    API_ENDPOINTS.ADMIN.FACILITY_ATTENDANT_RESEND(id, facilityId, attendantId),
+  );
+}
+
+export function removeAttendant(
+  id: string,
+  facilityId: string,
+  attendantId: string,
+  reason: string | null,
+) {
+  const query = reason === null ? "" : `?reason=${encodeURIComponent(reason)}`;
+
+  return apiClient.delete<void>(
+    `${API_ENDPOINTS.ADMIN.FACILITY_ATTENDANT(id, facilityId, attendantId)}${query}`,
+  );
+}
+
+/** What the server will accept for a hold, and what it uses when nobody says. */
+export const paymentHoldLimits = {
+  defaultMinutes: 30,
+  minimumMinutes: 5,
+  maximumMinutes: 240,
+} as const;
+
 /** Where the owner sits between "encoded by an admin" and "signed in". */
 export type InvitationStatus = {
   isAccepted: boolean;
@@ -434,6 +557,14 @@ export type FacilityOwnerDetail = {
   billingEmail: string;
   billingPhone: string | null;
   businessRegistrationNumber: string | null;
+  /** Where customers send the money. The platform never touches it. */
+  gcashNumber: string | null;
+  gcashAccountName: string | null;
+  gcashQrCodeUrl: string | null;
+  /** How long a booking holds a court while it waits to be paid for. */
+  partialBookingExpiryMinutes: number;
+  /** False while the venue has given neither a number nor a QR code. */
+  canTakePayment: boolean;
   isActive: boolean;
   status: FacilityOwnerStatus;
   createdAt: string;

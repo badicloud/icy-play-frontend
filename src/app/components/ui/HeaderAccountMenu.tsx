@@ -41,6 +41,25 @@ function ShieldIcon() {
   );
 }
 
+function BookingsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4.5 w-4.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M8 3v4M16 3v4M3.5 10h17" />
+      <path d="m9.5 14.5 1.75 1.75L15 12.5" />
+    </svg>
+  );
+}
+
 function AccountIcon() {
   return (
     <svg
@@ -204,10 +223,20 @@ function HeaderAccountMenu() {
           )}
 
           <Link
-            href="/account"
+            href="/bookings"
             role="menuitem"
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#2563EB]"
+          >
+            <BookingsIcon />
+            My bookings
+          </Link>
+
+          <Link
+            href="/account"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#2563EB]"
           >
             <AccountIcon />
             View account

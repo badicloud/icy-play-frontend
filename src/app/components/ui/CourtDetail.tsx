@@ -372,21 +372,26 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
                 )}
               </dl>
 
-              {/* Enabled the day bookings open. A button that looks live and
-                  does nothing is a worse promise than one that says so. */}
-              <button
-                type="button"
-                disabled
-                title={closure ? closure.short : "Bookings open soon"}
-                className={`mt-5 w-full rounded-full py-3.5 text-base font-semibold ${
-                  closure ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                {closure ? "Under maintenance" : "Book now"}
-              </button>
-              <p className="mt-2 text-center text-sm text-slate-400">
-                {closure ? closure.short : "Bookings open soon."}
-              </p>
+              {closure ? (
+                <>
+                  <span className="mt-5 block w-full rounded-full bg-amber-100 py-3.5 text-center text-base font-semibold text-amber-800">
+                    Under maintenance
+                  </span>
+                  <p className="mt-2 text-center text-sm text-slate-400">{closure.short}</p>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={`/book/${court.bookableCourtId}`}
+                    className="mt-5 block w-full rounded-full bg-[#2563EB] py-3.5 text-center text-base font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
+                  >
+                    Book now
+                  </Link>
+                  <p className="mt-2 text-center text-sm text-slate-400">
+                    Pick your hours on the next page.
+                  </p>
+                </>
+              )}
             </div>
           </aside>
         </div>

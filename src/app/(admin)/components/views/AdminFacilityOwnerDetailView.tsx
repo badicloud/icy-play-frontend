@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
 import AddOutlined from "@mui/icons-material/AddOutlined";
@@ -29,6 +30,8 @@ import AdminBreadcrumbs from "../AdminBreadcrumbs";
 import ActivityTimeline from "../ActivityTimeline";
 import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
+import PaymentDetailsDialog from "../edit/PaymentDetailsDialog";
+import AttendantsPanel from "./AttendantsPanel";
 import CancelContractDialog from "../edit/CancelContractDialog";
 import ContractRatesDialog from "../edit/ContractRatesDialog";
 import ContractTermDialog from "../edit/ContractTermDialog";
@@ -191,6 +194,12 @@ function FacilityPanel({
           <p className="mt-1 whitespace-pre-line text-slate-600">{facility.description}</p>
         </div>
       )}
+
+      <AttendantsPanel
+        facilityOwnerId={facilityOwnerId}
+        facilityId={facility.id}
+        facilityName={facility.name}
+      />
 
       <div className="mt-5">
         <div className="flex items-center justify-between gap-3">
@@ -514,7 +523,7 @@ function InvitationPanel({
   );
 }
 
-type OpenDialog = "business" | "facility" | "hours" | "renew" | null;
+type OpenDialog = "business" | "payment" | "facility" | "hours" | "renew" | null;
 
 function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: string }) {
   const owner = useAdminFacilityOwner(facilityOwnerId);
@@ -708,6 +717,48 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 <Row label="Onboarded" value={formatDate(detail.createdAt)} />
               </Section>
 
+              <Section
+                title="Payment details"
+                action={<EditButton label="payment details" onClick={() => setDialog("payment")} />}
+              >
+                {!detail.canTakePayment && (
+                  <p className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900">
+                    No GCash number or QR code. Customers can hold this venue&apos;s courts but
+                    cannot pay for them.
+                  </p>
+                )}
+                <Row label="GCash number" value={detail.gcashNumber ?? <Blank />} />
+                <Row label="Account name" value={detail.gcashAccountName ?? <Blank />} />
+                <Row
+                  label="Holds a court for"
+                  value={`${detail.partialBookingExpiryMinutes} minutes`}
+                />
+
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <p className="text-sm text-slate-500">QR code</p>
+                  {detail.gcashQrCodeUrl === null ? (
+                    <p className="mt-1 text-sm text-slate-400">Not set</p>
+                  ) : (
+                    <a
+                      href={detail.gcashQrCodeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Open full size"
+                      className="mt-2 inline-block rounded-2xl border border-slate-200 bg-white p-2 transition hover:border-slate-300"
+                    >
+                      <Image
+                        src={detail.gcashQrCodeUrl}
+                        alt="GCash QR code"
+                        width={160}
+                        height={160}
+                        unoptimized
+                        className="h-40 w-40 rounded-xl object-contain"
+                      />
+                    </a>
+                  )}
+                </div>
+              </Section>
+
               <Section title={`Documents (${detail.documents.length})`}>
                 {detail.documents.length === 0 ? (
                   <p className="text-sm text-slate-400">None attached.</p>
@@ -774,6 +825,12 @@ key={facility.id}
                 <ActivityTimeline facilityOwnerId={facilityOwnerId} />
               </Section>
             </div>
+
+            <PaymentDetailsDialog
+              owner={detail}
+              open={dialog === "payment"}
+              onClose={() => setDialog(null)}
+            />
 
             <BusinessEditDialog
               detail={detail}

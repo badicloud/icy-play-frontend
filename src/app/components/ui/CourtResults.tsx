@@ -151,26 +151,29 @@ function CourtCard({ court }: { court: CatalogCourt }) {
           )}
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <Link
             href={courtDetailHref(court)}
-            className="flex-1 rounded-full bg-[#2563EB] py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
           >
             More details
           </Link>
 
-          {/* Enabled the day bookings open. A button that looks live and does
-              nothing is a worse promise than one that says it is not ready. */}
-          <button
-            type="button"
-            disabled
-            title={closure ? closure.short : "Bookings open soon"}
-            className={`flex-1 rounded-full py-3 text-sm font-semibold ${
-              closure ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-500"
-            }`}
-          >
-            {closure ? "Under maintenance" : "Book now"}
-          </button>
+          {closure ? (
+            <span
+              title={closure.short}
+              className="rounded-full bg-amber-100 px-6 py-3 text-center text-sm font-semibold text-amber-800"
+            >
+              Under maintenance
+            </span>
+          ) : (
+            <Link
+              href={`/book/${court.bookableCourtId}`}
+              className="rounded-full bg-[#2563EB] px-7 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            >
+              Book now
+            </Link>
+          )}
         </div>
       </div>
     </article>

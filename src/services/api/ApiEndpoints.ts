@@ -24,7 +24,17 @@ export const API_ENDPOINTS = {
     ACTIVITIES: `${API_V1}/catalog/activities`,
     COURTS: `${API_V1}/catalog/courts`,
     COURT: (courtId: string) => `${API_V1}/catalog/courts/${courtId}`,
+    AVAILABILITY: (bookableCourtId: string) =>
+      `${API_V1}/catalog/bookable-courts/${bookableCourtId}/availability`,
   },
+  BOOKINGS: {
+    ROOT: `${API_V1}/bookings`,
+    ONE: (bookingId: string) => `${API_V1}/bookings/${bookingId}`,
+    CANCEL: (bookingId: string) => `${API_V1}/bookings/${bookingId}/cancel`,
+    RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/receipt`,
+    SUBMIT_PAYMENT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/submit-payment`,
+  },
+  CUSTOMER_UPLOAD_SIGNATURE: `${API_V1}/assets/upload-signature`,
   ADMIN: {
     USERS: `${API_V1}/admin/users`,
     FACILITY_OWNERS: `${API_V1}/admin/facility-owners`,
@@ -43,6 +53,16 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
     CONTRACT_TERM: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}`,
+    FACILITY_ATTENDANTS: (id: string, facilityId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants`,
+    FACILITY_ATTENDANT: (id: string, facilityId: string, attendantId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/${attendantId}`,
+    FACILITY_ATTENDANT_RESEND: (id: string, facilityId: string, attendantId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/${attendantId}/resend-invitation`,
+    FACILITY_ATTENDANT_EMAIL_CHECK: (id: string, facilityId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/check`,
+    FACILITY_OWNER_PAYMENT_DETAILS: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/payment-details`,
     CONTRACT_RATES: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
