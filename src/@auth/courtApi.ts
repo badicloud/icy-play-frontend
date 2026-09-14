@@ -119,6 +119,25 @@ export type CourtSportItem = SportRates & {
 };
 
 /**
+ * One thing a customer can book: a court set up for a sport, or one marked-out
+ * part of it. A floor that takes basketball, volleyball and pickleball three
+ * across is five of these, and a booking points at one.
+ *
+ * Retired parts are not sent: this is what is on sale.
+ */
+export type BookableCourtItem = {
+  /** What a booking is taken against. Survives a rename and a re-marking. */
+  id: string;
+  sportId: string;
+  sportName: string;
+  /** Which part this is. One when the court is played whole. */
+  divisionNumber: number;
+  /** Derived on the server, the same way the public listing derives it. */
+  name: string;
+  kind: "Whole" | "Divided";
+};
+
+/**
  * One sport on a court, and how many playable courts it makes when set up for
  * it. A full basketball court is three pickleball courts across, and each of
  * those is booked and paid for on its own.
@@ -216,6 +235,8 @@ export type Court = {
   peakOnWeekdays: boolean;
   peakOnWeekends: boolean;
   sports: CourtSportItem[];
+  /** What this court sells, one row per playable part. */
+  bookableCourts: BookableCourtItem[];
   photos: PhotoItem[];
   /** Already resolved: the facility's hours when the court follows them. */
   operatingHours: FacilityOperatingHourDetail[];

@@ -12,6 +12,7 @@ import { ApiError } from "@/services/api";
 import type { Court } from "@auth/courtApi";
 import { useCourt, useLiftMaintenance } from "@auth/hooks/useCourts";
 import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import BookableCourtsPanel from "../courts/BookableCourtsPanel";
 import CourtDivisionsPanel from "../courts/CourtDivisionsPanel";
 import CourtPricingPanel from "../courts/CourtPricingPanel";
 import MaintenanceDialog, { type MaintenanceTarget } from "../courts/MaintenanceDialog";
@@ -343,6 +344,10 @@ function AdminCourtDetailView({ courtId }: { courtId: string }) {
 
           <div className="lg:col-span-2">
             <CourtDivisionsPanel key={court.id} court={court} />
+          </div>
+
+          <div className="lg:col-span-2">
+            <BookableCourtsPanel key={court.id} court={court} />
           </div>
 
           <div className="lg:col-span-2">

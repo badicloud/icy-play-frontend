@@ -22,6 +22,12 @@ export type CatalogActivity = {
  * appears three times, because three games can run on it at once.
  */
 export type CatalogCourt = {
+  /**
+   * What a booking will be taken against: this court, for this sport, this part
+   * of the floor. Stable across a rename and across the floor being marked out
+   * differently.
+   */
+  bookableCourtId: string;
   courtId: string;
   /** Which sport this offering is for. One court set up for three appears three times. */
   sportKey: string;

@@ -106,8 +106,8 @@ function CourtDivisionsPanel({ court }: { court: Court }) {
       )}
 
       <p className="mt-4 text-sm text-slate-400">
-        Each court made this way is booked and priced on its own. They share one
-        floor, so booking any of them takes the others with it.
+        Each court made this way is booked and priced on its own, and they run
+        side by side — that is what marking out a floor is for.
       </p>
     </section>
   );
