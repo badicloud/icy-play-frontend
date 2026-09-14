@@ -9,7 +9,7 @@ import { ApiError } from "@/services/api";
 import type { OnboardedFacilityOwner } from "@auth/adminApi";
 import { useAmenities } from "@auth/hooks/useAmenities";
 import { useOnboardFacilityOwner } from "@auth/hooks/useOnboardFacilityOwner";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { toPayload, type OnboardingDraft } from "../onboarding/draft";
 import { useOnboardingDraft } from "../onboarding/useOnboardingDraft";
 import { firstInvalidStep, isStepValid, validateStep } from "../onboarding/validation";
@@ -228,7 +228,7 @@ function AdminOnboardOwnerView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[
             { label: "Platform admin", href: "/admin" },
             { label: "Facility owners", href: "/admin/facility-owners" },

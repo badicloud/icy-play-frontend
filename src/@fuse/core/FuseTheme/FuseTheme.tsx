@@ -56,16 +56,10 @@ function FuseTheme(props: FuseThemeProps) {
 		// 	textDecoration: 'underline',
 		// 	'&:hover': {}
 		// },
-		'a.link, a:not([role=button])[target=_blank]': {
-			backgroundColor: `rgba(${theme.vars.palette.secondary.mainChannel} / 0.2)`,
-			color: 'inherit',
-			borderBottom: `1px solid ${theme.vars.palette.divider}`,
-			textDecoration: 'none',
-			'&:hover': {
-				backgroundColor: `rgba(${theme.vars.palette.secondary.mainChannel} / 0.3)`,
-				textDecoration: 'none'
-			}
-		},
+		// The Fuse demo tinted every a[target=_blank] and underlined it. Removed:
+		// IcyPlay styles its own links at the point it writes them, and a global
+		// rule keyed on an attribute lands on top of those decisions with nothing
+		// in the markup to explain where the colour came from.
 		'[class^="border"]': {
 			borderColor: theme.vars.palette.divider
 		},

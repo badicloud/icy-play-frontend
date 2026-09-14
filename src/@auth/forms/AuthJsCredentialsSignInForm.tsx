@@ -11,10 +11,11 @@ import Link from "@fuse/core/Link";
 import Button from "@mui/material/Button";
 import { Alert } from "@mui/material";
 import { useSnackbar } from "notistack";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ApiError } from "@/services/api";
 import { executeRecaptcha, preloadRecaptcha } from "../recaptchaV3";
 import { useIcyPlayAuth } from "../contexts/IcyPlayAuthContext/useIcyPlayAuth";
+import { intendedDestination } from "../intendedDestination";
 
 /**
  * Form Validation Schema
@@ -39,26 +40,10 @@ const defaultValues = {
   remember: true,
 };
 
-/**
- * Where to go after signing in.
- *
- * Only a path on this site: an open redirect is how a sign-in page becomes a
- * tool for sending people somewhere else with our name on the door. A protocol,
- * a host, or a leading double slash is refused and the reader lands home.
- */
-function safeRedirect(value: string | null) {
-  if (value === null || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
-  }
-
-  return value;
-}
-
 function AuthJsCredentialsSignInForm() {
   const { enqueueSnackbar } = useSnackbar();
   const { signIn } = useIcyPlayAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { control, formState, handleSubmit, setError } = useForm<FormType>({
     mode: "onChange",
     defaultValues,
@@ -83,7 +68,7 @@ function AuthJsCredentialsSignInForm() {
       enqueueSnackbar("Signed in successfully.", { variant: "success" });
       // Somebody sent here mid-booking goes back to the hours they chose, not
       // to the front page to start again.
-      router.push(safeRedirect(searchParams.get("redirectUrl")));
+      router.push(intendedDestination());
       return true;
     } catch (error) {
       const apiError = error as ApiError;

@@ -8,7 +8,7 @@ import { ApiError } from "@/services/api";
 import type { CreatedCourt } from "@auth/courtApi";
 import { useAdminFacilityOwner } from "@auth/hooks/useAdminFacilityOwner";
 import { useCreateCourt } from "@auth/hooks/useCourts";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import CourtDetailsStep from "../courts/CourtDetailsStep";
 import CourtFacilityStep from "../courts/CourtFacilityStep";
 import CourtPhotosStep from "../courts/CourtPhotosStep";
@@ -136,7 +136,7 @@ function AdminAddCourtView({ facilityOwnerId = "" }: { facilityOwnerId?: string 
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[
             { label: "Platform admin", href: "/admin" },
             { label: "Facility owners", href: "/admin/facility-owners" },

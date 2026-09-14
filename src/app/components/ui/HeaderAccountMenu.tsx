@@ -41,6 +41,25 @@ function ShieldIcon() {
   );
 }
 
+/** A receipt on a clipboard: the thing somebody at a desk is holding. */
+function DeskIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4.5 w-4.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 21V5.5A1.5 1.5 0 0 1 6.5 4H16l3 3v14l-2.3-1.4-2.3 1.4-2.4-1.4L9.6 21l-2.3-1.4Z" />
+      <path d="M9 9h6M9 13h6" />
+    </svg>
+  );
+}
+
 function BookingsIcon() {
   return (
     <svg
@@ -113,12 +132,64 @@ function getFirstName(fullName: string) {
   return first ?? fullName;
 }
 
+const rowStyle =
+  "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#2563EB]";
+
+function MenuItem({
+  href,
+  icon,
+  label,
+  onSelect,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Link href={href} role="menuitem" onClick={onSelect} className={rowStyle}>
+      <span className="text-slate-400">{icon}</span>
+      {label}
+    </Link>
+  );
+}
+
+/**
+ * A heading over a run of rows.
+ *
+ * Only shown when the menu holds more than one kind of thing. Somebody who is
+ * both an owner and a customer has "Venue desk" and "My bookings" in front of
+ * them, which are not the same kind of errand; somebody who is only a customer
+ * has nothing to tell apart and does not need to be told.
+ */
+function MenuGroup({ label, children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-slate-100 py-1.5 first:border-t-0">
+      {label && (
+        <p className="px-4 pt-1 pb-1 text-[11px] font-bold tracking-wide text-slate-400 uppercase">
+          {label}
+        </p>
+      )}
+      {children}
+    </div>
+  );
+}
+
 function HeaderAccountMenu() {
   const { user, isAuthenticated, isLoading, signOut } = useIcyPlayAuth();
   const isPlatformAdmin = Boolean(user?.roles.includes("PlatformAdmin"));
+  // An owner or an attendant works a venue's desk. Without a way in from here
+  // there is none: the desk is not linked from anywhere a customer can see.
+  const worksADesk = Boolean(
+    user?.roles.some((role) => role === "FacilityOwner" || role === "FacilityAttendant"),
+  );
+  // Whether this person has anywhere to go besides their own account. It is
+  // what decides whether the menu needs headings at all.
+  const runsSomething = isPlatformAdmin || worksADesk;
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const close = () => setIsOpen(false);
   const router = useRouter();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -210,48 +281,56 @@ function HeaderAccountMenu() {
             <p className="truncate text-xs text-slate-500">{user.email}</p>
           </div>
 
-          {isPlatformAdmin && (
-            <Link
-              href="/admin"
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm font-semibold text-[#071955] transition hover:bg-slate-50 hover:text-[#2563EB]"
-            >
-              <ShieldIcon />
-              Admin
-            </Link>
+          {runsSomething && (
+            <MenuGroup label="Manage">
+              {isPlatformAdmin && (
+                <MenuItem
+                  href="/admin"
+                  icon={<ShieldIcon />}
+                  label="Platform admin"
+                  onSelect={close}
+                />
+              )}
+              {worksADesk && (
+                <MenuItem
+                  href="/desk"
+                  icon={<DeskIcon />}
+                  label="Venue desk"
+                  onSelect={close}
+                />
+              )}
+            </MenuGroup>
           )}
 
-          <Link
-            href="/bookings"
-            role="menuitem"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#2563EB]"
-          >
-            <BookingsIcon />
-            My bookings
-          </Link>
+          <MenuGroup label={runsSomething ? "Your account" : undefined}>
+            <MenuItem
+              href="/bookings"
+              icon={<BookingsIcon />}
+              label="My bookings"
+              onSelect={close}
+            />
+            <MenuItem
+              href="/account"
+              icon={<AccountIcon />}
+              label="Account settings"
+              onSelect={close}
+            />
+          </MenuGroup>
 
-          <Link
-            href="/account"
-            role="menuitem"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#2563EB]"
-          >
-            <AccountIcon />
-            View account
-          </Link>
-
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <LogoutIcon />
-            {isSigningOut ? "Logging out..." : "Log out"}
-          </button>
+          <MenuGroup>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className={`${rowStyle} hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <span className="text-slate-400">
+                <LogoutIcon />
+              </span>
+              {isSigningOut ? "Logging out..." : "Log out"}
+            </button>
+          </MenuGroup>
         </div>
       )}
     </div>

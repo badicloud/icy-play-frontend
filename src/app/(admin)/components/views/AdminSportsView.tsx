@@ -7,7 +7,7 @@ import EditOutlined from "@mui/icons-material/EditOutlined";
 import { ApiError } from "@/services/api";
 import { activityKindHints, activityKinds, sportCategories, type Sport } from "@auth/courtApi";
 import { useCreateSport, useSetSportActive, useSports, useUpdateSport } from "@auth/hooks/useSports";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { TextField } from "../onboarding/FormControls";
 import EditDialog from "../edit/EditDialog";
 
@@ -177,7 +177,7 @@ function AdminSportsView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[{ label: "Platform admin", href: "/admin" }, { label: "Sports" }]}
         />
 

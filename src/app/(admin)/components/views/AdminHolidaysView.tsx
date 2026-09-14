@@ -14,7 +14,7 @@ import {
   useSetHolidayActive,
   useUpdateHoliday,
 } from "@auth/hooks/useHolidays";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import EditDialog from "../edit/EditDialog";
 import { TextField } from "../onboarding/FormControls";
 
@@ -198,7 +198,7 @@ function AdminHolidaysView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[{ label: "Platform admin", href: "/admin" }, { label: "Holidays" }]}
         />
 

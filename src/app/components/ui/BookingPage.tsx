@@ -488,25 +488,35 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
         </div>
       </div>
 
-      <Summary
-        chosen={chosen}
-        rental={rental}
-        fee={fee}
-        mode={mode}
-        dates={dates}
-        blocked={blocked}
-        problem={problem}
-        signedIn={isAuthenticated}
-        onRemove={(startsAt) => setPicked((current) => current.filter((s) => s !== startsAt))}
-        onConfirm={confirm}
-      />
+      {(chosen.length > 0 || problem !== null) && (
+        <Summary
+          chosen={chosen}
+          rental={rental}
+          fee={fee}
+          mode={mode}
+          dates={dates}
+          blocked={blocked}
+          problem={problem}
+          signedIn={isAuthenticated}
+          onRemove={(startsAt) => setPicked((current) => current.filter((s) => s !== startsAt))}
+          onConfirm={confirm}
+        />
+      )}
 
       <PublicFooter />
     </main>
   );
 }
 
-/** The floating panel. Everything the customer is about to agree to, in one place. */
+/**
+ * The floating panel. Everything the customer is about to agree to, in one
+ * place.
+ *
+ * Only on screen once they have picked something. It covers whatever it floats
+ * over, and a panel adding up nothing is in the way rather than in use. The
+ * empty wording below is for the one case that still reaches here: a problem
+ * reported after the last hour was taken back out.
+ */
 function Summary({
   chosen,
   rental,

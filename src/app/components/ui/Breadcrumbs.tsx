@@ -9,7 +9,7 @@ export type Crumb = {
   href?: string;
 };
 
-type AdminBreadcrumbsProps = {
+type BreadcrumbsProps = {
   trail: Crumb[];
 };
 
@@ -19,9 +19,9 @@ type AdminBreadcrumbsProps = {
  * reading 3f2a91c4, which tells the reader nothing.
  *
  * Fuse ships a PageBreadcrumb, but it resolves titles from the Fuse navigation
- * config, and the admin console is not in it.
+ * config, and neither the admin console nor the venue desk is in it.
  */
-function AdminBreadcrumbs({ trail }: AdminBreadcrumbsProps) {
+function Breadcrumbs({ trail }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1 text-sm">
@@ -60,4 +60,4 @@ function AdminBreadcrumbs({ trail }: AdminBreadcrumbsProps) {
   );
 }
 
-export default AdminBreadcrumbs;
+export default Breadcrumbs;

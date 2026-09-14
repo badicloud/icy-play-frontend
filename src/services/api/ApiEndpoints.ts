@@ -93,4 +93,13 @@ export const API_ENDPOINTS = {
     AMENITIES: `${API_V1}/admin/amenities`,
     UPLOAD_SIGNATURE: `${API_V1}/admin/assets/upload-signature`,
   },
+  /** The venue's desk: what an owner or attendant confirms. */
+  DESK: {
+    VENUES: `${API_V1}/desk/venues`,
+    BOOKINGS: `${API_V1}/desk/bookings`,
+    CONFIRM_BOOKING: (bookingId: string) =>
+      `${API_V1}/desk/bookings/${bookingId}/confirm`,
+    REJECT_BOOKING: (bookingId: string) =>
+      `${API_V1}/desk/bookings/${bookingId}/reject`,
+  },
 } as const;

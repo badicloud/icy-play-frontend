@@ -61,12 +61,6 @@ function CourtCard({ court }: { court: CatalogCourt }) {
           </div>
         )}
 
-        {court.standardHourlyRate !== null && (
-          <span className="absolute right-3 top-3 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white shadow-lg">
-            {peso(court.standardHourlyRate)}/hr
-          </span>
-        )}
-
         {/* The sport is on the card because one court set up for three appears
             three times, at three prices. Without it they read as duplicates.
             The icon is what the eye catches first when scanning a grid. */}

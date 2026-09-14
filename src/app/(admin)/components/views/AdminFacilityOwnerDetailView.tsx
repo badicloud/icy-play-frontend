@@ -26,7 +26,7 @@ import {
 } from "@auth/adminApi";
 import { useAdminFacilityOwner } from "@auth/hooks/useAdminFacilityOwner";
 import { useResendInvitation } from "@auth/hooks/useResendInvitation";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import ActivityTimeline from "../ActivityTimeline";
 import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
@@ -586,7 +586,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[
             { label: "Platform admin", href: "/admin" },
             { label: "Facility owners", href: "/admin/facility-owners" },

@@ -11,7 +11,7 @@ import StarOutlined from "@mui/icons-material/StarOutlined";
 import { ApiError } from "@/services/api";
 import type { Court } from "@auth/courtApi";
 import { useCourt, useLiftMaintenance } from "@auth/hooks/useCourts";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import BookableCourtsPanel from "../courts/BookableCourtsPanel";
 import CourtDivisionsPanel from "../courts/CourtDivisionsPanel";
 import CourtPricingPanel from "../courts/CourtPricingPanel";
@@ -137,7 +137,7 @@ function AdminCourtDetailView({ courtId }: { courtId: string }) {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[
             { label: "Platform admin", href: "/admin" },
             { label: "Facility inventory", href: "/admin/facility-inventory" },

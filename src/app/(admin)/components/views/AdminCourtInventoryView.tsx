@@ -8,9 +8,8 @@ import SearchOutlined from "@mui/icons-material/SearchOutlined";
 import StarOutlined from "@mui/icons-material/StarOutlined";
 import type { CourtInventoryItem } from "@auth/courtApi";
 import { useCourtInventory, useFacilityInventory } from "@auth/hooks/useCourts";
-import AdminBreadcrumbs from "../AdminBreadcrumbs";
-
-const pageSize = 20;
+import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
+import Pager, { perPageOptions } from "@/app/components/ui/Pager";
 
 /** Every option starts at All: the whole platform is the useful default. */
 const anything = "";
@@ -42,6 +41,7 @@ function AdminCourtInventoryView() {
   const [ownerId, setOwnerId] = useState(anything);
   const [facilityId, setFacilityId] = useState(anything);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(perPageOptions[0]);
 
   // Debounce so a search does not fire a request per keystroke.
   useEffect(() => {
@@ -96,7 +96,7 @@ function AdminCourtInventoryView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-6xl px-6 py-12 lg:px-8">
-        <AdminBreadcrumbs
+        <Breadcrumbs
           trail={[{ label: "Platform admin", href: "/admin" }, { label: "Courts" }]}
         />
 
@@ -288,31 +288,20 @@ function AdminCourtInventoryView() {
           )}
         </section>
 
-        {pagination && pagination.totalPages > 1 && (
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <p className="text-sm text-slate-500">
-              Page {pagination.page} of {pagination.totalPages} &middot; {pagination.totalItems}{" "}
-              {pagination.totalItems === 1 ? "court" : "courts"}
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={pagination.page <= 1}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#164eaa] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((current) => current + 1)}
-                disabled={pagination.page >= pagination.totalPages}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#164eaa] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+        {pagination && (
+          <Pager
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            noun={{ one: "court", many: "courts" }}
+            label="Court pages"
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         )}
       </div>
     </main>

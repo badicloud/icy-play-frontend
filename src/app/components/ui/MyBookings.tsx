@@ -2,10 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import {
   bookingState,
   clock,
@@ -14,16 +12,9 @@ import {
   type BookingDetail,
 } from "@auth/bookingApi";
 import { activityIcon } from "@auth/catalogApi";
+import Pager, { perPageOptions } from "./Pager";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
-
-/**
- * How many bookings a page holds. The first is the default.
- *
- * Ten is about a screen and a half of cards, which is enough to scan for the one
- * you came for without paging, and few enough that the page still ends.
- */
-const perPageOptions = [10, 25, 50] as const;
 
 /**
  * Amber is anything not settled, green is settled, red is refused, grey is over.
@@ -44,30 +35,12 @@ const tones = {
  * bookings — starting a page counter before they load means resetting it after.
  */
 function MyBookings() {
-  const router = useRouter();
-  const { isAuthenticated, isLoading } = useIcyPlayAuth();
-
   const bookings = useQuery({
     queryKey: ["my-bookings"],
     queryFn: getMyBookings,
-    enabled: isAuthenticated,
     // Short, because a hold runs down while the page is open.
     staleTime: 30 * 1000,
   });
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/sign-in?redirectUrl=%2Fbookings");
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  if (isLoading || !isAuthenticated) {
-    return (
-      <Shell>
-        <p className="text-slate-500">Loading…</p>
-      </Shell>
-    );
-  }
 
   if (bookings.isPending) {
     return (
@@ -93,7 +66,8 @@ function MyBookings() {
 
 function List({ bookings }: { bookings: BookingDetail[] }) {
   const [perPage, setPerPage] = useState<number>(perPageOptions[0]);
-  const [page, setPage] = useState(0);
+  // One-based, the way the pager counts and the way it reads on screen.
+  const [page, setPage] = useState(1);
 
   // Anything waiting on the customer floats to the front: it is the only kind
   // they can act on, and a hold that runs out puts the hours back on sale.
@@ -107,8 +81,10 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
 
   const waiting = ordered.filter((booking) => bookingState(booking).needsYou).length;
   const pages = Math.max(1, Math.ceil(ordered.length / perPage));
-  const current = Math.min(page, pages - 1);
-  const shown = ordered.slice(current * perPage, current * perPage + perPage);
+  // Clamped rather than reset: shrinking the page size while sitting on the
+  // last page must not throw the reader back to the first.
+  const current = Math.min(page, pages);
+  const shown = ordered.slice((current - 1) * perPage, current * perPage);
 
   return (
     <main className="min-h-screen bg-[#f5f9ff]">
@@ -142,98 +118,31 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
 
         {ordered.length > 0 && (
           <>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">
-                Showing {current * perPage + 1}&ndash;{current * perPage + shown.length} of{" "}
-                {ordered.length}
-              </p>
-
-              <label className="flex items-center gap-2 text-sm text-slate-500">
-                Per page
-                <select
-                  value={perPage}
-                  onChange={(event) => {
-                    setPerPage(Number(event.target.value));
-                    setPage(0);
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-[#071955] outline-none focus:border-[#2563EB]"
-                >
-                  {perPageOptions.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
             <div className="mt-4 flex flex-col gap-3">
               {shown.map((booking) => (
                 <Card key={booking.id} booking={booking} />
               ))}
             </div>
 
-            {pages > 1 && (
-              <nav
-                aria-label="Bookings pages"
-                className="mt-6 flex flex-wrap items-center justify-center gap-2"
-              >
-                <Step label="Previous" disabled={current === 0} onClick={() => setPage(current - 1)} />
-
-                {Array.from({ length: pages }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    aria-current={index === current ? "page" : undefined}
-                    onClick={() => setPage(index)}
-                    className={`h-10 min-w-10 rounded-xl px-3 text-sm font-bold transition ${
-                      index === current
-                        ? "bg-[#2563EB] text-white"
-                        : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-
-                <Step
-                  label="Next"
-                  disabled={current === pages - 1}
-                  onClick={() => setPage(current + 1)}
-                />
-              </nav>
-            )}
+            <Pager
+              page={current}
+              pageSize={perPage}
+              totalItems={ordered.length}
+              totalPages={pages}
+              noun={{ one: "booking", many: "bookings" }}
+              label="Bookings pages"
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPerPage(size);
+                setPage(1);
+              }}
+            />
           </>
         )}
       </div>
 
       <PublicFooter />
     </main>
-  );
-}
-
-function Step({
-  label,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`h-10 rounded-xl px-4 text-sm font-bold transition ${
-        disabled
-          ? "cursor-not-allowed border border-slate-100 bg-white text-slate-300"
-          : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
