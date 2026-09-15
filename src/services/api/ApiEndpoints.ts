@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
     COURT: (courtId: string) => `${API_V1}/catalog/courts/${courtId}`,
     AVAILABILITY: (bookableCourtId: string) =>
       `${API_V1}/catalog/bookable-courts/${bookableCourtId}/availability`,
+    DAY_OUTLOOK: (bookableCourtId: string) =>
+      `${API_V1}/catalog/bookable-courts/${bookableCourtId}/day-outlook`,
   },
   BOOKINGS: {
     ROOT: `${API_V1}/bookings`,

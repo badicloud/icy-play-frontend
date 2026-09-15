@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import {
   checkoutHref,
   choiceQuery,
   clock,
   getAvailability,
+  getDayOutlook,
   isoDate,
   peakDays,
   peso,
@@ -18,6 +19,7 @@ import {
   type AvailabilityDay,
   type AvailabilitySlot,
   type BookingKind,
+  type DayOutlook,
 } from "@auth/bookingApi";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -72,6 +74,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const [lastDay, setLastDay] = useState(restored?.last ?? 0);
   const [picked, setPicked] = useState<string[]>(restored?.hours ?? []);
   const [problem, setProblem] = useState<string | null>(null);
+  const [showing, setShowing] = useState<string | null>(null);
 
   const days = useMemo(
     () => allDays.slice(0, wideOpen ? DaysAhead : ShortView),
@@ -95,6 +98,25 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
     })),
   });
 
+  const outlook = useQuery({
+    queryKey: ["day-outlook", bookableCourtId],
+    queryFn: () => getDayOutlook(bookableCourtId),
+    // The same fifteen seconds the grid uses: a strip a minute stale offers a
+    // day somebody else has just taken.
+    staleTime: 15 * 1000,
+    enabled: bookableCourtId !== "",
+  });
+
+  const byDate = useMemo(() => {
+    const map = new Map<string, DayOutlook>();
+
+    for (const day of outlook.data ?? []) {
+      map.set(day.date, day);
+    }
+
+    return map;
+  }, [outlook.data]);
+
   const loading = results.some((result) => result.isPending);
   const failed = results.some((result) => result.isError);
   const availability = results
@@ -104,13 +126,31 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const today = availability[0];
   const hourly = mode === "Hourly";
 
+  // The day whose hours are on screen. A run covers several, and a customer
+  // buying four days wants to see what they are getting on each of them, not
+  // only on the first.
+  const viewed = availability.find((day) => day.date === showing) ?? today;
+
   // A day sold open to close has to still have its opening in it. By the time
   // anyone is looking, part of today has gone, so today is an hourly booking or
   // it is nothing.
   const firstSellable = hourly ? 0 : 1;
 
+  /** Nothing on that day to be had: shut, closed for work, or wholly sold. */
+  const nothingLeft = (day: AvailabilityDay) => !day.slots.some((slot) => slot.isOpen);
+
+  // Days in the range with hours already gone. A run takes what is left of them
+  // and says so; a single day sold open to close cannot use them at all.
+  const partly = hourly
+    ? []
+    : availability.filter((day) => !nothingLeft(day) && day.slots.some((slot) => !slot.isOpen));
+
+  // Days in the range with nothing on them at all. A run passes over these and
+  // they are not charged for.
+  const emptyDays = hourly ? [] : availability.filter(nothingLeft);
+
   // What is actually being bought, in one place: hourly is what the customer
-  // ticked, whole days are every open hour of every day in the range.
+  // ticked, days sold by the day are every hour still free on each of them.
   const chosen = hourly
     ? (today?.slots ?? [])
         .filter((slot) => picked.includes(slot.startsAt) && slot.isOpen)
@@ -122,19 +162,24 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const rental = chosen.reduce((sum, entry) => sum + (entry.slot.rate ?? 0), 0);
   const fee = chosen.reduce((sum, entry) => sum + entry.slot.platformFee, 0);
 
-  // A day with an hour gone cannot be sold whole, which the server also refuses.
-  // Saying so here means the customer is not told after they commit.
-  const holed = !hourly
-    ? availability.filter((day) => !day.isClosed && day.slots.some((slot) => !slot.isOpen))
-    : [];
+  // Every day of the choice has come back with its hours in it.
+  //
+  // Until then the totals are the totals of the days that have answered, which
+  // for a run being extended is a smaller number than the one being bought. The
+  // panel goes away and comes back with the right figure rather than sitting
+  // there showing the old one.
+  const settled = !loading && availability.length === dates.length;
 
-  // Which of the court's rates the chosen day actually uses, so the card can
-  // mark them without hiding the rest.
-  const applying = new Set((today?.slots ?? []).map((slot) => slot.rateKind));
+  // Which of the court's rates the day on screen actually uses, so the card can
+  // mark them without hiding the rest. It follows the day being viewed: a run
+  // that crosses a Saturday charges the weekend rate on it, and the card should
+  // say so while that Saturday is the one being looked at.
+  const applying = new Set((viewed?.slots ?? []).map((slot) => slot.rateKind));
 
-  const closed = availability.filter((day) => day.isClosed);
-  const shut = availability.some((day) => day.isUnderMaintenance);
-  const blocked = shut || holed.length > 0 || closed.length > 0;
+  // Inside a run neither is a refusal: a part-day is taken for what it has
+  // left, an empty one is passed over. A single day sold open to close is all
+  // of it or nothing, so either one stops it.
+  const blocked = mode !== "MultiDay" && (partly.length > 0 || emptyDays.length > 0);
 
   const query = choiceQuery(mode, dates, picked);
 
@@ -151,8 +196,55 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
     );
   }
 
+  /**
+   * Why this day cannot be taken in the mode being used, or null when it can.
+   *
+   * Never guesses: until the window has been answered, every day stays
+   * available. Greying out a day that is in fact free costs a booking; the
+   * server refuses the other way round, so waiting is the safe side.
+   */
+  function barredBecause(index: number, forMode: BookingKind = mode): string | null {
+    const wholeDays = forMode !== "Hourly";
+
+    if (index < (wholeDays ? 1 : 0)) {
+      return "Today can only be booked by the hour";
+    }
+
+    const day = byDate.get(isoDate(days[index]));
+
+    if (day === undefined) {
+      return null;
+    }
+
+    if (day.isUnderMaintenance) {
+      return "The court is closed for maintenance that day";
+    }
+
+    if (day.isClosed) {
+      return "The venue is shut that day";
+    }
+
+    if (day.openHours === 0) {
+      return "Every hour of that day is taken";
+    }
+
+    // Only a single day sold open to close needs all of it. A run takes each
+    // of its days for whatever is still free, so a part-booked day is one a
+    // customer can still put a run through.
+    return forMode !== "WholeDay" || day.canBeHiredWhole
+      ? null
+      : "Part of that day is booked, so it cannot be hired whole";
+  }
+
+  /** The first day that can be taken in a mode, for landing on. */
+  function firstFreeDay(forMode: BookingKind) {
+    const found = days.findIndex((_, index) => barredBecause(index, forMode) === null);
+
+    return found < 0 ? (forMode === "Hourly" ? 0 : 1) : found;
+  }
+
   function pickDay(index: number) {
-    if (index < firstSellable) {
+    if (barredBecause(index) !== null) {
       return;
     }
 
@@ -179,6 +271,10 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
       return;
     }
 
+    // Nothing inside a run stops it: a day that cannot be had — the venue
+    // shut, or an hour of it already somebody else's — is passed over and not
+    // charged for. Only the two ends have to be days actually being bought,
+    // and the tap that set this one was checked above.
     setLastDay(index);
   }
 
@@ -252,10 +348,15 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                         setPicked([]);
                         setProblem(null);
 
-                        // Today cannot be sold whole, so a switch made while it
-                        // is chosen lands on tomorrow rather than on a day the
-                        // grid will not let them keep.
-                        const landing = option.id === "Hourly" ? firstDay : Math.max(firstDay, 1);
+                        // Today cannot be sold whole, and nor can a day already
+                        // part-booked: a switch made while one of those is
+                        // chosen lands on the first day this mode can have.
+                        const wanted = option.id === "Hourly" ? firstDay : Math.max(firstDay, 1);
+                        const landing =
+                          barredBecause(wanted, option.id) === null
+                            ? wanted
+                            : firstFreeDay(option.id);
+
                         setFirstDay(landing);
                         setLastDay(landing);
                       }}
@@ -277,20 +378,23 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
               {mode === "MultiDay" && (
                 <p className="mb-3 text-sm text-slate-500">
                   Tap the first day, then the last — tap further along to add more days, up to{" "}
-                  {LongestRun}. Tapping the first day again starts a new run.
+                  {LongestRun}. A run cannot skip a day that is unavailable, so tapping past one
+                  starts a new run there.
                 </p>
               )}
               <div className="grid grid-cols-7 gap-2">
                 {days.map((day, index) => {
                   const inRange = index >= firstDay && index < firstDay + span;
-                  const barred = index < firstSellable;
+                  const why = barredBecause(index);
+                  const barred = why !== null;
+                  const outlookFor = byDate.get(isoDate(day));
 
                   return (
                     <button
                       key={day.toDateString()}
                       type="button"
                       disabled={barred}
-                      title={barred ? "Today can only be booked by the hour" : undefined}
+                      title={why ?? undefined}
                       onClick={() => pickDay(index)}
                       className={`flex min-h-[62px] flex-col items-center justify-center gap-0.5 rounded-2xl border transition ${
                         barred
@@ -305,7 +409,15 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                       </span>
                       <span className="text-lg font-extrabold leading-none">{day.getDate()}</span>
                       <span className="text-[10px] font-semibold opacity-75">
-                        {barred ? "Hourly" : day.toLocaleDateString("en-PH", { month: "short" })}
+                        {barred
+                          ? index < firstSellable
+                            ? "Hourly"
+                            : outlookFor?.isUnderMaintenance || outlookFor?.isClosed
+                              ? "Shut"
+                              : "Booked"
+                          : !hourly && outlookFor && !outlookFor.canBeHiredWhole
+                            ? `${outlookFor.openHours} hrs`
+                            : day.toLocaleDateString("en-PH", { month: "short" })}
                       </span>
                     </button>
                   );
@@ -360,50 +472,104 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
 
             <Panel
               title="Pick your hours"
-              aside={`${today.slots.filter((slot) => slot.isOpen).length} of ${
-                today.slots.length
+              aside={`${viewed.slots.filter((slot) => slot.isOpen).length} of ${
+                viewed.slots.length
               } hours open`}
             >
               <p className="mb-4 text-sm text-slate-500">
                 {hourly
                   ? "Tap an hour to add it, tap again to take it off. They do not have to run back to back."
-                  : "A whole day is every hour the court is open. The grid is showing what that covers."}
+                  : mode === "MultiDay"
+                    ? "Each day in the run is taken for every hour it still has free. Pick a day below to see what that covers."
+                    : "A whole day is every hour the court is open. The grid is showing what that covers."}
               </p>
 
-              {shut && (
-                <Notice>
-                  This court is closed for maintenance on {longDate(today.date)}. Pick another day.
-                </Notice>
+              {/* A run's days speak for themselves in the strip below, which
+                  says of each one how much of it is in the booking. On a single
+                  day there is no strip and an unavailable day is a refusal,
+                  because a day sold open to close is all of it or none of it. */}
+              {mode === "MultiDay" ? (
+                availability.length > 1 && (
+                  <div
+                    className="mb-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="tablist"
+                    aria-label="Days in this booking"
+                  >
+                    {availability.map((day) => {
+                      const free = day.slots.filter((slot) => slot.isOpen).length;
+                      const here = day.date === viewed.date;
+
+                      return (
+                        <button
+                          key={day.date}
+                          type="button"
+                          role="tab"
+                          aria-selected={here}
+                          onClick={() => setShowing(day.date)}
+                          className={`shrink-0 rounded-2xl border px-3.5 py-2 text-left transition ${
+                            here
+                              ? "border-[#2563EB] bg-blue-50"
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
+                        >
+                          <span
+                            className={`block text-sm font-bold ${
+                              here ? "text-[#071955]" : "text-slate-600"
+                            }`}
+                          >
+                            {shortDate(day.date)}
+                          </span>
+                          <span
+                            className={`block text-xs font-semibold ${
+                              free === 0 ? "text-slate-400" : here ? "text-[#2563EB]" : "text-slate-500"
+                            }`}
+                          >
+                            {free === 0
+                              ? day.isClosed || day.isUnderMaintenance
+                                ? "Shut"
+                                : "Nothing left"
+                              : `${free} ${free === 1 ? "hour" : "hours"}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              ) : (
+                <>
+                  {availability.some((day) => day.isUnderMaintenance) && (
+                    <Notice>
+                      This court is closed for maintenance on {longDate(today.date)}. Pick another
+                      day.
+                    </Notice>
+                  )}
+
+                  {availability.some((day) => day.isClosed) && (
+                    <Notice>
+                      {today.facilityName} is shut on {longDate(today.date)}.
+                    </Notice>
+                  )}
+
+                  {partly.length > 0 && (
+                    <Notice>
+                      Part of {longDate(partly[0].date)} is already booked, so it cannot be hired
+                      whole. Book by the hour instead.
+                    </Notice>
+                  )}
+                </>
               )}
 
-              {closed.length > 0 && (
-                <Notice>
-                  {closed.length === 1
-                    ? `${today.facilityName} is shut on ${longDate(closed[0].date)}.`
-                    : `${today.facilityName} is shut on ${closed.length} of the days you picked.`}
-                </Notice>
-              )}
-
-              {holed.length > 0 && (
-                <Notice>
-                  {holed.length === 1
-                    ? `Part of ${longDate(holed[0].date)} is already booked, so it cannot be hired whole.`
-                    : `${holed.length} of those days are partly booked, so they cannot be hired whole.`}{" "}
-                  Book by the hour instead.
-                </Notice>
-              )}
-
-              {today.isHoliday && (
+              {viewed.isHoliday && (
                 <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900">
                   This is a holiday, so the venue&apos;s holiday rate applies.
                 </p>
               )}
 
-              {today.slots.length === 0 ? (
+              {viewed.slots.length === 0 ? (
                 <p className="text-slate-500">The venue is closed on this day.</p>
               ) : (
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {today.slots.map((slot) => (
+                  {viewed.slots.map((slot) => (
                     <Hour
                       key={slot.startsAt}
                       slot={slot}
@@ -489,7 +655,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
         </div>
       </div>
 
-      {(chosen.length > 0 || problem !== null) && (
+      {((settled && chosen.length > 0) || problem !== null) && (
         <Summary
           chosen={chosen}
           rental={rental}
@@ -545,6 +711,11 @@ function Summary({
   const empty = hours === 0;
   const hourly = mode === "Hourly";
 
+  // The days being paid for, not the days the run spans. A run over a Sunday
+  // the venue is shut covers four dates and sells three, and the count beside
+  // the price has to be the one being charged for.
+  const soldDays = new Set(chosen.map((entry) => entry.date)).size;
+
   const when =
     dates.length === 1
       ? longDate(dates[0])
@@ -566,7 +737,7 @@ function Summary({
                 {empty
                   ? "Nothing picked yet"
                   : `${hours} ${hours === 1 ? "hour" : "hours"}${
-                      hourly ? "" : dates.length > 1 ? ` · ${dates.length} days` : " · whole day"
+                      hourly ? "" : soldDays > 1 ? ` · ${soldDays} days` : " · whole day"
                     }`}
               </span>
               <span className="text-xs font-semibold text-slate-400">{when}</span>
@@ -836,6 +1007,16 @@ function Shell({ children }: { children: React.ReactNode }) {
       <PublicFooter />
     </main>
   );
+}
+
+/** "Sat 19", for a strip where the month is the same across all of them. */
+function shortDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
+    weekday: "short",
+    day: "numeric",
+  });
 }
 
 function longDate(iso: string) {

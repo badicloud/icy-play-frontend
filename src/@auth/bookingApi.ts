@@ -341,6 +341,25 @@ export function getAvailability(bookableCourtId: string, date: string) {
   );
 }
 
+/**
+ * One line per date in the booking window: enough to grey out the days that
+ * cannot be taken whole, without pricing thirty grids to find out.
+ */
+export type DayOutlook = {
+  date: string;
+  isClosed: boolean;
+  isHoliday: boolean;
+  isUnderMaintenance: boolean;
+  openHours: number;
+  totalHours: number;
+  /** Every hour of the day free. What a day sold open to close needs. */
+  canBeHiredWhole: boolean;
+};
+
+export function getDayOutlook(bookableCourtId: string) {
+  return apiClient.get<DayOutlook[]>(API_ENDPOINTS.CATALOG.DAY_OUTLOOK(bookableCourtId));
+}
+
 export function createBooking(payload: CreateBookingPayload) {
   return apiClient.post<BookingDetail>(API_ENDPOINTS.BOOKINGS.ROOT, payload);
 }
