@@ -97,6 +97,10 @@ export const API_ENDPOINTS = {
   DESK: {
     VENUES: `${API_V1}/desk/venues`,
     BOOKINGS: `${API_V1}/desk/bookings`,
+    COURTS: `${API_V1}/desk/courts`,
+    COURT_SCHEDULE: (courtId: string) => `${API_V1}/desk/courts/${courtId}/schedule`,
+    COURT_BOOKINGS: (courtId: string) => `${API_V1}/desk/courts/${courtId}/bookings`,
+    BOOKING: (bookingId: string) => `${API_V1}/desk/bookings/${bookingId}`,
     CONFIRM_BOOKING: (bookingId: string) =>
       `${API_V1}/desk/bookings/${bookingId}/confirm`,
     REJECT_BOOKING: (bookingId: string) =>

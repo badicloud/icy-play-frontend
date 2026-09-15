@@ -12,6 +12,7 @@ import {
   type BookingDetail,
 } from "@auth/bookingApi";
 import { activityIcon } from "@auth/catalogApi";
+import HoldCountdown from "./HoldCountdown";
 import Pager, { perPageOptions } from "./Pager";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -166,7 +167,7 @@ function Card({ booking }: { booking: BookingDetail }) {
             <span className="block text-lg font-extrabold tracking-tight text-[#071955]">
               {booking.courtName}
             </span>
-            <span className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            <span className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
               {booking.facilityName}
               {icon ? (
                 <img
@@ -176,7 +177,7 @@ function Card({ booking }: { booking: BookingDetail }) {
                   className="h-5 w-5 shrink-0 object-contain"
                 />
               ) : (
-                <span className="text-slate-400">· {booking.sportName}</span>
+                <span className="font-medium text-slate-500">· {booking.sportName}</span>
               )}
             </span>
           </span>
@@ -200,18 +201,29 @@ function Card({ booking }: { booking: BookingDetail }) {
           </span>
         </span>
 
+        {/*
+            A hold running down is the one thing on this card that changes while
+            somebody reads it, and the only one they can still do something
+            about. On the shut card, so it is seen without opening anything.
+         */}
+        {booking.status === "PendingPayment" && !booking.hasLapsed && (
+          <span className="mt-3 block">
+            <HoldCountdown holdsUntil={booking.holdsUntil} compact />
+          </span>
+        )}
+
         <span className="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-slate-100 pt-3.5">
           <span className="text-sm font-semibold text-slate-600">
             {when(booking)}
             {first && (
-              <span className="text-slate-400">
+              <span className="font-medium text-slate-500">
                 {" · "}
                 {clock(first.startsAt)} – {clock(last.endsAt)}
               </span>
             )}
           </span>
 
-          <span className="text-sm text-slate-500">
+          <span className="text-sm font-semibold text-slate-600">
             {booking.bookedHours} {booking.bookedHours === 1 ? "hour" : "hours"}
             <span className="ml-3 text-base font-extrabold text-[#071955]">
               {peso(booking.total)}

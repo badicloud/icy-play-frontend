@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
+import { useEffect, useState } from "react";
 import { useSnackbar } from "notistack";
 import CheckCircleOutlined from "@mui/icons-material/CheckCircleOutlined";
 import ChatBubbleOutlineOutlined from "@mui/icons-material/ChatBubbleOutlineOutlined";
@@ -11,34 +10,21 @@ import HourglassEmptyOutlined from "@mui/icons-material/HourglassEmptyOutlined";
 import { ApiError } from "@/services/api";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import Pager, { perPageOptions } from "@/app/components/ui/Pager";
+import BookingDetails, { dates, day, peso } from "../BookingDetails";
 import { activityIcon } from "@auth/catalogApi";
 import { waitingFor, type DeskBooking, type DeskTab } from "@auth/deskApi";
-import { useDeskBookings, useDeskDecision, useDeskVenues } from "@auth/hooks/useDesk";
+import {
+  useDeskBooking,
+  useDeskBookings,
+  useDeskDecision,
+  useDeskVenues,
+} from "@auth/hooks/useDesk";
 import RejectBookingDialog from "../RejectBookingDialog";
 
 const tabs: { id: DeskTab; label: string }[] = [
   { id: "Waiting", label: "Waiting on you" },
   { id: "Confirmed", label: "Confirmed" },
 ];
-
-function peso(amount: number) {
-  return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function day(value: string) {
-  return format(new Date(value), "d MMM yyyy");
-}
-
-/** "6 Sep" or "6–8 Sep", because a run of days is one thing, not three. */
-function dates(booking: DeskBooking) {
-  return booking.startDate === booking.endDate
-    ? day(booking.startDate)
-    : `${day(booking.startDate)} – ${day(booking.endDate)}`;
-}
-
-function hour(value: string) {
-  return value.slice(0, 5);
-}
 
 /**
  * One booking, shut until somebody opens it.
@@ -52,13 +38,16 @@ function BookingCard({
   onConfirm,
   onReject,
   isDeciding,
+  startOpen = false,
 }: {
   booking: DeskBooking;
   onConfirm: () => void;
   onReject: () => void;
   isDeciding: boolean;
+  /** For a booking somebody was sent here to look at. */
+  startOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const { enqueueSnackbar } = useSnackbar();
   const waiting = booking.status === "PendingVerification";
   const icon = activityIcon(booking.sportKey);
@@ -126,92 +115,7 @@ function BookingCard({
 
       {open && (
         <div className="border-t border-slate-100 px-5 py-5">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div>
-              <h4 className="text-xs font-bold tracking-wide text-slate-400 uppercase">
-                Who booked it
-              </h4>
-              <p className="mt-2 font-semibold text-[#071955]">{booking.customerName}</p>
-              <p className="text-sm text-slate-500">{booking.customerEmail}</p>
-              {booking.customerPhone && (
-                <p className="text-sm text-slate-500">{booking.customerPhone}</p>
-              )}
-
-              <h4 className="mt-5 text-xs font-bold tracking-wide text-slate-400 uppercase">
-                The hours
-              </h4>
-              <ul className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-200">
-                {booking.slots.map((slot) => (
-                  <li
-                    key={`${slot.date}-${slot.startsAt}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                  >
-                    <span className="text-slate-600">
-                      {day(slot.date)} · {hour(slot.startsAt)}–{hour(slot.endsAt)}
-                    </span>
-                    <span className="font-semibold text-[#071955]">{peso(slot.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <dl className="mt-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Court</dt>
-                  <dd className="font-semibold text-[#071955]">{peso(booking.rentalTotal)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Platform fee</dt>
-                  <dd className="font-semibold text-[#071955]">
-                    {peso(booking.platformFeeTotal)}
-                  </dd>
-                </div>
-                <div className="flex justify-between border-t border-slate-200 pt-1">
-                  <dt className="font-bold text-[#071955]">Paid</dt>
-                  <dd className="font-bold text-[#071955]">{peso(booking.total)}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold tracking-wide text-slate-400 uppercase">
-                What they sent
-              </h4>
-
-              {booking.receiptUrl ? (
-                <div className="mt-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={booking.receiptUrl}
-                    alt={`GCash receipt from ${booking.customerName}`}
-                    className="w-full max-w-sm rounded-xl border border-slate-200"
-                  />
-                  <a
-                    href={booking.receiptUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-block text-sm font-semibold text-[#164eaa] underline-offset-2 hover:underline"
-                  >
-                    Open it full size
-                  </a>
-                  {booking.receiptUploadedAt && (
-                    <p className="mt-1 text-xs text-slate-400">
-                      Sent {day(booking.receiptUploadedAt)}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-500">
-                  No receipt on this booking.
-                </p>
-              )}
-
-              {booking.decisionReason && (
-                <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  {booking.decisionReason}
-                </p>
-              )}
-            </div>
-          </div>
+          <BookingDetails booking={booking} />
 
           {waiting && (
             <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5">
@@ -278,6 +182,15 @@ function DeskBookingsView() {
   const [rejecting, setRejecting] = useState<DeskBooking | null>(null);
 
   const venues = useDeskVenues();
+  // Read from the address bar rather than through useSearchParams, so this page
+  // needs no Suspense boundary it would not otherwise have.
+  const [picked, setPicked] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPicked(new URLSearchParams(window.location.search).get("booking"));
+  }, []);
+
+  const singled = useDeskBooking(picked);
   const bookings = useDeskBookings({
     tab,
     facilityId: facilityId === "" ? undefined : facilityId,
@@ -384,7 +297,41 @@ function DeskBookingsView() {
         )}
       </div>
 
-        {bookings.isPending && <p className="mt-6 text-slate-500">Loading…</p>}
+        {/*
+          Somebody sent here from a court's list came for one booking, and the
+          queue is paged: it could be four pages down, or on the other tab. So
+          it is picked out and opened above the queue rather than left to be
+          found.
+       */}
+      {picked !== null && singled.data && (
+        <section className="mt-6">
+          <p className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500">
+            Opened from {singled.data.courtName}
+            <button
+              type="button"
+              onClick={() => {
+                setPicked(null);
+                window.history.replaceState(null, "", "/desk/bookings");
+              }}
+              className="font-bold text-[#164eaa] underline-offset-2 hover:underline"
+            >
+              Show the whole queue
+            </button>
+          </p>
+
+          <ul>
+            <BookingCard
+              booking={singled.data}
+              isDeciding={isDeciding}
+              startOpen
+              onConfirm={() => void handleConfirm(singled.data)}
+              onReject={() => setRejecting(singled.data)}
+            />
+          </ul>
+        </section>
+      )}
+
+      {bookings.isPending && <p className="mt-6 text-slate-500">Loading…</p>}
 
         {bookings.isError && (
           <p className="mt-6 text-red-600">Could not load the queue. Please try again.</p>

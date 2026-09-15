@@ -175,3 +175,82 @@ button:not(:disabled),
 summary {
   cursor: pointer;
 }
+
+/*
+ * The venue desk's diary.
+ *
+ * FullCalendar arrives with the Bootstrap-ish look of its own defaults: heavy
+ * grey borders, shouting blue buttons, a serif-ish title. Scoped to the desk
+ * rather than applied globally, because the Fuse demo calendar still wants the
+ * look it was built against.
+ */
+.desk-calendar {
+  --fc-border-color: #e2e8f0;
+  --fc-today-bg-color: #f5f9ff;
+  --fc-now-indicator-color: #2563eb;
+  --fc-page-bg-color: transparent;
+}
+
+.desk-calendar .fc {
+  font-size: 0.8125rem;
+}
+
+.desk-calendar .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #071955;
+}
+
+.desk-calendar .fc .fc-button-primary {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.8rem;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.desk-calendar .fc .fc-button-primary:hover,
+.desk-calendar .fc .fc-button-primary:not(:disabled):active {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #071955;
+}
+
+.desk-calendar .fc .fc-button-primary:disabled {
+  background-color: #ffffff;
+  border-color: #f1f5f9;
+  color: #cbd5e1;
+}
+
+.desk-calendar .fc .fc-button:focus,
+.desk-calendar .fc .fc-button-primary:not(:disabled):active:focus {
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.18);
+}
+
+.desk-calendar .fc-col-header-cell-cushion,
+.desk-calendar .fc-daygrid-day-number {
+  color: #64748b;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* A booked hour is a block of colour, not a bullet with a dot beside it. */
+.desk-calendar .fc-event {
+  border-radius: 6px;
+  border-width: 0 0 0 3px;
+  padding: 1px 4px;
+  font-weight: 600;
+  /*
+   * FullCalendar draws an event as an anchor with no href, so it gets none of
+   * the affordances a link or a button would: the arrow stays an arrow over
+   * the one thing on this page anybody is meant to click.
+   */
+  cursor: pointer;
+}
+
+.desk-calendar .fc-event-main {
+  overflow: hidden;
+}

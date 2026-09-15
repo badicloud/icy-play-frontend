@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import {
   type BookingDetail,
 } from "@auth/bookingApi";
 import CheckoutSteps from "./CheckoutSteps";
+import HoldCountdown from "./HoldCountdown";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -54,7 +55,7 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
     return (
       <Shell>
         <h1 className="text-2xl font-extrabold text-[#071955]">We could not find that booking</h1>
-        <p className="mt-2 text-slate-500">
+        <p className="mt-2 font-medium text-slate-600">
           It may belong to another account, or the link may be wrong.
         </p>
         <Link
@@ -80,7 +81,7 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
         <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-[#071955]">
           {detail.courtName}
         </h1>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 font-medium text-slate-600">
           {detail.facilityName} · {detail.sportName}
         </p>
 
@@ -108,6 +109,8 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
             {step === 4 && <Waiting detail={detail} />}
           </>
         )}
+
+        <Elsewhere note={noteFor(detail)} />
       </div>
 
       <PublicFooter />
@@ -212,11 +215,11 @@ function Pay({
 
   return (
     <>
-      <Countdown holdsUntil={detail.holdsUntil} />
+      <HoldCountdown holdsUntil={detail.holdsUntil} />
 
       <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-[#071955]">Pay {detail.facilityName} by GCash</h2>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 font-medium text-slate-600">
           You pay the venue directly. IcyPlay does not handle the money.
         </p>
 
@@ -237,14 +240,14 @@ function Pay({
                   unoptimized
                   className="h-44 w-44 object-contain"
                 />
-                <p className="mt-2 text-center text-xs font-semibold text-slate-400">Scan to pay</p>
+                <p className="mt-2 text-center text-xs font-semibold text-slate-500">Scan to pay</p>
               </div>
             )}
 
             <dl className="flex min-w-56 flex-col gap-3">
               {detail.gcashNumber !== null && (
                 <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     GCash number
                   </dt>
                   <dd className="text-xl font-extrabold tracking-tight text-[#071955]">
@@ -254,17 +257,17 @@ function Pay({
               )}
               {detail.gcashAccountName !== null && (
                 <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Account name
                   </dt>
                   <dd className="font-bold text-[#071955]">{detail.gcashAccountName}</dd>
-                  <p className="mt-0.5 text-xs text-slate-400">
+                  <p className="mt-1 text-xs font-semibold text-amber-700">
                     Check this matches before you send.
                   </p>
                 </div>
               )}
               <div>
-                <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Amount</dt>
+                <dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Amount</dt>
                 <dd className="text-xl font-extrabold tracking-tight text-[#071955]">
                   {peso(detail.total)}
                 </dd>
@@ -276,7 +279,7 @@ function Pay({
 
       <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-[#071955]">Send us the receipt</h2>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 font-medium text-slate-600">
           A screenshot of your GCash confirmation. The venue checks it against their account.
         </p>
 
@@ -306,7 +309,60 @@ function Pay({
 
         {problem && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
       </section>
+
     </>
+  );
+}
+
+/**
+ * What to say above the way out, by where the customer has got to.
+ *
+ * The same two doors on every step, because every step is a place somebody
+ * stops — to open the GCash app, to think about it, to book the other court
+ * they came for. What changes is whether anything is still ticking, and saying
+ * a hold is running over a confirmed booking would be telling somebody to hurry
+ * about nothing.
+ */
+function noteFor(detail: BookingDetail) {
+  if (detail.hasLapsed) {
+    return "Those hours are back on sale.";
+  }
+
+  switch (detail.status) {
+    case "PendingPayment":
+      return detail.receiptUrl === null
+        ? "You can leave this and come back — the hold keeps running."
+        : "Your receipt is in and the clock has stopped. Come back to this any time.";
+    case "PendingVerification":
+      return "Nothing more to do here. We will email you when the venue confirms it.";
+    case "Confirmed":
+      return "This one is settled.";
+    default:
+      return null;
+  }
+}
+
+/** Where a customer can go instead of finishing this. */
+function Elsewhere({ note }: { note: string | null }) {
+  return (
+    <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
+      {note && <p className="text-sm font-medium text-slate-600">{note}</p>}
+
+      <div className={`flex flex-wrap gap-3 ${note ? "mt-4" : ""}`}>
+        <Link
+          href="/#courts"
+          className="inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+        >
+          Book another court
+        </Link>
+        <Link
+          href="/bookings"
+          className="inline-block rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+        >
+          My bookings
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -367,7 +423,7 @@ function Submit({
 
       <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-[#071955]">Send it to {detail.facilityName}</h2>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 font-medium text-slate-600">
           They will check the receipt against their GCash account and confirm your booking. We will
           email you either way.
         </p>
@@ -428,6 +484,7 @@ function Submit({
           {send.isPending ? "Sending…" : "Submit payment confirmation"}
         </button>
       </section>
+
     </>
   );
 }
@@ -460,7 +517,7 @@ function Waiting({ detail }: { detail: BookingDetail }) {
   return (
     <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-6">
       <h2 className="text-lg font-bold text-[#071955]">This booking is {detail.status.toLowerCase()}</h2>
-      <p className="mt-1.5 text-slate-500">The hours are back on sale.</p>
+      <p className="mt-1.5 font-medium text-slate-600">The hours are back on sale.</p>
       <Link
         href="/#courts"
         className="mt-4 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white"
@@ -486,38 +543,6 @@ function Lapsed({ detail }: { detail: BookingDetail }) {
         Try again
       </Link>
     </div>
-  );
-}
-
-/**
- * How long is left. Counted down on screen because a deadline stated once, in a
- * sentence, is a deadline a customer does not feel.
- */
-function Countdown({ holdsUntil }: { holdsUntil: string }) {
-  const [left, setLeft] = useState(() => Date.parse(holdsUntil) - Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setLeft(Date.parse(holdsUntil) - Date.now()), 1000);
-
-    return () => clearInterval(timer);
-  }, [holdsUntil]);
-
-  const seconds = Math.max(0, Math.floor(left / 1000));
-  const minutes = Math.floor(seconds / 60);
-  const short = minutes < 5;
-
-  return (
-    <p
-      className={`mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold ${
-        short ? "border-red-200 bg-red-50 text-red-800" : "border-blue-200 bg-blue-50 text-[#071955]"
-      }`}
-    >
-      Your court is held for{" "}
-      <span className="font-extrabold">
-        {minutes}:{`${seconds % 60}`.padStart(2, "0")}
-      </span>
-      . Upload your receipt before then and the clock stops.
-    </p>
   );
 }
 

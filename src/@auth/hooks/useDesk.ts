@@ -1,9 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmDeskBooking,
+  getCourtBookings,
+  getCourtSchedule,
+  getDeskBooking,
   getDeskBookings,
+  getDeskCourts,
   getDeskVenues,
   rejectDeskBooking,
+  type CourtBookingQuery,
   type DeskQuery,
 } from "@auth/deskApi";
 
@@ -34,6 +39,56 @@ export function useDeskBookings(query: DeskQuery) {
     queryKey: deskBookingsQueryKey(query),
     queryFn: () => getDeskBookings(query),
     staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * The courts these venues have registered.
+ *
+ * Long-lived: a venue marks a floor out once and books on it for months.
+ */
+export function useDeskCourts() {
+  return useQuery({
+    queryKey: [...deskKey, "courts"],
+    queryFn: getDeskCourts,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Every booked hour on one court between two dates. */
+export function useCourtSchedule(courtId: string, from: string, to: string) {
+  return useQuery({
+    queryKey: [...deskKey, "schedule", courtId, from, to],
+    queryFn: () => getCourtSchedule(courtId, from, to),
+    // The calendar says what stretch it is about to draw; until it has,
+    // there is nothing to ask for.
+    enabled: courtId !== "" && from !== "" && to !== "",
+    staleTime: 30 * 1000,
+  });
+}
+
+/** One court's bookings as a list, a page at a time. */
+export function useCourtBookings(query: CourtBookingQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "court-bookings", query],
+    queryFn: () => getCourtBookings(query),
+    enabled: query.courtId !== "",
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * One booking in full, for an hour somebody has clicked.
+ *
+ * Kept a while: a reader clicking along a row of hours comes back to the same
+ * booking often, and it has not changed in the seconds between.
+ */
+export function useDeskBooking(bookingId: string | null) {
+  return useQuery({
+    queryKey: [...deskKey, "booking", bookingId],
+    queryFn: () => getDeskBooking(bookingId!),
+    enabled: bookingId !== null,
+    staleTime: 60 * 1000,
   });
 }
 

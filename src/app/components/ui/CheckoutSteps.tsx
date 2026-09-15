@@ -19,19 +19,26 @@ function CheckoutSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
         const here = current === step.number;
 
         return (
-          <li key={step.number} className="flex items-center gap-3">
+          <li
+            key={step.number}
+            aria-current={here ? "step" : undefined}
+            className="flex items-center gap-3"
+          >
             <span className="flex items-center gap-2">
               <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-extrabold ${
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${
                   done
                     ? "bg-green-100 text-green-800"
                     : here
-                      ? "bg-[#2563EB] text-white"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-[#2563EB] text-white shadow-md shadow-blue-600/25"
+                      : // Outlined rather than filled: a step still to come is
+                        // an empty place on the road, and an outline says that
+                        // without hiding the number inside it.
+                        "border-2 border-slate-300 bg-white text-slate-600"
                 }`}
               >
                 {done ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
                     <path
                       d="M4.5 12.5l5 5 10-11"
                       stroke="currentColor"
@@ -46,7 +53,7 @@ function CheckoutSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
               </span>
               <span
                 className={`text-sm font-bold ${
-                  here ? "text-[#071955]" : done ? "text-green-800" : "text-slate-400"
+                  here ? "text-[#071955]" : done ? "text-green-800" : "text-slate-600"
                 }`}
               >
                 {step.label}
@@ -56,7 +63,7 @@ function CheckoutSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
             {index < steps.length - 1 && (
               <span
                 aria-hidden
-                className={`h-0.5 w-8 rounded ${done ? "bg-green-200" : "bg-slate-200"}`}
+                className={`h-0.5 w-8 rounded ${done ? "bg-green-300" : "bg-slate-300"}`}
               />
             )}
           </li>

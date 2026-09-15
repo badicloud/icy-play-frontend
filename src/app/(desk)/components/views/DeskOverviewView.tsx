@@ -33,7 +33,8 @@ const sections: DeskSection[] = [
   },
   {
     title: "Court bookings",
-    description: "Everything booked across your venues, by court and by day.",
+    description: "Everything booked on each court — its diary, and its list of what happened.",
+    href: "/desk/court-bookings",
     icon: <CalendarMonthOutlined />,
   },
   {
