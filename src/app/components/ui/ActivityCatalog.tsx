@@ -173,7 +173,13 @@ function ActivityCatalog() {
         </div>
       )}
 
-      <CourtResults activity={selected} />
+      {(filter === "all" || selected !== null) && <CourtResults activity={selected} />}
+
+      {filter !== "all" && selected === null && shown.length > 0 && (
+        <p className="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-500">
+          Pick {filter === "Event" ? "an event" : "a sport"} above to see the courts taking it.
+        </p>
+      )}
     </div>
   );
 }

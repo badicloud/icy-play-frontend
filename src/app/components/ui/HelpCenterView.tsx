@@ -127,8 +127,8 @@ const topics: Topic[] = [
   },
   {
     id: "money",
-    title: "Paying, moving and refunds",
-    blurb: "Where the money goes, and what can be changed afterwards.",
+    title: "Paying and moving a booking",
+    blurb: "Where the money goes, and what can be changed once it has gone.",
     answers: [
       {
         q: "Who am I actually paying?",
@@ -259,20 +259,25 @@ function HelpCenterView() {
           bottom reaches a person.
         </p>
 
-        <nav className="mt-8 flex flex-wrap gap-2" aria-label="Help topics">
-          {topics.map((topic) => (
-            <a
-              key={topic.id}
-              href={`#${topic.id}`}
-              className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:text-[#2563EB]"
-            >
-              {topic.title}
-            </a>
-          ))}
+        <nav
+          aria-label="Help topics"
+          className="sticky top-0 z-30 -mx-6 mt-8 border-b border-slate-200 bg-[#f5f9ff]/95 px-6 py-3 backdrop-blur lg:-mx-8 lg:px-8"
+        >
+          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {topics.map((topic) => (
+              <Link
+                key={topic.id}
+                href={`/help-center#${topic.id}`}
+                className="shrink-0 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold whitespace-nowrap text-slate-700 transition hover:border-slate-300 hover:text-[#2563EB]"
+              >
+                {topic.title}
+              </Link>
+            ))}
+          </div>
         </nav>
 
         {topics.map((topic) => (
-          <section key={topic.id} id={topic.id} className="mt-12 scroll-mt-24">
+          <section key={topic.id} id={topic.id} className="mt-12 scroll-mt-24 lg:scroll-mt-28">
             <h2 className="text-2xl font-black tracking-tight text-[#071955]">{topic.title}</h2>
             <p className="mt-2 font-medium text-slate-600">{topic.blurb}</p>
 
