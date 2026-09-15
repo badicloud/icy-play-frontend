@@ -444,6 +444,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                           label="Peak"
                           amount={today.peakHourlyRate}
                           applies={applying.has("Peak")}
+                          isPeak
                           note={
                             today.peakStartsAt && today.peakEndsAt
                               ? `${clock(today.peakStartsAt)} – ${clock(today.peakEndsAt)}, ${peakDays(
@@ -732,33 +733,48 @@ function Rate({
   amount,
   note,
   applies,
+  isPeak = false,
 }: {
   label: string;
   amount: number;
   note?: string;
   applies: boolean;
+  /** Peak hours are drawn amber in the grid, so they are amber here too. */
+  isPeak?: boolean;
 }) {
   return (
     <div
       className={`-mx-2.5 flex flex-col gap-0.5 rounded-xl px-2.5 py-1.5 ${
-        applies ? "bg-blue-50" : ""
+        applies ? (isPeak ? "bg-amber-50" : "bg-blue-50") : ""
       }`}
     >
       <div className="flex items-baseline justify-between gap-3">
         <dt className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
           {label}
           {applies && (
-            <span className="rounded bg-[#2563EB] px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wider text-white">
+            <span
+              className={`rounded px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wider ${
+                isPeak ? "bg-amber-200 text-amber-900" : "bg-[#2563EB] text-white"
+              }`}
+            >
               TODAY
             </span>
           )}
         </dt>
-        <dd className="font-extrabold text-[#071955]">
+        <dd className={`font-extrabold ${applies && isPeak ? "text-amber-900" : "text-[#071955]"}`}>
           {peso(amount)}
           <span className="text-xs font-semibold text-slate-400">/hr</span>
         </dd>
       </div>
-      {note && <p className="text-[11px] font-semibold text-slate-400">{note}</p>}
+      {note && (
+        <p
+          className={`text-[11px] font-semibold ${
+            applies && isPeak ? "text-amber-700" : "text-slate-400"
+          }`}
+        >
+          {note}
+        </p>
+      )}
     </div>
   );
 }

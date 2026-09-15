@@ -13,6 +13,7 @@ import {
 } from "@auth/bookingApi";
 import { activityIcon } from "@auth/catalogApi";
 import HoldCountdown from "./HoldCountdown";
+import MoveBookingDialog from "./MoveBookingDialog";
 import Pager, { perPageOptions } from "./Pager";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -66,6 +67,7 @@ function MyBookings() {
 }
 
 function List({ bookings }: { bookings: BookingDetail[] }) {
+  const [moving, setMoving] = useState<BookingDetail | null>(null);
   const [perPage, setPerPage] = useState<number>(perPageOptions[0]);
   // One-based, the way the pager counts and the way it reads on screen.
   const [page, setPage] = useState(1);
@@ -121,7 +123,7 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
           <>
             <div className="mt-4 flex flex-col gap-3">
               {shown.map((booking) => (
-                <Card key={booking.id} booking={booking} />
+                <Card key={booking.id} booking={booking} onMove={() => setMoving(booking)} />
               ))}
             </div>
 
@@ -142,12 +144,14 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
         )}
       </div>
 
+      <MoveBookingDialog booking={moving} onClose={() => setMoving(null)} />
+
       <PublicFooter />
     </main>
   );
 }
 
-function Card({ booking }: { booking: BookingDetail }) {
+function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void }) {
   const [open, setOpen] = useState(false);
   const state = bookingState(booking);
   const icon = activityIcon(booking.sportKey);
@@ -293,13 +297,31 @@ function Card({ booking }: { booking: BookingDetail }) {
             </div>
           )}
 
-          <div className="mt-5 border-t border-slate-200 pt-4">
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-slate-200 pt-4">
             <Link
               href={`/bookings/${booking.id}`}
               className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
             >
               Open this booking &rarr;
             </Link>
+
+            {/* Moving is what a customer reaches for instead of cancelling,
+                which is not offered: the money is with the venue. */}
+            {booking.canBeMoved && (
+              <button
+                type="button"
+                onClick={onMove}
+                className="text-sm font-bold text-slate-600 underline-offset-4 hover:text-[#2563EB] hover:underline"
+              >
+                Move to another date
+              </button>
+            )}
+
+            {booking.movesLeft === 0 && (
+              <span className="text-sm font-semibold text-slate-400">
+                Moved three times — the date is settled.
+              </span>
+            )}
           </div>
         </div>
       )}

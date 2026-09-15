@@ -3,14 +3,32 @@ import Link from "next/link";
 
 type Section = { title: string; content: ReactNode };
 
+/**
+ * The id a section is reachable at.
+ *
+ * Derived from the title rather than written beside it: a policy that numbers
+ * its own sections will renumber them the day one is added, and a link to
+ * "section 6" then points at whatever moved into sixth place.
+ */
+export const anchor = (title: string) =>
+  title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
 function LegalPageLayout({
   title,
   summary,
   sections,
+  backHref = "/sign-up",
+  backLabel = "Back to registration",
 }: {
   title: string;
   summary: string;
   sections: Section[];
+  /** Where the reader came from. Registration, unless the page says otherwise. */
+  backHref?: string;
+  backLabel?: string;
 }) {
   return (
     <main className="min-h-screen bg-[#f5f9ff] px-5 py-8 text-slate-700 sm:px-8 lg:py-12">
@@ -24,10 +42,10 @@ function LegalPageLayout({
             />
           </Link>
           <Link
-            href="/sign-up"
+            href={backHref}
             className="text-sm font-bold text-[#1264F7] hover:text-[#071955]"
           >
-            Back to registration
+            {backLabel}
           </Link>
         </header>
 
@@ -45,7 +63,7 @@ function LegalPageLayout({
 
           <div className="mt-10 space-y-9">
             {sections.map((section, index) => (
-              <section key={section.title}>
+              <section key={section.title} id={anchor(section.title)}>
                 <h2 className="text-xl font-bold text-[#071955]">
                   {index + 1}. {section.title}
                 </h2>

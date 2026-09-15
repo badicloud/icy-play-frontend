@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { publicNavHref } from "./PublicNav";
+import { publicNavHref } from "./publicSections";
 
 /**
  * Only links that go somewhere. A footer full of plausible headings that lead

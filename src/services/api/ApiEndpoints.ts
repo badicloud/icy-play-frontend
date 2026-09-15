@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
     ROOT: `${API_V1}/bookings`,
     ONE: (bookingId: string) => `${API_V1}/bookings/${bookingId}`,
     CANCEL: (bookingId: string) => `${API_V1}/bookings/${bookingId}/cancel`,
+    MOVE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/move`,
     RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/receipt`,
     SUBMIT_PAYMENT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/submit-payment`,
   },

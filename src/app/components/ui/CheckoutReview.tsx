@@ -37,6 +37,9 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
   const router = useRouter();
   const search = useSearchParams();
   const [problem, setProblem] = useState<string | null>(null);
+  // Unticked every time this page is reached. A booking that cannot be undone
+  // is not something to agree to once and then have agreed to for ever.
+  const [accepted, setAccepted] = useState(false);
 
   const choice = readCheckout(new URLSearchParams(search.toString()));
   const dates = choice === null ? [] : datesBetween(choice.from, choice.to);
@@ -181,7 +184,36 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
           </p>
         )}
 
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm leading-6 font-semibold text-amber-900">
+            Once the venue confirms this booking it cannot be cancelled, and no refund is made
+            through IcyPlay. You pay the venue directly, so we never hold your money and cannot
+            return it.
+          </p>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm font-semibold text-amber-900">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => setAccepted(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#2563EB]"
+            />
+            <span>
+              I have read and accept the{" "}
+              <Link
+                href="/booking-policy"
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold text-[#164eaa] underline underline-offset-2"
+              >
+                booking policy
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <Link
             href={bookingHref(bookableCourtId, choice.kind, dates, choice.hours)}
             className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
@@ -191,7 +223,7 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
 
           <button
             type="button"
-            disabled={blocked || booking.isPending}
+            disabled={blocked || booking.isPending || !accepted}
             onClick={() => {
               setProblem(null);
               booking.mutate({
@@ -204,7 +236,7 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
               });
             }}
             className={`rounded-full px-8 py-3.5 text-sm font-bold transition ${
-              blocked || booking.isPending
+              blocked || booking.isPending || !accepted
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : "bg-[#2563EB] text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
             }`}
@@ -213,8 +245,10 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
           </button>
         </div>
 
-        <p className="mt-3 text-right text-sm text-slate-400">
-          We will hold it while you pay. Nothing is charged here.
+        <p className="mt-3 text-right text-sm font-medium text-slate-500">
+          {accepted
+            ? "We will hold it while you pay. Nothing is charged here."
+            : "Accept the booking policy to hold this court."}
         </p>
       </div>
 

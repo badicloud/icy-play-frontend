@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import PublicHeader from './components/ui/PublicHeader';
 import ActivityCatalog from './components/ui/ActivityCatalog';
 import PublicFooter from './components/ui/PublicFooter';
@@ -251,9 +252,22 @@ export default function LandingPage() {
 				</section>
 
 				<section
-					id="how-it-works"
+					id="why-icyplay"
 					className="pt-16"
 				>
+					<div className="mb-7">
+						<p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#2563EB]">
+							Why IcyPlay
+						</p>
+						<h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">
+							What you get either side of the booking
+						</h2>
+						<p className="mt-2 max-w-2xl text-slate-600">
+							Courts you can see the availability of, payments you can check, and a
+							confirmation from a person at the venue.
+						</p>
+					</div>
+
 					<div className="rounded-[24px] border border-slate-200 bg-slate-50 p-6 lg:p-8">
 						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 							{features.map((feature) => (
@@ -269,6 +283,13 @@ export default function LandingPage() {
 								</div>
 							))}
 						</div>
+
+						<Link
+							href="/how-it-works"
+							className="mt-6 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+						>
+							See how a booking works
+						</Link>
 					</div>
 				</section>
 			</section>

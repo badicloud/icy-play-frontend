@@ -208,6 +208,10 @@ export type BookingDetail = {
   gcashAccountName: string | null;
   gcashQrCodeUrl: string | null;
   slots: BookedSlot[];
+  /** How many of the three moves are left. Zero once the date is settled. */
+  movesLeft: number;
+  /** Whether it can be moved right now — moves left, and more than a day to go. */
+  canBeMoved: boolean;
   createdAt: string;
 };
 
@@ -269,6 +273,42 @@ export function bookingState(booking: BookingDetail) {
     default:
       return { label: booking.status, tone: "quiet" as const, needsYou: false };
   }
+}
+
+/**
+ * Carries a booking to another date.
+ *
+ * One date, because nothing else may change: the hours, the court and the
+ * number of days stay as they were, which is what keeps the price identical.
+ */
+export function moveBooking(bookingId: string, startDate: string) {
+  return apiClient.post<BookingDetail, { startDate: string }>(
+    API_ENDPOINTS.BOOKINGS.MOVE(bookingId),
+    { startDate },
+  );
+}
+
+/**
+ * Whether a date is the same kind of day as the one a booking is on.
+ *
+ * Weekends are priced differently from weekdays, so a move between them would
+ * change the total — which the server refuses. Asked here as well so the date
+ * picker can grey out the days that will be turned down rather than letting
+ * somebody pick one and be told afterwards.
+ *
+ * Holidays are not known to the browser, so one may still slip through and be
+ * refused by the server. That is the right way round: better a rule enforced
+ * where it is kept than duplicated where it can drift.
+ */
+export function sameKindOfDay(from: string, to: string) {
+  const isWeekend = (iso: string) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    const weekday = new Date(year, month - 1, day).getDay();
+
+    return weekday === 0 || weekday === 6;
+  };
+
+  return isWeekend(from) === isWeekend(to);
 }
 
 export function attachReceipt(bookingId: string, receiptUrl: string) {
