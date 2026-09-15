@@ -32,6 +32,8 @@ export type CatalogCourt = {
   /** Which sport this offering is for. One court set up for three appears three times. */
   sportKey: string;
   sportName: string;
+  /** "Sport" or "Event". An occasion is quoted rather than priced by the hour. */
+  kind: string;
   divisionNumber: number;
   name: string;
   facilityId: string;
@@ -144,6 +146,18 @@ export function formatTime(value: string | null) {
 }
 
 /** Which days the peak window runs on, said the way a person would. */
+/**
+ * Whether this offering is sold at one flat rate.
+ *
+ * An occasion is hired, not played: a party at eight on a Saturday is the
+ * booking, so a peak or weekend surcharge is not a distinction anybody hiring
+ * the hall is making. Events therefore show the standard rate and nothing else
+ * — the same panel a sport gets, with one line in it.
+ */
+export function hasOneRateOnly(court: CatalogCourt) {
+  return court.kind === "Event";
+}
+
 export function peakDays(court: CatalogCourt) {
   if (court.peakOnWeekdays && court.peakOnWeekends) {
     return "every day";
@@ -219,6 +233,13 @@ const iconKeys = new Set([
   "tennis",
   "volleyball",
   "taekwondo",
+  // What the floor is hired for, drawn rather than photographed: an occasion
+  // has no equipment to photograph the way a sport does.
+  "birthday-party",
+  "concert-or-show",
+  "corporate-event",
+  "tournament",
+  "training-clinic",
 ]);
 
 export function activityIcon(key: string) {

@@ -15,7 +15,12 @@ export type DraftPhoto = {
   secureUrl: string;
   caption: string;
   isCover: boolean;
+  /** Null unless this shows the court marked out for one sport in particular. */
+  sportId: string | null;
 };
+
+/** What a photo can be tagged as showing. */
+export type TaggableSport = { id: string; name: string };
 
 type PhotoUploaderProps = {
   photos: DraftPhoto[];
@@ -23,6 +28,11 @@ type PhotoUploaderProps = {
   purpose: UploadPurpose;
   /** Ids must differ when two uploaders share a step. */
   id: string;
+  /**
+   * The sports this court is set up for. Leave it out for a gallery of the
+   * venue itself: the entrance and the car park belong to no sport.
+   */
+  sports?: TaggableSport[];
 };
 
 /**
@@ -30,7 +40,7 @@ type PhotoUploaderProps = {
  * the booking list show, so the first picture takes it automatically and the
  * admin only has to act when that guess is wrong.
  */
-function PhotoUploader({ photos, onChange, purpose, id }: PhotoUploaderProps) {
+function PhotoUploader({ photos, onChange, purpose, id, sports = [] }: PhotoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -63,6 +73,7 @@ function PhotoUploader({ photos, onChange, purpose, id }: PhotoUploaderProps) {
           secureUrl: asset.secureUrl,
           caption: "",
           isCover: false,
+          sportId: null,
         });
       }
 
@@ -97,6 +108,12 @@ function PhotoUploader({ photos, onChange, purpose, id }: PhotoUploaderProps) {
 
   function setCover(publicId: string) {
     onChange(photos.map((photo) => ({ ...photo, isCover: photo.publicId === publicId })));
+  }
+
+  function setSport(publicId: string, sportId: string | null) {
+    onChange(
+      photos.map((photo) => (photo.publicId === publicId ? { ...photo, sportId } : photo)),
+    );
   }
 
   return (
@@ -147,6 +164,26 @@ function PhotoUploader({ photos, onChange, purpose, id }: PhotoUploaderProps) {
                 alt={photo.caption || "Uploaded photo"}
                 className="h-32 w-full object-cover"
               />
+
+              {sports.length > 0 && (
+                <label className="block border-t border-slate-100 px-3 pt-2">
+                  <span className="text-xs font-bold text-slate-500">Shows the court set up for</span>
+                  <select
+                    value={photo.sportId ?? ""}
+                    onChange={(event) => setSport(photo.publicId, event.target.value || null)}
+                    className="mt-1 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold text-[#071955]"
+                  >
+                    {/* The default, and the honest answer for most pictures:
+                        a floor good for whatever is played on it. */}
+                    <option value="">Any sport</option>
+                    {sports.map((sport) => (
+                      <option key={sport.id} value={sport.id}>
+                        {sport.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               <div className="flex items-center justify-between gap-2 px-3 py-2">
                 <button

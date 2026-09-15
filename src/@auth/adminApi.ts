@@ -264,7 +264,8 @@ export type UploadPurpose =
   | "facility-photo"
   | "court-photo"
   | "contract-document"
-  | "gcash-qr-code";
+  | "gcash-qr-code"
+  | "sport-image";
 
 export function createUploadSignature(purpose: UploadPurpose) {
   return apiClient.post<UploadSignature, { purpose: UploadPurpose }>(
@@ -340,6 +341,12 @@ export type PhotoPayload = {
   caption: string | null;
   displayOrder: number;
   isCover: boolean;
+  /**
+   * The sport this shows the court marked out for, when it shows one in
+   * particular. Null is the ordinary case, and the only case for a photo of the
+   * venue rather than of a court.
+   */
+  sportId: string | null;
 };
 
 /** A picture already stored, as the API reads it back. */
@@ -350,6 +357,7 @@ export type PhotoItem = {
   caption: string | null;
   displayOrder: number;
   isCover: boolean;
+  sportId: string | null;
 };
 
 /** A file already in Cloudinary, described by what the browser posted back. */

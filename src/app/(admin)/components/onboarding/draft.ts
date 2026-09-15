@@ -213,6 +213,7 @@ export function toPayload(draft: OnboardingDraft): OnboardFacilityOwnerPayload {
         caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
         displayOrder: index,
         isCover: photo.isCover,
+        sportId: null,
       })),
     },
     operatingHours: draft.operatingHours.map((day) => ({

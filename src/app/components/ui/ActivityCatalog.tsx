@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { activityIcon, getCatalogActivities, type CatalogActivity } from "@auth/catalogApi";
 import CourtResults from "./CourtResults";
@@ -79,11 +79,33 @@ function ActivityCatalog() {
   });
 
   const all = useMemo(() => activities.data ?? [], [activities.data]);
-  const shown = filter === "all" ? all : all.filter((activity) => activity.kind === filter);
+  const shown = useMemo(
+    () => (filter === "all" ? all : all.filter((activity) => activity.kind === filter)),
+    [all, filter],
+  );
 
   // Only what is on screen can stay selected: filtering to Events while a sport
   // is picked would leave a court list under cards that no longer include it.
   const selected = shown.find((activity) => activity.key === selectedKey) ?? null;
+
+  // Inside a kind the first entry is picked for you, because a tab that lands
+  // on "now choose something" makes the reader click twice before the page
+  // says anything. "All" keeps nothing selected — there, nothing selected is
+  // the answer: every court.
+  //
+  // It runs on the data as well as on the tab, since somebody can reach a tab
+  // before the listing has arrived.
+  useEffect(() => {
+    setSelectedKey((current) => {
+      if (filter === "all") {
+        return null;
+      }
+
+      return shown.some((activity) => activity.key === current)
+        ? current
+        : (shown[0]?.key ?? null);
+    });
+  }, [filter, shown]);
 
   const counts = useMemo(
     () => ({
@@ -166,7 +188,9 @@ function ActivityCatalog() {
               activity={activity}
               selected={activity.key === selected?.key}
               onSelect={() =>
-                setSelectedKey((current) => (current === activity.key ? null : activity.key))
+                setSelectedKey((current) =>
+                  current === activity.key && filter === "all" ? null : activity.key,
+                )
               }
             />
           ))}
@@ -174,12 +198,6 @@ function ActivityCatalog() {
       )}
 
       {(filter === "all" || selected !== null) && <CourtResults activity={selected} />}
-
-      {filter !== "all" && selected === null && shown.length > 0 && (
-        <p className="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-slate-500">
-          Pick {filter === "Event" ? "an event" : "a sport"} above to see the courts taking it.
-        </p>
-      )}
     </div>
   );
 }

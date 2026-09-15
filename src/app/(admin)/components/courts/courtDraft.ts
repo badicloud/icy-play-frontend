@@ -81,6 +81,7 @@ function toPhotos(photos: DraftPhoto[]): PhotoPayload[] {
     caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
     displayOrder: index,
     isCover: photo.isCover,
+    sportId: photo.sportId,
   }));
 }
 

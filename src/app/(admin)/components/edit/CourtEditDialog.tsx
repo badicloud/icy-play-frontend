@@ -90,6 +90,7 @@ function CourtEditDialog({ court, open, onClose }: CourtEditDialogProps) {
       secureUrl: photo.secureUrl,
       caption: photo.caption ?? "",
       isCover: photo.isCover,
+      sportId: photo.sportId,
     })),
   );
   // Seeded from what the court shows today, which is the facility's schedule
@@ -187,6 +188,11 @@ function CourtEditDialog({ court, open, onClose }: CourtEditDialogProps) {
             caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
             displayOrder: index,
             isCover: photo.isCover,
+            // Dropped when the sport it names is no longer on the court: the
+            // API refuses a tag the court cannot honour, and an admin removing
+            // a sport should not be stopped by a picture.
+            sportId:
+              photo.sportId !== null && sportIds.includes(photo.sportId) ? photo.sportId : null,
           })),
         },
         isActive: form.isActive,
@@ -519,6 +525,10 @@ function CourtEditDialog({ court, open, onClose }: CourtEditDialogProps) {
           purpose="court-photo"
           photos={photos}
           onChange={setPhotos}
+          sports={sportIds.flatMap((sportId) => {
+            const sport = sports.data?.find((candidate) => candidate.id === sportId);
+            return sport ? [{ id: sport.id, name: sport.name }] : [];
+          })}
         />
       </Section>
 

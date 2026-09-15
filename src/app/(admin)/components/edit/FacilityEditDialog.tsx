@@ -59,6 +59,7 @@ function FacilityEditDialog({
       secureUrl: photo.secureUrl,
       caption: photo.caption ?? "",
       isCover: photo.isCover,
+      sportId: null,
     })),
   );
   const [pasted, setPasted] = useState("");
@@ -122,6 +123,7 @@ function FacilityEditDialog({
           caption: photo.caption.trim() === "" ? null : photo.caption.trim(),
           displayOrder: index,
           isCover: photo.isCover,
+          sportId: null,
         })),
         reason: trimmedOrNull(reason),
       });

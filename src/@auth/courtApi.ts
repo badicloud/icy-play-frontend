@@ -14,6 +14,13 @@ export type Sport = {
   isActive: boolean;
   /** How many courts list it, so retiring one is a decision with a number on it. */
   courtCount: number;
+  /**
+   * The platform's own stock picture of this sport. The booking list falls back
+   * to it for a court with no photographs of its own — a card with no picture
+   * at all reads as a broken listing.
+   */
+  imagePublicId: string | null;
+  imageSecureUrl: string | null;
 };
 
 export const sportCategories = [
@@ -35,6 +42,9 @@ export type SportPayload = {
   category: string;
   displayOrder: number;
   kind: string;
+  /** Both parts, or neither: a URL alone cannot be re-derived at another size. */
+  imagePublicId: string | null;
+  imageSecureUrl: string | null;
 };
 
 export const activityKinds = ["Sport", "Event"] as const;

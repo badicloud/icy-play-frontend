@@ -6,7 +6,7 @@
  * is rendered on the server, need these. A constant shared between the two
  * cannot live in either.
  */
-export const publicNavItems = ["Courts", "How It Works", "Help Center"];
+export const publicNavItems = ["Courts and Events", "How It Works", "Help Center"];
 
 /**
  * The items that are pages of their own rather than places on the landing page.
@@ -20,7 +20,19 @@ const pages: Record<string, string> = {
   "Help Center": "/help-center",
 };
 
-const anchor = (item: string) => item.toLowerCase().replace(/\s+/g, "-");
+/**
+ * Items whose place on the page is not spelled the way they are labelled.
+ *
+ * A label can be rewritten; an anchor is an address. "Courts and Events"
+ * grew its name when events were added, but a dozen "back to courts" links
+ * across the site — the checkout, the court page, the booking policy — point
+ * at #courts, and renaming it would break every one of them in silence.
+ */
+const anchors: Record<string, string> = {
+  "Courts and Events": "courts",
+};
+
+const anchor = (item: string) => anchors[item] ?? item.toLowerCase().replace(/\s+/g, "-");
 
 /**
  * Where an item goes. An anchor is rooted at "/" rather than bare: from the

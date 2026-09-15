@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useSnackbar } from "notistack";
 import AddOutlined from "@mui/icons-material/AddOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
+import UploadFileOutlined from "@mui/icons-material/UploadFileOutlined";
 import { ApiError } from "@/services/api";
+import { createUploadSignature } from "@auth/adminApi";
+import { uploadToCloudinary } from "@auth/cloudinaryUpload";
 import { activityKindHints, activityKinds, sportCategories, type Sport } from "@auth/courtApi";
 import { useCreateSport, useSetSportActive, useSports, useUpdateSport } from "@auth/hooks/useSports";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
@@ -13,6 +16,112 @@ import EditDialog from "../edit/EditDialog";
 
 const selectClass =
   "min-h-13 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-[#071955] shadow-sm outline-none transition focus:border-[#1264f7] focus:ring-2 focus:ring-blue-200";
+
+const maximumSizeInBytes = 10 * 1024 * 1024;
+
+type StockPicture = { publicId: string; secureUrl: string } | null;
+
+/**
+ * The platform's own picture of a sport.
+ *
+ * It is the last thing the booking list falls back to, after a venue's photo of
+ * the sport and the court's cover, so it is worth having for every sport a
+ * customer can filter on: a card with no picture reads as a broken listing, and
+ * a venue has none on the day it opens.
+ */
+function StockPictureField({
+  value,
+  onChange,
+}: {
+  value: StockPicture;
+  onChange: (picture: StockPicture) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    setError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("That has to be an image.");
+      return;
+    }
+
+    if (file.size > maximumSizeInBytes) {
+      setError(`${file.name} is larger than 10 MB.`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Straight from this browser to Cloudinary; the API only signs it.
+      const signature = await createUploadSignature("sport-image");
+      const asset = await uploadToCloudinary(file, signature);
+      onChange({ publicId: asset.publicId, secureUrl: asset.secureUrl });
+    } catch {
+      setError("The upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-bold text-[#071955]">Stock picture</p>
+      <p className="mt-1 mb-2 text-sm text-slate-500">
+        Shown in the booking list for a court that has no photograph of its own.
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {value && (
+          <img
+            src={value.secureUrl}
+            alt=""
+            className="h-20 w-28 rounded-xl border border-slate-200 object-cover"
+          />
+        )}
+
+        <input
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          id="sport-image"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              void handleFile(file);
+            }
+            event.target.value = "";
+          }}
+        />
+        <label
+          htmlFor="sport-image"
+          className={`inline-flex min-h-13 cursor-pointer items-center gap-2 rounded-xl border border-dashed px-4 text-sm font-bold transition ${
+            uploading
+              ? "cursor-wait border-slate-200 bg-slate-50 text-slate-400"
+              : "border-[#2563EB] bg-blue-50 text-[#1257d5] hover:bg-blue-100"
+          }`}
+        >
+          <UploadFileOutlined sx={{ fontSize: 18 }} />
+          {uploading ? "Uploading…" : value ? "Replace it" : "Add a picture"}
+        </label>
+
+        {value && !uploading && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="rounded-lg px-3 py-1.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-[#071955]"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {error && <p className="mt-1.5 text-sm font-semibold text-red-700">{error}</p>}
+    </div>
+  );
+}
 
 function SportDialog({
   sport,
@@ -33,12 +142,25 @@ function SportDialog({
   const [category, setCategory] = useState(sport?.category ?? sportCategories[0]);
   const [kind, setKind] = useState<string>(sport?.kind ?? "Sport");
   const [displayOrder, setDisplayOrder] = useState(String(sport?.displayOrder ?? 10));
+  const [picture, setPicture] = useState<StockPicture>(
+    sport?.imagePublicId && sport.imageSecureUrl
+      ? { publicId: sport.imagePublicId, secureUrl: sport.imageSecureUrl }
+      : null,
+  );
 
   const order = Number(displayOrder);
   const canSave = name.trim() !== "" && Number.isInteger(order) && order >= 0;
 
   async function handleSave() {
-    const payload = { name: name.trim(), category, displayOrder: order, kind };
+    const payload = {
+      name: name.trim(),
+      category,
+      displayOrder: order,
+      kind,
+      // Both parts or neither: the API keeps them together.
+      imagePublicId: picture?.publicId ?? null,
+      imageSecureUrl: picture?.secureUrl ?? null,
+    };
 
     try {
       if (sport) {
@@ -141,6 +263,10 @@ function SportDialog({
           onChange={setDisplayOrder}
           hint="Lower numbers come first inside the category."
         />
+
+        <div className="sm:col-span-2">
+          <StockPictureField value={picture} onChange={setPicture} />
+        </div>
       </div>
     </EditDialog>
   );
@@ -235,6 +361,19 @@ function AdminSportsView() {
                       key={sport.id}
                       className="flex flex-wrap items-center gap-3 border-b border-slate-100 py-3 last:border-b-0"
                     >
+                      {sport.imageSecureUrl ? (
+                        <img
+                          src={sport.imageSecureUrl}
+                          alt=""
+                          className="h-10 w-14 shrink-0 rounded-lg border border-slate-200 object-cover"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="h-10 w-14 shrink-0 rounded-lg border border-dashed border-slate-200 bg-slate-50"
+                        />
+                      )}
+
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-2 font-bold text-[#071955]">
                           {sport.name}

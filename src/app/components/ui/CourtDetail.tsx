@@ -13,6 +13,7 @@ import {
   formatAddress,
   formatTime,
   getCatalogCourt,
+  hasOneRateOnly,
   maintenanceMessage,
   peakDays,
   type CatalogCourtDetail,
@@ -109,6 +110,9 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
   const address = formatAddress(court);
   const icon = activityIcon(court.sportKey);
   const standard = court.standardHourlyRate;
+  // An occasion is hired at one rate, so the page shows one line rather than a
+  // surcharge nobody hiring the hall is being charged.
+  const extraRates = !hasOneRateOnly(court);
   const hasPeakWindow = court.peakStartsAt !== null && court.peakEndsAt !== null;
   const openDays = venue.operatingHours.filter((hour) => hour.opensAt !== null);
   const closure = maintenanceMessage(court);
@@ -327,7 +331,7 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
               ) : (
                 <dl className="mt-3 space-y-2.5">
                   <PriceRow label="Standard" amount={standard} />
-                  {court.peakHourlyRate !== null && court.peakHourlyRate !== standard && (
+                  {extraRates && court.peakHourlyRate !== null && court.peakHourlyRate !== standard && (
                     <PriceRow
                       label="Peak"
                       amount={court.peakHourlyRate}
@@ -340,10 +344,10 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
                       }
                     />
                   )}
-                  {court.weekendRate !== null && court.weekendRate !== standard && (
+                  {extraRates && court.weekendRate !== null && court.weekendRate !== standard && (
                     <PriceRow label="Weekend" amount={court.weekendRate} />
                   )}
-                  {court.holidayRate !== null && court.holidayRate !== standard && (
+                  {extraRates && court.holidayRate !== null && court.holidayRate !== standard && (
                     <PriceRow label="Holiday" amount={court.holidayRate} />
                   )}
                 </dl>

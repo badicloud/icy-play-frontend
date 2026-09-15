@@ -10,7 +10,7 @@ const columns = [
   {
     title: "Explore",
     links: [
-      { label: "Courts", href: publicNavHref("Courts") },
+      { label: "Courts and events", href: publicNavHref("Courts and Events") },
       { label: "How it works", href: publicNavHref("How It Works") },
     ],
   },

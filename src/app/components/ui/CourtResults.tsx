@@ -10,6 +10,7 @@ import {
   formatAddress,
   formatTime,
   getCatalogCourts,
+  hasOneRateOnly,
   peakDays,
   type CatalogActivity,
   type CatalogCourt,
@@ -30,7 +31,7 @@ function peso(amount: number) {
 function extraRates(court: CatalogCourt) {
   const standard = court.standardHourlyRate;
 
-  if (standard === null) {
+  if (standard === null || hasOneRateOnly(court)) {
     return [];
   }
 
