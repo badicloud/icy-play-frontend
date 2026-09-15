@@ -10,7 +10,6 @@ import Checkbox from "@mui/material/Checkbox";
 import Link from "@fuse/core/Link";
 import Button from "@mui/material/Button";
 import { Alert } from "@mui/material";
-import { useSnackbar } from "notistack";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/services/api";
 import { executeRecaptcha, preloadRecaptcha } from "../recaptchaV3";
@@ -41,7 +40,6 @@ const defaultValues = {
 };
 
 function AuthJsCredentialsSignInForm() {
-  const { enqueueSnackbar } = useSnackbar();
   const { signIn } = useIcyPlayAuth();
   const router = useRouter();
   const { control, formState, handleSubmit, setError } = useForm<FormType>({
@@ -65,7 +63,6 @@ function AuthJsCredentialsSignInForm() {
     try {
       const captchaToken = await executeRecaptcha("login");
       await signIn(email, password, captchaToken, remember ?? false);
-      enqueueSnackbar("Signed in successfully.", { variant: "success" });
       // Somebody sent here mid-booking goes back to the hours they chose, not
       // to the front page to start again.
       router.push(intendedDestination());

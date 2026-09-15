@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSnackbar } from "notistack";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -191,7 +190,6 @@ function HeaderAccountMenu() {
   const containerRef = useRef<HTMLDivElement>(null);
   const close = () => setIsOpen(false);
   const router = useRouter();
-  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (!isOpen) {
@@ -227,7 +225,6 @@ function HeaderAccountMenu() {
     try {
       await signOut();
       setIsOpen(false);
-      enqueueSnackbar("Signed out successfully.", { variant: "success" });
       router.push("/");
       router.refresh();
     } finally {
