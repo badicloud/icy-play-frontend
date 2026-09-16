@@ -78,6 +78,8 @@ export const API_ENDPOINTS = {
     HOLIDAY: (id: string) => `${API_V1}/admin/holidays/${id}`,
     HOLIDAY_RETIRE: (id: string) => `${API_V1}/admin/holidays/${id}/retire`,
     HOLIDAY_REINSTATE: (id: string) => `${API_V1}/admin/holidays/${id}/reinstate`,
+    HOLIDAY_TEMPLATE: `${API_V1}/admin/holidays/template`,
+    HOLIDAY_IMPORT: `${API_V1}/admin/holidays/import`,
     FACILITIES: `${API_V1}/admin/facilities`,
     COURTS: `${API_V1}/admin/courts`,
     COURT: (courtId: string) => `${API_V1}/admin/courts/${courtId}`,

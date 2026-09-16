@@ -6,8 +6,18 @@ import { useSnackbar } from "notistack";
 import AddOutlined from "@mui/icons-material/AddOutlined";
 import EventRepeatOutlined from "@mui/icons-material/EventRepeatOutlined";
 import WarningAmberOutlined from "@mui/icons-material/WarningAmberOutlined";
+import DownloadOutlined from "@mui/icons-material/DownloadOutlined";
+import UploadFileOutlined from "@mui/icons-material/UploadFileOutlined";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
-import { holidayKinds, holidayKindHints, type Holiday } from "@auth/holidayApi";
+import {
+  downloadHolidayTemplate,
+  holidayKinds,
+  holidayKindHints,
+  importHolidays,
+  type Holiday,
+  type HolidayImportResult,
+} from "@auth/holidayApi";
 import {
   useCreateHoliday,
   useHolidays,
@@ -167,13 +177,119 @@ function HolidayDialog({
   );
 }
 
+/**
+ * What one upload did, row by row.
+ *
+ * Every row is shown, including the ones that changed nothing: an import that
+ * says "14 added" and stops leaves the reader to work out what happened to the
+ * other six, and "they were already on the calendar" is the answer they most
+ * need to hear.
+ */
+function ImportReport({
+  result,
+  onClose,
+}: {
+  result: HolidayImportResult;
+  onClose: () => void;
+}) {
+  const colours: Record<string, string> = {
+    Added: "bg-green-100 text-green-900",
+    Skipped: "bg-slate-100 text-slate-600",
+    Rejected: "bg-red-100 text-red-900",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-[24px] bg-white shadow-2xl">
+        <div className="border-b border-slate-100 p-6">
+          <h2 className="text-xl font-bold text-[#071955]">Import finished</h2>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {result.added} added &middot; {result.skipped} already there &middot;{" "}
+            {result.rejected} could not be read
+          </p>
+        </div>
+
+        <div className="max-h-[50vh] overflow-y-auto p-6">
+          <ul className="flex flex-col gap-2">
+            {result.rows.map((row) => (
+              <li
+                key={row.row}
+                className="flex flex-wrap items-baseline gap-2 border-b border-slate-100 pb-2 last:border-b-0"
+              >
+                <span className="text-xs font-bold text-slate-400">Row {row.row}</span>
+                <span className="font-semibold text-[#071955]">
+                  {row.name ?? "(no name)"}
+                </span>
+                {row.date && <span className="text-sm text-slate-500">{row.date}</span>}
+                <span
+                  className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold ${colours[row.outcome]}`}
+                >
+                  {row.outcome}
+                </span>
+                {row.reason && (
+                  <span className="w-full text-sm text-slate-500">{row.reason}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="border-t border-slate-100 p-4 text-right">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-[#2563EB] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function AdminHolidaysView() {
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const [includeRetired, setIncludeRetired] = useState(false);
   const holidays = useHolidays(includeRetired);
   const setActive = useSetHolidayActive();
   const [editing, setEditing] = useState<Holiday | null>(null);
   const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState<"template" | "import" | null>(null);
+  const [report, setReport] = useState<HolidayImportResult | null>(null);
+
+  async function handleTemplate() {
+    setBusy("template");
+
+    try {
+      await downloadHolidayTemplate();
+    } catch {
+      enqueueSnackbar("The template could not be downloaded. Please try again.", {
+        variant: "error",
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleImport(file: File) {
+    setBusy("import");
+
+    try {
+      const result = await importHolidays(file);
+      // The calendar on screen was read before the upload, so it is behind now.
+      // Both lists: the live one and the one including retired days.
+      await queryClient.invalidateQueries({ queryKey: ["admin", "holidays"] });
+      setReport(result);
+    } catch (error) {
+      enqueueSnackbar(
+        error instanceof ApiError ? error.message : "That file could not be imported.",
+        { variant: "error" },
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const rows = holidays.data ?? [];
   // A moving holiday whose date has gone needs adding again for next year, and
@@ -214,14 +330,56 @@ function AdminHolidaysView() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-          >
-            <AddOutlined sx={{ fontSize: 18 }} />
-            Add a holiday
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => void handleTemplate()}
+              disabled={busy !== null}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-[#071955] disabled:cursor-wait disabled:text-slate-400"
+            >
+              <DownloadOutlined sx={{ fontSize: 18 }} />
+              {busy === "template" ? "Preparing…" : "Download template"}
+            </button>
+
+            <input
+              type="file"
+              id="holiday-import"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              disabled={busy !== null}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (file) {
+                  void handleImport(file);
+                }
+
+                // Cleared so that choosing the same file twice fires again,
+                // which is what somebody does after fixing a rejected row.
+                event.target.value = "";
+              }}
+            />
+            <label
+              htmlFor="holiday-import"
+              className={`inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold transition ${
+                busy !== null
+                  ? "cursor-wait text-slate-400"
+                  : "cursor-pointer text-slate-600 hover:border-slate-300 hover:text-[#071955]"
+              }`}
+            >
+              <UploadFileOutlined sx={{ fontSize: 18 }} />
+              {busy === "import" ? "Importing…" : "Import"}
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            >
+              <AddOutlined sx={{ fontSize: 18 }} />
+              Add a holiday
+            </button>
+          </div>
         </div>
 
         {stale.length > 0 && (
@@ -341,6 +499,8 @@ function AdminHolidaysView() {
       {editing && (
         <HolidayDialog key={editing.id} holiday={editing} open onClose={() => setEditing(null)} />
       )}
+
+      {report && <ImportReport result={report} onClose={() => setReport(null)} />}
     </main>
   );
 }

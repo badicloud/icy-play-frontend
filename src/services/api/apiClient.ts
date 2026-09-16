@@ -128,6 +128,40 @@ class ApiClient {
     return this.request<TResponse, never>("DELETE", path, options);
   }
 
+  /**
+   * Fetches a file rather than JSON.
+   *
+   * It goes through fetch rather than an anchor because the endpoint wants the
+   * bearer token, and a link cannot carry one. Kept here rather than in a
+   * feature module so the token stays in the one place that knows it.
+   */
+  async download(path: string): Promise<Blob> {
+    const url = new URL(path.replace(/^\//, ""), `${apiBaseUrl}/`);
+    const headers = new Headers();
+    const accessToken =
+      (await this.configuration.getAccessToken?.()) ?? this.accessToken;
+
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    const response = await fetch(url.toString(), { method: "GET", headers });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.clearAccessToken();
+        await this.configuration.onUnauthorized?.();
+      }
+
+      throw new ApiError(
+        `Request failed with status ${response.status}.`,
+        response.status,
+      );
+    }
+
+    return response.blob();
+  }
+
   async request<TResponse, TBody = unknown>(
     method: HttpMethod,
     path: string,
