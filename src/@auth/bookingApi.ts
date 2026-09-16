@@ -187,6 +187,8 @@ export type BookingDetail = {
   status: BookingStatus;
   kind: BookingKind;
   courtName: string;
+  /** Which venue, so a move can offer the other courts in the same building. */
+  facilityId: string;
   facilityName: string;
   sportName: string;
   /** The sport's stable key, for artwork. */
@@ -208,9 +210,9 @@ export type BookingDetail = {
   gcashAccountName: string | null;
   gcashQrCodeUrl: string | null;
   slots: BookedSlot[];
-  /** How many of the three moves are left. Zero once the date is settled. */
+  /** How many moves this venue still allows on this booking. */
   movesLeft: number;
-  /** Whether it can be moved right now — moves left, and more than a day to go. */
+  /** Whether it can be moved right now: moves left, and an hour still to play. */
   canBeMoved: boolean;
   createdAt: string;
 };
@@ -281,34 +283,52 @@ export function bookingState(booking: BookingDetail) {
  * One date, because nothing else may change: the hours, the court and the
  * number of days stay as they were, which is what keeps the price identical.
  */
-export function moveBooking(bookingId: string, startDate: string) {
-  return apiClient.post<BookingDetail, { startDate: string }>(
+/**
+ * What moving onto that court would cost. Asked before anybody commits, because
+ * a move that wants paying for is a different proposition from one that does
+ * not.
+ */
+export type MoveQuote = {
+  toBookableCourtId: string;
+  toCourtName: string;
+  /** Hours already played. They stay where they were, at what they cost. */
+  hoursStaying: number;
+  hoursMoving: number;
+  paidAlready: number;
+  newTotal: number;
+  /** Never less than nothing: a cheaper court is not a refund. */
+  balanceDue: number;
+  /** Minutes the new court is held while the difference is paid. */
+  holdMinutes: number;
+  isUpgrade: boolean;
+};
+
+export function quoteMove(bookingId: string, toBookableCourtId: string) {
+  return apiClient.get<MoveQuote>(API_ENDPOINTS.BOOKINGS.MOVE_QUOTE(bookingId), {
+    query: { toBookableCourtId },
+  });
+}
+
+export function moveBooking(bookingId: string, toBookableCourtId: string) {
+  return apiClient.post<BookingDetail, { toBookableCourtId: string }>(
     API_ENDPOINTS.BOOKINGS.MOVE(bookingId),
-    { startDate },
+    { toBookableCourtId },
   );
 }
 
-/**
- * Whether a date is the same kind of day as the one a booking is on.
- *
- * Weekends are priced differently from weekdays, so a move between them would
- * change the total — which the server refuses. Asked here as well so the date
- * picker can grey out the days that will be turned down rather than letting
- * somebody pick one and be told afterwards.
- *
- * Holidays are not known to the browser, so one may still slip through and be
- * refused by the server. That is the right way round: better a rule enforced
- * where it is kept than duplicated where it can drift.
- */
-export function sameKindOfDay(from: string, to: string) {
-  const isWeekend = (iso: string) => {
-    const [year, month, day] = iso.split("-").map(Number);
-    const weekday = new Date(year, month - 1, day).getDay();
+/** The GCash receipt for the difference an upgrade came to. */
+export function attachMoveReceipt(bookingId: string, receiptUrl: string) {
+  return apiClient.post<BookingDetail, { receiptUrl: string }>(
+    API_ENDPOINTS.BOOKINGS.MOVE_RECEIPT(bookingId),
+    { receiptUrl },
+  );
+}
 
-    return weekday === 0 || weekday === 6;
-  };
-
-  return isWeekend(from) === isWeekend(to);
+export function withdrawMove(bookingId: string) {
+  return apiClient.post<BookingDetail, Record<string, never>>(
+    API_ENDPOINTS.BOOKINGS.MOVE_WITHDRAW(bookingId),
+    {},
+  );
 }
 
 export function attachReceipt(bookingId: string, receiptUrl: string) {

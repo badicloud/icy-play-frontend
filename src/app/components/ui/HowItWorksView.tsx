@@ -66,7 +66,7 @@ const questions = [
   },
   {
     q: "How do I move a booking?",
-    a: "Open it from My bookings and pick another date — up to three times, as long as it is more than 24 hours before it starts. The hours, the court and the number of days stay exactly as they are, which is what keeps the total identical: nothing further is charged and nothing is returned. A weekday booking moves to a weekday and a weekend one to a weekend, because those days are priced differently. The hours you leave go straight back on sale.",
+    a: "Open it from My bookings and pick another court. The hours stay exactly as they are — only the court changes — and you can move before it starts or while it is being played, though not once the last hour has gone. If the new court costs more you are told what the difference comes to before you commit, and you pay that and nothing else: the hours have not changed, so the platform fee does not either. If it costs less, nothing is charged and nothing is returned. Each venue sets how many times one booking can be moved. The hours you leave go straight back on sale.",
     policy: "Moving a booking",
   },
   {

@@ -106,32 +106,38 @@ const sections = [
     content: (
       <>
         <p>
-          A booking cannot be refunded, but it can be moved to another date. This is the answer to
+          A booking cannot be refunded, but it can be moved to another court. This is the answer to
           something coming up, and it is what to reach for instead of asking to cancel.
         </p>
         <ul>
           <li>
-            <strong>Three times.</strong> After the third move the date is settled. A booking that
-            can be carried forward for ever is an option on the venue&apos;s calendar rather than a
-            booking, and the venue is the one turning other people away to keep holding it.
-          </li>
-          <li>
-            <strong>More than 24 hours before it starts.</strong> Inside the last day the hour stays
-            where it is. The venue has kept it free and turned others away.
+            <strong>Before it starts, or while it is being played.</strong> A court that fails at
+            two o&apos;clock is exactly when a move is worth most, and the hours still to come can
+            go somewhere else. Once the last hour has been played there is nothing left to move.
           </li>
           <li>
             <strong>The hours do not change.</strong> A booking from 11am to 4pm moves to 11am to
-            4pm on another date, on the same court, for the same number of days.
+            4pm on another court, for the same number of days. Only the court changes.
           </li>
           <li>
-            <strong>Weekday for a weekday, weekend for a weekend</strong>, and not onto a holiday.
-            Courts are priced differently on those days, and a move that changed the price would be
-            a second payment or a refund rather than a move.
+            <strong>A limited number of times</strong>, set by each venue. A booking that can be
+            carried forward for ever is an option on the venue&apos;s calendar rather than a
+            booking, and the venue is the one turning other people away to keep holding it.
           </li>
         </ul>
         <p>
-          The hours you leave go straight back on sale, and the total stays exactly as it was.
-          Nothing further is charged and nothing is returned.
+          <strong>If the new court costs more</strong>, you pay the difference and nothing else —
+          the hours have not changed, so the platform fee does not change either. You are told what
+          it comes to before you commit to anything, and the court is held for you while you pay.
+          The booking moves once the venue has seen the payment.
+        </p>
+        <p>
+          <strong>If the new court costs less</strong>, nothing is charged and nothing is returned.
+          There are no refunds on this platform, and a move is what there is instead.
+        </p>
+        <p>
+          A booking already being played moves only the hours still to come. The hours you have had
+          stay on the court you had them on, at what they cost. The hours you leave go back on sale.
         </p>
       </>
     ),
@@ -147,6 +153,12 @@ const sections = [
         <p>
           If the venue cancels or closes — maintenance, weather, or anything else on their side —
           what happens next is between you and them, and we would expect them to make it right.
+        </p>
+        <p>
+          A venue can also move you itself when a court develops a problem, and has to say why. If
+          the court it moves you to costs more, the venue either asks you to upgrade — which you
+          are free to decline — or covers the difference itself. It cannot quietly charge you for
+          a move you did not ask for.
         </p>
       </>
     ),

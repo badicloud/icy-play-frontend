@@ -159,8 +159,9 @@ const topics: Topic[] = [
             <Link href="/bookings" className="font-bold text-[#164eaa] underline-offset-2 hover:underline">
               my bookings
             </Link>{" "}
-            and pick another date. Up to three times, more than 24 hours before it starts, same
-            hours, same court, and a weekday for a weekday or a weekend for a weekend.{" "}
+            and pick another court. The hours stay as they are — only the court changes. You can
+            move before it starts or while it is being played, and if the new court costs more you
+            pay the difference and nothing else.{" "}
             <Policy section="Moving a booking" />
           </>
         ),

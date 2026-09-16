@@ -2,36 +2,27 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
-import { moveBooking, sameKindOfDay, type BookingDetail } from "@auth/bookingApi";
-
-/** As far ahead as a court takes bookings, so the picker cannot offer further. */
-const DaysAhead = 90;
-
-function iso(date: Date) {
-  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-
-  return shifted.toISOString().slice(0, 10);
-}
-
-function longDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-
-  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+import { getCatalogCourts } from "@auth/catalogApi";
+import {
+  moveBooking,
+  peso,
+  quoteMove,
+  type BookingDetail,
+  type MoveQuote,
+} from "@auth/bookingApi";
 
 /**
- * Moving a booking to another date.
+ * Moving a booking onto another court.
  *
- * Only the date is asked for. The hours, the court and the number of days stay
- * as they were — that is what keeps the total identical, which is what lets a
- * move happen at all when the money is already with the venue.
+ * Only the court is asked for. The hours stay as they are — a booking from 11am
+ * to 4pm moves to 11am to 4pm somewhere else — because a customer moving off a
+ * court that has a problem wants the same slot, not a rescheduling.
+ *
+ * The price is answered before anything is committed to. "Move this booking"
+ * and "move it and pay another twelve hundred pesos" are different questions,
+ * and only one of them can be answered with a tap.
  */
 function MoveBookingDialog({
   booking,
@@ -41,17 +32,40 @@ function MoveBookingDialog({
   onClose: () => void;
 }) {
   const client = useQueryClient();
-  const [date, setDate] = useState("");
+  const [chosen, setChosen] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  // A date typed against one booking must not follow the dialog to the next.
+  // A court picked against one booking must not follow the dialog to the next.
   useEffect(() => {
-    setDate("");
+    setChosen(null);
     setProblem(null);
   }, [booking?.id]);
 
+  // The same listing a customer browses, narrowed to this venue. A move offers
+  // the other courts in the building, and the court it is already on is not one
+  // of them.
+  const courts = useQuery({
+    queryKey: ["catalog", "courts", "*"],
+    queryFn: () => getCatalogCourts(),
+    staleTime: 5 * 60 * 1000,
+    enabled: booking !== null,
+  });
+
+  const elsewhere = (courts.data ?? []).filter(
+    (court) =>
+      court.facilityId === booking?.facilityId &&
+      court.bookableCourtId !== booking.bookableCourtId,
+  );
+
+  const quote = useQuery({
+    queryKey: ["move-quote", booking?.id, chosen],
+    queryFn: () => quoteMove(booking!.id, chosen!),
+    enabled: booking !== null && chosen !== null,
+    retry: false,
+  });
+
   const move = useMutation({
-    mutationFn: (startDate: string) => moveBooking(booking!.id, startDate),
+    mutationFn: (toBookableCourtId: string) => moveBooking(booking!.id, toBookableCourtId),
     onSuccess: (updated) => {
       client.setQueryData(["booking", updated.id], updated);
       void client.invalidateQueries({ queryKey: ["my-bookings"] });
@@ -67,69 +81,100 @@ function MoveBookingDialog({
     return null;
   }
 
-  // Tomorrow at the earliest: the rule is more than a day's notice, and a
-  // picker that offers today would be offering a refusal.
-  const earliest = new Date();
-  earliest.setDate(earliest.getDate() + 1);
-
-  const latest = new Date();
-  latest.setDate(latest.getDate() + DaysAhead);
-
-  const days = booking.endDate === booking.startDate
-    ? 1
-    : (Date.parse(booking.endDate) - Date.parse(booking.startDate)) / 86400000 + 1;
-
-  const wrongKind = date !== "" && !sameKindOfDay(booking.startDate, date);
-  const ready = date !== "" && !wrongKind && !move.isPending;
+  const priced = quote.data ?? null;
+  const refused = quote.isError ? (quote.error as ApiError)?.message : null;
+  const ready = chosen !== null && priced !== null && !move.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
         <h2 className="text-xl font-extrabold text-[#071955]">Move this booking</h2>
         <p className="mt-1 text-sm font-medium text-slate-600">
-          {booking.courtName} at {booking.facilityName}. The hours stay as they are — only the date
-          changes.
+          {booking.courtName} at {booking.facilityName}. The hours stay as they are — only the
+          court changes.
         </p>
 
         <dl className="mt-4 space-y-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Currently</dt>
-            <dd className="font-bold text-[#071955]">{longDate(booking.startDate)}</dd>
+            <dt className="text-slate-500">Paid so far</dt>
+            <dd className="font-bold text-[#071955]">{peso(booking.total)}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-slate-500">Moves left</dt>
-            <dd className="font-bold text-[#071955]">
-              {booking.movesLeft} of 3
-            </dd>
+            <dd className="font-bold text-[#071955]">{booking.movesLeft}</dd>
           </div>
         </dl>
 
-        <label htmlFor="move-date" className="mt-5 block text-sm font-bold text-[#071955]">
-          Move it to
-        </label>
-        <input
-          id="move-date"
-          type="date"
-          value={date}
-          min={iso(earliest)}
-          max={iso(latest)}
-          onChange={(event) => {
-            setDate(event.target.value);
-            setProblem(null);
-          }}
-          className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-[#071955] outline-none focus:border-[#2563EB]"
-        />
+        <p className="mt-5 text-sm font-bold text-[#071955]">Move it to</p>
 
-        {days > 1 && (
-          <p className="mt-2 text-xs font-medium text-slate-500">
-            This is a {days}-day booking. Pick the first day; the rest follow.
+        {courts.isPending ? (
+          <p className="mt-2 text-sm text-slate-500">Looking at what else is here…</p>
+        ) : elsewhere.length === 0 ? (
+          <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            This venue has no other court to move onto.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-2">
+            {elsewhere.map((court) => {
+              const here = chosen === court.bookableCourtId;
+
+              return (
+                <li key={court.bookableCourtId}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChosen(court.bookableCourtId);
+                      setProblem(null);
+                    }}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      here
+                        ? "border-[#2563EB] bg-blue-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold text-[#071955]">{court.name}</span>
+                    <span className="block text-xs font-semibold text-slate-500">
+                      {court.sportName}
+                      {court.standardHourlyRate !== null &&
+                        ` · ${peso(court.standardHourlyRate)}/hr`}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* Said before anything is committed to, because a move that wants
+            paying for is a different proposition from one that does not. */}
+        {chosen !== null && quote.isPending && (
+          <p className="mt-3 text-sm text-slate-500">Working out what that comes to…</p>
+        )}
+
+        {refused && (
+          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            {refused}
           </p>
         )}
 
-        {wrongKind && (
-          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-            A weekday booking moves to a weekday and a weekend one to a weekend. Those days are
-            priced differently, and a move cannot change what you have paid.
+        {priced && priced.balanceDue > 0 && (
+          <div className="mt-3 rounded-2xl border border-[#2563EB] bg-blue-50 px-4 py-3">
+            <p className="text-sm font-bold text-[#071955]">
+              That court costs {peso(priced.balanceDue)} more.
+            </p>
+            <p className="mt-1 text-xs leading-5 font-medium text-[#164eaa]">
+              You pay the difference and nothing else — the hours have not changed, so the platform
+              fee does not either. The court is held for {priced.holdMinutes} minutes while you pay,
+              and the booking moves once the venue has seen the payment.
+            </p>
+          </div>
+        )}
+
+        {priced && priced.balanceDue === 0 && (
+          <p className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
+            Nothing more to pay.
+            {priced.newTotal < priced.paidAlready &&
+              " That court costs less, and there are no refunds — you keep the booking and pay no more."}
           </p>
         )}
 
@@ -140,8 +185,8 @@ function MoveBookingDialog({
         )}
 
         <p className="mt-4 text-xs leading-5 font-medium text-slate-500">
-          The hours you leave go back on sale straight away. Nothing further is charged and nothing
-          is returned — see the{" "}
+          The hours you leave go back on sale once the move is confirmed. Nothing is returned if the
+          new court costs less — see the{" "}
           <Link
             href="/booking-policy"
             target="_blank"
@@ -165,14 +210,18 @@ function MoveBookingDialog({
           <button
             type="button"
             disabled={!ready}
-            onClick={() => move.mutate(date)}
+            onClick={() => move.mutate(chosen!)}
             className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
               ready
                 ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"
                 : "cursor-not-allowed bg-slate-200 text-slate-400"
             }`}
           >
-            {move.isPending ? "Moving…" : "Move it"}
+            {move.isPending
+              ? "Asking…"
+              : priced && priced.balanceDue > 0
+                ? `Upgrade for ${peso(priced.balanceDue)}`
+                : "Move it"}
           </button>
         </div>
       </div>
@@ -180,4 +229,5 @@ function MoveBookingDialog({
   );
 }
 
+export type { MoveQuote };
 export default MoveBookingDialog;
