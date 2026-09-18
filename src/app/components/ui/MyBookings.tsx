@@ -10,6 +10,7 @@ import {
   getMyBookings,
   peso,
   type BookingDetail,
+  type PendingMove,
 } from "@auth/bookingApi";
 import { activityIcon } from "@auth/catalogApi";
 import HoldCountdown from "./HoldCountdown";
@@ -28,6 +29,57 @@ const tones = {
   bad: "bg-red-100 text-red-800",
   quiet: "bg-slate-100 text-slate-500",
 } as const;
+
+/**
+ * What is happening to a booking that has been asked to move.
+ *
+ * The booking has not moved and still shows its old court, which without this
+ * reads as a request that went nowhere — and a customer who reads it that way
+ * asks again. So: where it is going, what is owed, and who is being waited on.
+ */
+function MoveWaiting({ move }: { move: PendingMove }) {
+  const owing = move.balanceDue > 0;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+      <p className="text-sm font-bold text-amber-900">
+        {move.raisedByVenue
+          ? `The venue is moving this booking to ${move.toCourtName}.`
+          : `You asked to move this booking to ${move.toCourtName}.`}
+      </p>
+
+      {move.reason && (
+        <p className="mt-1 text-sm leading-6 text-amber-900">
+          The venue&apos;s reason: {move.reason}
+        </p>
+      )}
+
+      <p className="mt-1 text-sm leading-6 text-amber-800">
+        {owing ? (
+          <>
+            {peso(move.balanceDue)} is still to pay for it. Once that time is up the court goes
+            back on sale and the booking stays where it is.
+          </>
+        ) : (
+          <>
+            Nothing more to pay. It is with the venue now, and the booking moves once they have
+            approved it. Until then it stays on the court below.
+          </>
+        )}
+      </p>
+
+      {/* The same countdown the checkout uses, rather than a time printed into
+          the sentence: this one is in the reader's own clock and it ticks, so
+          the deadline is felt rather than stated. */}
+      {owing && (
+        <span className="mt-2 block">
+          <HoldCountdown holdsUntil={move.holdsUntil} compact />
+        </span>
+      )}
+
+    </div>
+  );
+}
 
 /**
  * Everything this customer has booked.
@@ -216,6 +268,18 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
           </span>
         )}
 
+        {/* Same reasoning as the countdown above: a booking waiting on a move
+            is in motion, and the customer should not have to open the card to
+            find that out. */}
+        {booking.pendingMove && (
+          <span className="mt-3 flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">
+            <span aria-hidden>&#8635;</span>
+            {booking.pendingMove.balanceDue > 0
+              ? `Move to ${booking.pendingMove.toCourtName} — ${peso(booking.pendingMove.balanceDue)} to pay`
+              : `Move to ${booking.pendingMove.toCourtName} — waiting for the venue`}
+          </span>
+        )}
+
         <span className="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-slate-100 pt-3.5">
           <span className="text-sm font-semibold text-slate-600">
             {when(booking)}
@@ -296,6 +360,8 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
               </a>
             </div>
           )}
+
+          {booking.pendingMove && <MoveWaiting move={booking.pendingMove} />}
 
           <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-slate-200 pt-4">
             <Link

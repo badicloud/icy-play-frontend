@@ -214,7 +214,30 @@ export type BookingDetail = {
   movesLeft: number;
   /** Whether it can be moved right now: moves left, and an hour still to play. */
   canBeMoved: boolean;
+  /** The move this booking is waiting on, or null when it is not waiting on one. */
+  pendingMove: PendingMove | null;
   createdAt: string;
+};
+
+/**
+ * A move asked for and not yet settled.
+ *
+ * Three things the customer needs: where it is going, whether they owe
+ * anything, and who they are waiting on.
+ */
+export type PendingMove = {
+  /** AwaitingPayment or AwaitingConfirmation. */
+  status: "AwaitingPayment" | "AwaitingConfirmation";
+  /** The court as it was named when the move was asked for. */
+  toCourtName: string;
+  balanceDue: number;
+  /** When the held court goes back on sale, if it is unpaid. */
+  holdsUntil: string;
+  /** True when the venue moved it rather than the customer asking. */
+  raisedByVenue: boolean;
+  /** Why, when an attendant moved it. */
+  reason: string | null;
+  requestedAt: string;
 };
 
 /**
