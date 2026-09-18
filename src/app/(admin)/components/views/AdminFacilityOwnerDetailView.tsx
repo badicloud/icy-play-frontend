@@ -463,10 +463,19 @@ function InvitationPanel({
   const { enqueueSnackbar } = useSnackbar();
   const resend = useResendInvitation(facilityOwnerId);
 
-  async function handleResend() {
+  // Whether one has ever gone out. The same call sends the first and replaces a
+  // later one, but they are not the same thing to the person pressing the
+  // button: "Resend" over "No invitation has gone out yet" reads as though
+  // something has already been tried and the screen has lost track of it.
+  const sentBefore = invitation.lastSentAt !== null;
+
+  async function handleSend() {
     try {
       await resend.mutateAsync();
-      enqueueSnackbar("A fresh invitation is on its way.", { variant: "success" });
+      enqueueSnackbar(
+        sentBefore ? "A fresh invitation is on its way." : "The invitation is on its way.",
+        { variant: "success" },
+      );
     } catch {
       enqueueSnackbar("The invitation could not be sent. Please try again.", {
         variant: "error",
@@ -506,16 +515,21 @@ function InvitationPanel({
 
           <button
             type="button"
-            onClick={() => void handleResend()}
+            onClick={() => void handleSend()}
             disabled={resend.isPending}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none"
           >
             <SendOutlined sx={{ fontSize: 16 }} />
-            {resend.isPending ? "Sending…" : "Resend invitation"}
+            {resend.isPending
+              ? "Sending…"
+              : sentBefore
+                ? "Resend invitation"
+                : "Send invitation"}
           </button>
           <p className="mt-2 text-sm text-slate-500">
-            Sending a new one stops the previous link working, so only the newest invitation is
-            ever live.
+            {sentBefore
+              ? "Sending a new one stops the previous link working, so only the newest invitation is ever live."
+              : "The owner sets their own password from the link, so nobody here ever handles it."}
           </p>
         </>
       )}
