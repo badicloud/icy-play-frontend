@@ -51,9 +51,15 @@ function MoveBookingDialog({
     enabled: booking !== null,
   });
 
+  // The other courts for the same sport in the same building.
+  //
+  // A move changes which floor the hours are on, not what was bought — so a
+  // pickleball booking is offered pickleball courts. The server refuses
+  // anything else; this is so the list does not offer what it would refuse.
   const elsewhere = (courts.data ?? []).filter(
     (court) =>
       court.facilityId === booking?.facilityId &&
+      court.sportKey === booking.sportKey &&
       court.bookableCourtId !== booking.bookableCourtId,
   );
 
@@ -87,118 +93,122 @@ function MoveBookingDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
-        <h2 className="text-xl font-extrabold text-[#071955]">Move this booking</h2>
-        <p className="mt-1 text-sm font-medium text-slate-600">
-          {booking.courtName} at {booking.facilityName}. The hours stay as they are — only the
-          court changes.
-        </p>
-
-        <dl className="mt-4 space-y-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Paid so far</dt>
-            <dd className="font-bold text-[#071955]">{peso(booking.total)}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Moves left</dt>
-            <dd className="font-bold text-[#071955]">{booking.movesLeft}</dd>
-          </div>
-        </dl>
-
-        <p className="mt-5 text-sm font-bold text-[#071955]">Move it to</p>
-
-        {courts.isPending ? (
-          <p className="mt-2 text-sm text-slate-500">Looking at what else is here…</p>
-        ) : elsewhere.length === 0 ? (
-          <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-            This venue has no other court to move onto.
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+        <div className="shrink-0 px-6 pt-6">
+          <h2 className="text-xl font-extrabold text-[#071955]">Move this booking</h2>
+          <p className="mt-1 text-sm font-medium text-slate-600">
+            {booking.courtName} at {booking.facilityName}. The hours stay as they are — only the
+            court changes.
           </p>
-        ) : (
-          <ul className="mt-2 flex flex-col gap-2">
-            {elsewhere.map((court) => {
-              const here = chosen === court.bookableCourtId;
+        </div>
 
-              return (
-                <li key={court.bookableCourtId}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setChosen(court.bookableCourtId);
-                      setProblem(null);
-                    }}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                      here
-                        ? "border-[#2563EB] bg-blue-50"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <span className="block text-sm font-bold text-[#071955]">{court.name}</span>
-                    <span className="block text-xs font-semibold text-slate-500">
-                      {court.sportName}
-                      {court.standardHourlyRate !== null &&
-                        ` · ${peso(court.standardHourlyRate)}/hr`}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-2">
+          <dl className="mt-4 space-y-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500">Paid so far</dt>
+              <dd className="font-bold text-[#071955]">{peso(booking.total)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500">Moves left</dt>
+              <dd className="font-bold text-[#071955]">{booking.movesLeft}</dd>
+            </div>
+          </dl>
 
-        {/* Said before anything is committed to, because a move that wants
-            paying for is a different proposition from one that does not. */}
-        {chosen !== null && quote.isPending && (
-          <p className="mt-3 text-sm text-slate-500">Working out what that comes to…</p>
-        )}
+          <p className="mt-5 text-sm font-bold text-[#071955]">Move it to</p>
 
-        {refused && (
-          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-            {refused}
-          </p>
-        )}
-
-        {priced && priced.balanceDue > 0 && (
-          <div className="mt-3 rounded-2xl border border-[#2563EB] bg-blue-50 px-4 py-3">
-            <p className="text-sm font-bold text-[#071955]">
-              That court costs {peso(priced.balanceDue)} more.
+          {courts.isPending ? (
+            <p className="mt-2 text-sm text-slate-500">Looking at what else is here…</p>
+          ) : elsewhere.length === 0 ? (
+            <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              This venue has no other {booking.sportName.toLowerCase()} court to move onto.
             </p>
-            <p className="mt-1 text-xs leading-5 font-medium text-[#164eaa]">
-              You pay the difference and nothing else — the hours have not changed, so the platform
-              fee does not either. The court is held for {priced.holdMinutes} minutes while you pay,
-              and the booking moves once the venue has seen the payment.
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {elsewhere.map((court) => {
+                const here = chosen === court.bookableCourtId;
+
+                return (
+                  <li key={court.bookableCourtId}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChosen(court.bookableCourtId);
+                        setProblem(null);
+                      }}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                        here
+                          ? "border-[#2563EB] bg-blue-50"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="block text-sm font-bold text-[#071955]">{court.name}</span>
+                      <span className="block text-xs font-semibold text-slate-500">
+                        {court.sportName}
+                        {court.standardHourlyRate !== null &&
+                          ` · ${peso(court.standardHourlyRate)}/hr`}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {/* Said before anything is committed to, because a move that wants
+              paying for is a different proposition from one that does not. */}
+          {chosen !== null && quote.isPending && (
+            <p className="mt-3 text-sm text-slate-500">Working out what that comes to…</p>
+          )}
+
+          {refused && (
+            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+              {refused}
             </p>
-          </div>
-        )}
+          )}
 
-        {priced && priced.balanceDue === 0 && (
-          <p className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
-            Nothing more to pay.
-            {priced.newTotal < priced.paidAlready &&
-              " That court costs less, and there are no refunds — you keep the booking and pay no more."}
+          {priced && priced.balanceDue > 0 && (
+            <div className="mt-3 rounded-2xl border border-[#2563EB] bg-blue-50 px-4 py-3">
+              <p className="text-sm font-bold text-[#071955]">
+                That court costs {peso(priced.balanceDue)} more.
+              </p>
+              <p className="mt-1 text-xs leading-5 font-medium text-[#164eaa]">
+                You pay the difference and nothing else — the hours have not changed, so the platform
+                fee does not either. The court is held for {priced.holdMinutes} minutes while you pay,
+                and the booking moves once the venue has seen the payment.
+              </p>
+            </div>
+          )}
+
+          {priced && priced.balanceDue === 0 && (
+            <p className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
+              Nothing more to pay.
+              {priced.newTotal < priced.paidAlready &&
+                " That court costs less, and there are no refunds — you keep the booking and pay no more."}
+            </p>
+          )}
+
+          {problem && (
+            <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+              {problem}
+            </p>
+          )}
+
+          <p className="mt-4 text-xs leading-5 font-medium text-slate-500">
+            The hours you leave go back on sale once the move is confirmed. Nothing is returned if the
+            new court costs less — see the{" "}
+            <Link
+              href="/booking-policy"
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold text-[#164eaa] underline underline-offset-2"
+            >
+              booking policy
+            </Link>
+            .
           </p>
-        )}
+        </div>
 
-        {problem && (
-          <p className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-            {problem}
-          </p>
-        )}
-
-        <p className="mt-4 text-xs leading-5 font-medium text-slate-500">
-          The hours you leave go back on sale once the move is confirmed. Nothing is returned if the
-          new court costs less — see the{" "}
-          <Link
-            href="/booking-policy"
-            target="_blank"
-            rel="noreferrer"
-            className="font-bold text-[#164eaa] underline underline-offset-2"
-          >
-            booking policy
-          </Link>
-          .
-        </p>
-
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        <div className="shrink-0 flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
           <button
             type="button"
             onClick={onClose}
