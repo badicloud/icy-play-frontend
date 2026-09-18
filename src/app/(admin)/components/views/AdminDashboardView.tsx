@@ -10,6 +10,7 @@ import PeopleAltOutlined from "@mui/icons-material/PeopleAltOutlined";
 import SportsBasketballOutlined from "@mui/icons-material/SportsBasketballOutlined";
 import SportsTennisOutlined from "@mui/icons-material/SportsTennisOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
+import SeedVenuePanel from "../SeedVenuePanel";
 
 type AdminSection = {
   title: string;
@@ -182,6 +183,8 @@ function AdminDashboardView() {
               </div>
             </section>
           ))}
+
+          <SeedVenuePanel />
         </div>
       </div>
     </main>

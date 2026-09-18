@@ -220,3 +220,30 @@ export function waitingFor(submittedAt: string | null, now: Date) {
 
   return days === 1 ? "yesterday" : `${days} days ago`;
 }
+
+/**
+ * The two dials a venue sets for itself, both about how long it is prepared to
+ * hold a court for somebody who has not paid yet.
+ *
+ * The range travels with the values so the panel can say what is possible
+ * rather than refusing after the fact.
+ */
+export type DeskSettings = {
+  partialBookingExpiryMinutes: number;
+  moveLimit: number;
+  smallestExpiry: number;
+  largestExpiry: number;
+  smallestMoveLimit: number;
+  largestMoveLimit: number;
+};
+
+export function getDeskSettings() {
+  return apiClient.get<DeskSettings>(API_ENDPOINTS.DESK.SETTINGS);
+}
+
+export function updateDeskSettings(payload: {
+  partialBookingExpiryMinutes: number;
+  moveLimit: number;
+}) {
+  return apiClient.put<DeskSettings, typeof payload>(API_ENDPOINTS.DESK.SETTINGS, payload);
+}

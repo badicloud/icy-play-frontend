@@ -6,6 +6,7 @@ import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import PaymentsOutlined from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlined from "@mui/icons-material/ReceiptLongOutlined";
+import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import { useDeskBookings, useDeskVenues } from "@auth/hooks/useDesk";
 
@@ -36,6 +37,13 @@ const sections: DeskSection[] = [
     description: "Everything booked on each court — its diary, and its list of what happened.",
     href: "/desk/court-bookings",
     icon: <CalendarMonthOutlined />,
+  },
+  {
+    title: "Settings",
+    description:
+      "How long you hold a court for somebody who has not paid yet, and how often a booking may be moved.",
+    href: "/desk/settings",
+    icon: <TuneOutlined />,
   },
   {
     title: "Reports",

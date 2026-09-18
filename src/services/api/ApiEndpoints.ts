@@ -73,6 +73,9 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/cancel`,
+    SEED_VENUE: `${API_V1}/admin/seed/venue`,
+    SEED_VENUES: `${API_V1}/admin/seed/venues`,
+    SEED_ALLOWED: `${API_V1}/admin/seed/allowed`,
     SPORTS: `${API_V1}/admin/sports`,
     SPORT: (id: string) => `${API_V1}/admin/sports/${id}`,
     SPORT_RETIRE: (id: string) => `${API_V1}/admin/sports/${id}/retire`,
@@ -103,6 +106,7 @@ export const API_ENDPOINTS = {
   },
   /** The venue's desk: what an owner or attendant confirms. */
   DESK: {
+    SETTINGS: `${API_V1}/desk/settings`,
     VENUES: `${API_V1}/desk/venues`,
     BOOKINGS: `${API_V1}/desk/bookings`,
     COURTS: `${API_V1}/desk/courts`,
