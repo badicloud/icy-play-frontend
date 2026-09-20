@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
 import {
   bookingHref,
@@ -11,14 +11,63 @@ import {
   createBooking,
   datesBetween,
   getAvailability,
+  getMyBookings,
   peso,
   readCheckout,
   type AvailabilityDay,
   type AvailabilitySlot,
+  type BookingDetail,
 } from "@auth/bookingApi";
 import CheckoutSteps from "./CheckoutSteps";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
+
+/**
+ * The unpaid booking this customer already holds for exactly this choice, if
+ * there is one.
+ *
+ * Availability cannot answer this: it says whether an hour is free, and an hour
+ * you are holding yourself is not free. Without this the page tells you
+ * somebody has taken hours that you are the one holding, and offers to sell
+ * them to you again.
+ *
+ * Only a booking still waiting to be paid for counts. A confirmed one is
+ * settled and a lapsed one has let go, and neither is somewhere to send anybody.
+ */
+function alreadyHeld(
+  bookings: BookingDetail[] | undefined,
+  bookableCourtId: string,
+  choice: { kind: string; from: string; to: string; hours: string[] } | null,
+) {
+  if (bookings === undefined || choice === null) {
+    return null;
+  }
+
+  return (
+    bookings.find((candidate) => {
+      if (
+        candidate.bookableCourtId !== bookableCourtId ||
+        candidate.status !== "PendingPayment" ||
+        candidate.hasLapsed ||
+        candidate.kind !== choice.kind
+      ) {
+        return false;
+      }
+
+      // An hourly booking matches on the hours themselves. A whole day or a run
+      // of days matches on the dates: which hours those cover is the venue's
+      // opening times, not the customer's choice, so comparing them would fail
+      // the moment a venue opened an hour earlier.
+      return choice.kind === "Hourly"
+        ? choice.hours.every((startsAt) =>
+            candidate.slots.some(
+              (slot) => slot.date === choice.from && slot.startsAt === startsAt,
+            ),
+          )
+        : candidate.startDate === choice.from && candidate.endDate === choice.to;
+    }) ?? null
+  );
+}
 
 /**
  * Step one: what you picked, what it costs, and one button that turns it into a
@@ -52,6 +101,16 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
     })),
   });
 
+  // What this customer already holds. Availability answers "is this hour free"
+  // and nothing more, so an hour held by the very person looking at it comes
+  // back taken — which is true, and useless. This is how the page tells the
+  // difference between somebody else's hold and your own.
+  const mine = useQuery({
+    queryKey: ["my-bookings"],
+    queryFn: getMyBookings,
+    staleTime: 30 * 1000,
+  });
+
   const booking = useMutation({
     mutationFn: createBooking,
     onSuccess: (created) => router.replace(`/bookings/${created.id}`),
@@ -60,6 +119,18 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
         error instanceof ApiError ? error.message : "That did not work. Please try again.",
       ),
   });
+
+  const held = alreadyHeld(mine.data, bookableCourtId, choice);
+
+  // Somebody who already holds these hours is not choosing them, they are
+  // coming back to pay for them. Sending them on rather than showing the
+  // review again also takes away the three things that would be wrong here:
+  // a policy to accept, hours to change, and a court to hold.
+  useEffect(() => {
+    if (held !== null) {
+      router.replace(`/bookings/${held.id}`);
+    }
+  }, [held, router]);
 
   if (choice === null) {
     return (
@@ -71,7 +142,18 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
     );
   }
 
-  if (results.some((result) => result.isPending)) {
+  if (held !== null) {
+    return (
+      <Shell>
+        <p className="text-slate-500">You are already holding these hours. Taking you to them…</p>
+      </Shell>
+    );
+  }
+
+  // The customer's own bookings are waited for too. Without that, the moment
+  // before they arrive is a page telling somebody their hours were taken, and
+  // the correction comes as a flash of a different screen.
+  if (results.some((result) => result.isPending) || mine.isPending) {
     return (
       <Shell>
         <p className="text-slate-500">Checking those hours are still free…</p>
@@ -241,14 +323,16 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
                 : "bg-[#2563EB] text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
             }`}
           >
-            {booking.isPending ? "Holding the court…" : "Hold this court"}
+            {booking.isPending ? "Holding your hours…" : "Proceed to pay"}
           </button>
         </div>
 
+        {/* "To pay", not "and pay": nothing is charged by this button. It
+            takes the hours off sale and carries you to the step that does. */}
         <p className="mt-3 text-right text-sm font-medium text-slate-500">
           {accepted
-            ? "We will hold it while you pay. Nothing is charged here."
-            : "Accept the booking policy to hold this court."}
+            ? "Your hours are held while you pay. Nothing is charged here."
+            : "Accept the booking policy to carry on."}
         </p>
       </div>
 

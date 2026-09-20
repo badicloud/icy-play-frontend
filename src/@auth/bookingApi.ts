@@ -209,35 +209,40 @@ export type BookingDetail = {
   gcashNumber: string | null;
   gcashAccountName: string | null;
   gcashQrCodeUrl: string | null;
+  /**
+   * How to reach the venue, when reaching them is the only way forward.
+   *
+   * A venue that has set up no way of being paid cannot take a receipt, and
+   * telling somebody to get in touch without saying how leaves them to go and
+   * find the venue themselves.
+   */
+  contactPhone: string | null;
+  contactEmail: string | null;
+  /**
+   * Why it ended, when it did: the venue's words on a refusal, or the
+   * customer's own on a cancellation.
+   *
+   * "Not accepted" on its own tells somebody their money is coming back and
+   * not why, which is the one question they will ring up to ask.
+   */
+  cancellationReason: string | null;
   slots: BookedSlot[];
-  /** How many moves this venue still allows on this booking. */
+  /** How many moves this booking has left. Zero and it stays where it is. */
   movesLeft: number;
+  /** How many it was allowed in all — the venue's own dial. */
+  moveLimit: number;
   /** Whether it can be moved right now: moves left, and an hour still to play. */
   canBeMoved: boolean;
-  /** The move this booking is waiting on, or null when it is not waiting on one. */
-  pendingMove: PendingMove | null;
+  /**
+   * Whether the booking has started, on the venue's clock.
+   *
+   * A booking in play can still change court — a floodlight fails and the game
+   * carries on next door — but it cannot change when it is. Answered by the
+   * server rather than worked out here, because the reader's clock is not the
+   * venue's and this decides what the move screen is allowed to offer.
+   */
+  isInPlay: boolean;
   createdAt: string;
-};
-
-/**
- * A move asked for and not yet settled.
- *
- * Three things the customer needs: where it is going, whether they owe
- * anything, and who they are waiting on.
- */
-export type PendingMove = {
-  /** AwaitingPayment or AwaitingConfirmation. */
-  status: "AwaitingPayment" | "AwaitingConfirmation";
-  /** The court as it was named when the move was asked for. */
-  toCourtName: string;
-  balanceDue: number;
-  /** When the held court goes back on sale, if it is unpaid. */
-  holdsUntil: string;
-  /** True when the venue moved it rather than the customer asking. */
-  raisedByVenue: boolean;
-  /** Why, when an attendant moved it. */
-  reason: string | null;
-  requestedAt: string;
 };
 
 /**
@@ -246,12 +251,11 @@ export type PendingMove = {
  * Read from the booking rather than held in the URL, so a refresh, a new tab or
  * a customer coming back tomorrow all land where they actually are.
  */
-export function checkoutStep(booking: BookingDetail): 2 | 3 | 4 {
-  if (booking.status !== "PendingPayment") {
-    return 4;
-  }
-
-  return booking.receiptUrl === null ? 2 : 3;
+export function checkoutStep(booking: BookingDetail): 2 | 4 {
+  // Two steps left, not three. Sending the receipt IS the submission — they
+  // were separate, and the gap between them was a page telling somebody the
+  // venue was checking their payment while asking them to send it.
+  return booking.status === "PendingPayment" && booking.receiptUrl === null ? 2 : 4;
 }
 
 export function getMyBookings() {
@@ -317,52 +321,207 @@ export type MoveQuote = {
   /** Hours already played. They stay where they were, at what they cost. */
   hoursStaying: number;
   hoursMoving: number;
-  paidAlready: number;
-  newTotal: number;
-  /** Never less than nothing: a cheaper court is not a refund. */
+  /**
+   * What this booking's hours come to now, in court rental alone.
+   *
+   * The platform fee is left out of both sides. It is charged per hour booked
+   * and a move buys no hours — the same number of them end up somewhere else —
+   * so counting it would make an identical move look like it cost something.
+   */
+  rentalNow: number;
+  /** What they would come to on the new court, at the new hours. */
+  rentalNew: number;
+  /** Never less than nothing: cheaper is not a refund. */
   balanceDue: number;
   /** Minutes the new court is held while the difference is paid. */
   holdMinutes: number;
   isUpgrade: boolean;
+  /**
+   * Whether the hours still to be played fall on the venue's today.
+   *
+   * What the move screen reads to decide whether to offer dates at all: a
+   * booking today can change its hours but not its day. Answered on every
+   * quote rather than once with the booking, because "today" turns over while
+   * the screen is open.
+   */
+  startsToday: boolean;
 };
 
-export function quoteMove(bookingId: string, toBookableCourtId: string) {
-  return apiClient.get<MoveQuote>(API_ENDPOINTS.BOOKINGS.MOVE_QUOTE(bookingId), {
-    query: { toBookableCourtId },
+/**
+ * One thing that happened to a booking.
+ *
+ * Read from the platform's own trail, which the venue's desk writes to as
+ * well, so one booking has one account of itself. Who did it and from where
+ * stays on the server: that is for answering questions with, not for the
+ * person whose booking it is.
+ */
+export type BookingHistoryEntry = {
+  /** The stable name of what happened, for picking wording and artwork. */
+  action: string;
+  /** Said plainly, because this is read by the person it happened to. */
+  description: string;
+  /** Why, when whoever did it gave a reason. */
+  reason: string | null;
+  at: string;
+};
+
+export function getBookingHistory(bookingId: string) {
+  return apiClient.get<BookingHistoryEntry[]>(API_ENDPOINTS.BOOKINGS.HISTORY(bookingId));
+}
+
+/** An hour to move onto: the date it falls on and when it begins. */
+export type MoveSlot = {
+  /** "2026-09-19". */
+  date: string;
+  /** "07:00:00". */
+  startsAt: string;
+};
+
+type MoveBody = { toBookableCourtId: string; slots: MoveSlot[] | null };
+
+/**
+ * What moving onto that court, at those hours, would come to.
+ *
+ * A POST for something that changes nothing: the hours being asked about are a
+ * list, and a quote for a whole proposed booking belongs in a body rather than
+ * strung through a query.
+ *
+ * @param slots Null keeps the hours the booking already has.
+ */
+export function quoteMove(
+  bookingId: string,
+  toBookableCourtId: string,
+  slots: MoveSlot[] | null = null,
+) {
+  return apiClient.post<MoveQuote, MoveBody>(API_ENDPOINTS.BOOKINGS.MOVE_QUOTE(bookingId), {
+    toBookableCourtId,
+    slots,
   });
 }
 
-export function moveBooking(bookingId: string, toBookableCourtId: string) {
-  return apiClient.post<BookingDetail, { toBookableCourtId: string }>(
-    API_ENDPOINTS.BOOKINGS.MOVE(bookingId),
-    { toBookableCourtId },
-  );
+/** @param slots Null keeps the hours the booking already has. */
+export function moveBooking(
+  bookingId: string,
+  toBookableCourtId: string,
+  slots: MoveSlot[] | null = null,
+) {
+  return apiClient.post<BookingDetail, MoveBody>(API_ENDPOINTS.BOOKINGS.MOVE(bookingId), {
+    toBookableCourtId,
+    slots,
+  });
 }
 
-/** The GCash receipt for the difference an upgrade came to. */
-export function attachMoveReceipt(bookingId: string, receiptUrl: string) {
-  return apiClient.post<BookingDetail, { receiptUrl: string }>(
-    API_ENDPOINTS.BOOKINGS.MOVE_RECEIPT(bookingId),
+/** One hour an upgrade is asking for, at the price it was quoted. */
+export type UpgradeSlot = {
+  /** "2026-09-22". */
+  date: string;
+  /** "07:00:00". */
+  startsAt: string;
+  endsAt: string;
+  /** The court rental for this hour. The platform fee is not charged again. */
+  amount: number;
+};
+
+/**
+ * An upgrade the customer has asked for, and how far it has got.
+ *
+ * Read back from the server on every visit rather than kept on the screen that
+ * created it, so a refresh, a second tab, or somebody coming back after paying
+ * all land on the step they are actually at.
+ */
+export type UpgradeRequest = {
+  id: string;
+  bookingId: string;
+  toBookableCourtId: string;
+  toCourtName: string;
+  rentalNow: number;
+  rentalNew: number;
+  /** Fixed when the upgrade was asked for, not worked out again at payment. */
+  balanceDue: number;
+  status:
+    | "AwaitingPayment"
+    | "AwaitingApproval"
+    | "Approved"
+    | "Declined"
+    | "Withdrawn"
+    | "Expired";
+  /** When the hours being asked for go back on sale. */
+  holdsUntil: string;
+  /**
+   * Whether that clock has run out with nothing paid.
+   *
+   * Answered by the server, because the browser's clock is not the one the
+   * hold was timed against.
+   */
+  hasLapsed: boolean;
+  receiptUrl: string | null;
+  /** Why the venue said no, when it did. */
+  declineReason: string | null;
+  slots: UpgradeSlot[];
+};
+
+/**
+ * Asks to move onto hours that cost more, and offers to pay the difference.
+ *
+ * The booking does not move. This writes the request down, holds the hours on
+ * a clock, and hands back what there is to pay.
+ */
+export function requestUpgrade(
+  bookingId: string,
+  toBookableCourtId: string,
+  slots: MoveSlot[],
+) {
+  return apiClient.post<UpgradeRequest, MoveBody>(API_ENDPOINTS.BOOKINGS.UPGRADE(bookingId), {
+    toBookableCourtId,
+    slots,
+  });
+}
+
+/** The upgrade still open on this booking, or null when there is none. */
+export function getOpenUpgrade(bookingId: string) {
+  return apiClient.get<UpgradeRequest | null>(API_ENDPOINTS.BOOKINGS.UPGRADE(bookingId));
+}
+
+/**
+ * Which step of the upgrade checkout this is.
+ *
+ * Read from the request rather than held in the URL, for the same reason the
+ * booking checkout does it: a refresh, a second tab or somebody coming back
+ * after paying all land where they actually are.
+ */
+export function upgradeStep(upgrade: UpgradeRequest): 2 | 3 | 4 {
+  if (upgrade.status !== "AwaitingPayment") {
+    return 4;
+  }
+
+  return upgrade.receiptUrl === null ? 2 : 3;
+}
+
+/** Records the receipt the browser has just put in Cloudinary. Stops the clock. */
+export function attachUpgradeReceipt(bookingId: string, receiptUrl: string) {
+  return apiClient.post<UpgradeRequest, { receiptUrl: string }>(
+    API_ENDPOINTS.BOOKINGS.UPGRADE_RECEIPT(bookingId),
     { receiptUrl },
   );
 }
 
-export function withdrawMove(bookingId: string) {
-  return apiClient.post<BookingDetail, Record<string, never>>(
-    API_ENDPOINTS.BOOKINGS.MOVE_WITHDRAW(bookingId),
-    {},
-  );
+/** Hands the upgrade to the venue to check. The booking still does not move. */
+export function submitUpgrade(bookingId: string) {
+  return apiClient.post<UpgradeRequest>(API_ENDPOINTS.BOOKINGS.UPGRADE_SUBMIT(bookingId));
 }
 
+/**
+ * Sends the receipt to the venue.
+ *
+ * One action rather than two: this records the picture AND hands the booking
+ * over. Also takes a replacement while the venue is still looking, so a wrong
+ * picture can be corrected without ringing anybody.
+ */
 export function attachReceipt(bookingId: string, receiptUrl: string) {
   return apiClient.post<BookingDetail, { receiptUrl: string }>(
     API_ENDPOINTS.BOOKINGS.RECEIPT(bookingId),
     { receiptUrl },
   );
-}
-
-export function submitPayment(bookingId: string) {
-  return apiClient.post<BookingDetail>(API_ENDPOINTS.BOOKINGS.SUBMIT_PAYMENT(bookingId));
 }
 
 export function createReceiptUploadSignature() {

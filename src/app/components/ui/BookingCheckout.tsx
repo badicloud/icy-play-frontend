@@ -13,7 +13,6 @@ import {
   createReceiptUploadSignature,
   getBooking,
   peso,
-  submitPayment,
   type BookingDetail,
 } from "@auth/bookingApi";
 import CheckoutSteps from "./CheckoutSteps";
@@ -59,7 +58,7 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
           It may belong to another account, or the link may be wrong.
         </p>
         <Link
-          href="/#courts"
+          href="/#venues"
           className="mt-5 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white"
         >
           Back to courts
@@ -94,19 +93,17 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
             {step === 2 && (
               <Pay
                 detail={detail}
+                onExpired={() => void booking.refetch()}
                 onAttached={(updated) => client.setQueryData(["booking", bookingId], updated)}
               />
             )}
 
-            {step === 3 && (
-              <Submit
+            {step === 4 && (
+              <Waiting
                 detail={detail}
-                onSubmitted={(updated) => client.setQueryData(["booking", bookingId], updated)}
                 onReplace={(updated) => client.setQueryData(["booking", bookingId], updated)}
               />
             )}
-
-            {step === 4 && <Waiting detail={detail} />}
           </>
         )}
 
@@ -162,12 +159,64 @@ function Summary({ detail }: { detail: BookingDetail }) {
   );
 }
 
+/**
+ * How to reach the venue, shown when there is no way to pay them.
+ *
+ * "Get in touch with them" is not help unless it says how. This is the only
+ * road left on that screen, so the details are links rather than text: on a
+ * phone, tapping the number should ring it.
+ */
+function ReachTheVenue({ detail }: { detail: BookingDetail }) {
+  if (detail.contactPhone === null && detail.contactEmail === null) {
+    return (
+      <p className="mt-3 text-sm font-medium text-amber-900">
+        They have not left a phone number or an email either. Your court is held in the meantime.
+      </p>
+    );
+  }
+
+  return (
+    <dl className="mt-3 space-y-1.5 text-sm">
+      {detail.contactPhone !== null && (
+        <div className="flex flex-wrap gap-x-2">
+          <dt className="font-semibold text-amber-900">Phone</dt>
+          <dd>
+            <a
+              href={`tel:${detail.contactPhone.replace(/\s+/g, "")}`}
+              className="font-bold text-[#164eaa] underline underline-offset-2"
+            >
+              {detail.contactPhone}
+            </a>
+          </dd>
+        </div>
+      )}
+
+      {detail.contactEmail !== null && (
+        <div className="flex flex-wrap gap-x-2">
+          <dt className="font-semibold text-amber-900">Email</dt>
+          <dd>
+            <a
+              href={`mailto:${detail.contactEmail}`}
+              className="font-bold text-[#164eaa] underline underline-offset-2"
+            >
+              {detail.contactEmail}
+            </a>
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
 /** Step two: how to pay, and somewhere to put the proof. */
 function Pay({
   detail,
+  onExpired,
   onAttached,
 }: {
   detail: BookingDetail;
+  /** The hold ran out. Read the booking again and let the server say so. */
+  onExpired: () => void;
   onAttached: (updated: BookingDetail) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -215,7 +264,7 @@ function Pay({
 
   return (
     <>
-      <HoldCountdown holdsUntil={detail.holdsUntil} />
+      <HoldCountdown holdsUntil={detail.holdsUntil} onExpired={onExpired} />
 
       <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-[#071955]">Pay {detail.facilityName} by GCash</h2>
@@ -224,10 +273,13 @@ function Pay({
         </p>
 
         {!canBePaid ? (
-          <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-            This venue has not set up GCash yet. Get in touch with them to arrange payment — your
-            court is held in the meantime.
-          </p>
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-900">
+              This venue has not set up GCash yet. Get in touch with them to arrange payment — your
+              court is held in the meantime.
+            </p>
+            <ReachTheVenue detail={detail} />
+          </div>
         ) : (
           <div className="mt-5 flex flex-wrap items-start gap-6">
             {detail.gcashQrCodeUrl !== null && (
@@ -277,6 +329,12 @@ function Pay({
         )}
       </section>
 
+      {/* Only when there is somewhere the money could have gone. A venue with
+          no GCash number and no QR code has no account for a payment to have
+          reached, so offering to take a receipt for one invites somebody to
+          send money into the dark and then prove it. The server refuses this
+          too — this is the half that stops it being offered. */}
+      {canBePaid && (
       <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-[#071955]">Send us the receipt</h2>
         <p className="mt-1 font-medium text-slate-600">
@@ -309,7 +367,7 @@ function Pay({
 
         {problem && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
       </section>
-
+      )}
     </>
   );
 }
@@ -350,7 +408,7 @@ function Elsewhere({ note }: { note: string | null }) {
 
       <div className={`flex flex-wrap gap-3 ${note ? "mt-4" : ""}`}>
         <Link
-          href="/#courts"
+          href="/#venues"
           className="inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
         >
           Book another court
@@ -366,30 +424,29 @@ function Elsewhere({ note }: { note: string | null }) {
   );
 }
 
-/** Step three: the proof is in, and one button hands it to the venue. */
-function Submit({
+/**
+ * The receipt the venue is looking at, and a way to swap it for a better one.
+ *
+ * All that is left of the step that used to sit between uploading and sending.
+ * Sending the wrong picture is the one mistake worth being able to undo here,
+ * and without this the only way out is to ring the venue.
+ */
+function SentReceipt({
   detail,
-  onSubmitted,
   onReplace,
 }: {
   detail: BookingDetail;
-  onSubmitted: (updated: BookingDetail) => void;
   onReplace: (updated: BookingDetail) => void;
 }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const send = useMutation({
-    mutationFn: () => submitPayment(detail.id),
-    onSuccess: onSubmitted,
-    onError: (error) =>
-      setProblem(error instanceof ApiError ? error.message : "That did not work. Try again."),
-  });
-
   const attach = useMutation({
     mutationFn: (receiptUrl: string) => attachReceipt(detail.id, receiptUrl),
     onSuccess: onReplace,
+    onError: (error) =>
+      setProblem(error instanceof ApiError ? error.message : "That did not work. Try again."),
   });
 
   async function replace(file: File) {
@@ -397,6 +454,12 @@ function Submit({
 
     if (!imageTypes.includes(file.type)) {
       setProblem("The receipt has to be a picture.");
+
+      return;
+    }
+
+    if (file.size > maximumSizeInBytes) {
+      setProblem("That picture is over 10 MB. A screenshot will be far smaller.");
 
       return;
     }
@@ -414,83 +477,64 @@ function Submit({
     }
   }
 
+  const busy = uploading || attach.isPending;
+
   return (
-    <>
-      <p className="mt-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
-        Your receipt is uploaded, so the court is yours while the venue checks it. The clock has
-        stopped.
-      </p>
+    <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
+      <h2 className="text-lg font-bold text-[#071955]">The receipt you sent</h2>
 
-      <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-bold text-[#071955]">Send it to {detail.facilityName}</h2>
-        <p className="mt-1 font-medium text-slate-600">
-          They will check the receipt against their GCash account and confirm your booking. We will
-          email you either way.
-        </p>
+      {detail.receiptUrl !== null && (
+        <div className="mt-4 flex flex-wrap items-start gap-4">
+          <a href={detail.receiptUrl} target="_blank" rel="noreferrer" title="Open full size">
+            <Image
+              src={detail.receiptUrl}
+              alt="Your GCash receipt"
+              width={150}
+              height={200}
+              unoptimized
+              className="max-h-52 w-auto rounded-2xl border border-slate-200 object-contain"
+            />
+          </a>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+            className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline disabled:text-slate-400"
+          >
+            {busy ? "Uploading…" : "Sent the wrong one? Upload a different one"}
+          </button>
+        </div>
+      )}
 
-        {detail.receiptUrl !== null && (
-          <div className="mt-5 flex flex-wrap items-start gap-4">
-            <a href={detail.receiptUrl} target="_blank" rel="noreferrer" title="Open full size">
-              <Image
-                src={detail.receiptUrl}
-                alt="Your GCash receipt"
-                width={150}
-                height={200}
-                unoptimized
-                className="max-h-52 w-auto rounded-2xl border border-slate-200 object-contain"
-              />
-            </a>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={uploading || attach.isPending}
-              className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline disabled:text-slate-400"
-            >
-              {uploading || attach.isPending ? "Uploading…" : "Upload a different one"}
-            </button>
-          </div>
-        )}
+      <input
+        ref={fileInput}
+        type="file"
+        accept={imageTypes.join(",")}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
 
-        <input
-          ref={fileInput}
-          type="file"
-          accept={imageTypes.join(",")}
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
+          event.target.value = "";
 
-            if (file) {
-              void replace(file);
-            }
-          }}
-        />
+          if (file) {
+            void replace(file);
+          }
+        }}
+      />
 
-        {problem && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
-
-        <button
-          type="button"
-          disabled={send.isPending}
-          onClick={() => {
-            setProblem(null);
-            send.mutate();
-          }}
-          className={`mt-6 w-full rounded-full py-3.5 text-base font-bold transition ${
-            send.isPending
-              ? "cursor-not-allowed bg-slate-200 text-slate-400"
-              : "bg-[#2563EB] text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-          }`}
-        >
-          {send.isPending ? "Sending…" : "Submit payment confirmation"}
-        </button>
-      </section>
-
-    </>
+      {problem && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
+    </section>
   );
 }
 
 /** Step four: nothing left for the customer to do. */
-function Waiting({ detail }: { detail: BookingDetail }) {
+function Waiting({
+  detail,
+  onReplace,
+}: {
+  detail: BookingDetail;
+  onReplace: (updated: BookingDetail) => void;
+}) {
   if (detail.status === "Confirmed") {
     return (
       <div className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-6">
@@ -504,13 +548,17 @@ function Waiting({ detail }: { detail: BookingDetail }) {
 
   if (detail.status === "PendingVerification") {
     return (
-      <div className="mt-6 rounded-[24px] border border-blue-200 bg-blue-50 p-6">
-        <h2 className="text-lg font-bold text-[#071955]">With the venue now</h2>
-        <p className="mt-1.5 text-slate-600">
-          {detail.facilityName} is checking your receipt. Your court is held while they do, and we
-          will email you as soon as they confirm it.
-        </p>
-      </div>
+      <>
+        <div className="mt-6 rounded-[24px] border border-blue-200 bg-blue-50 p-6">
+          <h2 className="text-lg font-bold text-[#071955]">With the venue now</h2>
+          <p className="mt-1.5 text-slate-600">
+            {detail.facilityName} is checking your receipt. Your court is held while they do, and
+            we will email you as soon as they confirm it.
+          </p>
+        </div>
+
+        <SentReceipt detail={detail} onReplace={onReplace} />
+      </>
     );
   }
 
@@ -519,7 +567,7 @@ function Waiting({ detail }: { detail: BookingDetail }) {
       <h2 className="text-lg font-bold text-[#071955]">This booking is {detail.status.toLowerCase()}</h2>
       <p className="mt-1.5 font-medium text-slate-600">The hours are back on sale.</p>
       <Link
-        href="/#courts"
+        href="/#venues"
         className="mt-4 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white"
       >
         Book another court

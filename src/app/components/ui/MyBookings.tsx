@@ -7,10 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
   bookingState,
   clock,
+  getBookingHistory,
   getMyBookings,
   peso,
   type BookingDetail,
-  type PendingMove,
 } from "@auth/bookingApi";
 import { activityIcon } from "@auth/catalogApi";
 import HoldCountdown from "./HoldCountdown";
@@ -31,54 +31,91 @@ const tones = {
 } as const;
 
 /**
- * What is happening to a booking that has been asked to move.
+ * What has happened to this booking, shut until somebody asks.
  *
- * The booking has not moved and still shows its old court, which without this
- * reads as a request that went nowhere — and a customer who reads it that way
- * asks again. So: where it is going, what is owed, and who is being waited on.
+ * Shut because most people opening a booking want today's facts, not its
+ * biography — and it is only reached for when something looks wrong, which is
+ * exactly when it has to be complete.
+ *
+ * Fetched on opening rather than with the card. A list of a dozen bookings
+ * would otherwise make a dozen requests nobody reads.
  */
-function MoveWaiting({ move }: { move: PendingMove }) {
-  const owing = move.balanceDue > 0;
+function History({ bookingId }: { bookingId: string }) {
+  const [open, setOpen] = useState(false);
+
+  const history = useQuery({
+    queryKey: ["booking-history", bookingId],
+    queryFn: () => getBookingHistory(bookingId),
+    enabled: open,
+  });
+
+  const entries = history.data ?? [];
 
   return (
-    <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-      <p className="text-sm font-bold text-amber-900">
-        {move.raisedByVenue
-          ? `The venue is moving this booking to ${move.toCourtName}.`
-          : `You asked to move this booking to ${move.toCourtName}.`}
-      </p>
+    <div className="mt-5 rounded-2xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((shown) => !shown)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="text-sm font-bold text-[#071955]">Booking history</span>
+        <span className="text-xs font-bold text-slate-400">{open ? "Hide" : "Show"}</span>
+      </button>
 
-      {move.reason && (
-        <p className="mt-1 text-sm leading-6 text-amber-900">
-          The venue&apos;s reason: {move.reason}
-        </p>
+      {open && (
+        <div className="border-t border-slate-100 px-4 py-3">
+          {history.isPending ? (
+            <p className="text-sm text-slate-500">Loading history…</p>
+          ) : history.isError ? (
+            <p className="text-sm text-slate-500">The history could not be loaded.</p>
+          ) : entries.length === 0 ? (
+            <p className="text-sm text-slate-500">Nothing has happened to this booking yet.</p>
+          ) : (
+            <ol className="space-y-3">
+              {entries.map((entry, index) => (
+                <li key={`${entry.at}-${index}`} className="flex gap-3">
+                  {/* A line down the side, so a run of entries reads as one
+                      story rather than as separate notices. */}
+                  <span className="relative flex w-3 shrink-0 justify-center" aria-hidden>
+                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#2563EB]" />
+                    {index < entries.length - 1 && (
+                      <span className="absolute top-4 bottom-[-0.75rem] w-px bg-slate-200" />
+                    )}
+                  </span>
+
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-[#071955]">
+                      {entry.description}
+                    </span>
+                    {entry.reason && (
+                      <span className="mt-0.5 block text-sm text-slate-600">
+                        Reason: {entry.reason}
+                      </span>
+                    )}
+                    <span className="mt-0.5 block text-xs font-medium text-slate-400">
+                      {stamp(entry.at)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       )}
-
-      <p className="mt-1 text-sm leading-6 text-amber-800">
-        {owing ? (
-          <>
-            {peso(move.balanceDue)} is still to pay for it. Once that time is up the court goes
-            back on sale and the booking stays where it is.
-          </>
-        ) : (
-          <>
-            Nothing more to pay. It is with the venue now, and the booking moves once they have
-            approved it. Until then it stays on the court below.
-          </>
-        )}
-      </p>
-
-      {/* The same countdown the checkout uses, rather than a time printed into
-          the sentence: this one is in the reader's own clock and it ticks, so
-          the deadline is felt rather than stated. */}
-      {owing && (
-        <span className="mt-2 block">
-          <HoldCountdown holdsUntil={move.holdsUntil} compact />
-        </span>
-      )}
-
     </div>
   );
+}
+
+/** When it happened, in the reader's own clock — this is a record, not a rule. */
+function stamp(iso: string) {
+  return new Date(iso).toLocaleString("en-PH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 /**
@@ -155,7 +192,7 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
 
         {ordered.length === 0 && (
           <Link
-            href="/#courts"
+            href="/#venues"
             className="mt-6 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
           >
             Find a court
@@ -268,17 +305,21 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
           </span>
         )}
 
-        {/* Same reasoning as the countdown above: a booking waiting on a move
-            is in motion, and the customer should not have to open the card to
-            find that out. */}
-        {booking.pendingMove && (
-          <span className="mt-3 flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-900">
-            <span aria-hidden>&#8635;</span>
-            {booking.pendingMove.balanceDue > 0
-              ? `Move to ${booking.pendingMove.toCourtName} — ${peso(booking.pendingMove.balanceDue)} to pay`
-              : `Move to ${booking.pendingMove.toCourtName} — waiting for the venue`}
-          </span>
-        )}
+        {/* On the shut card, beside the badge that says it was refused. The
+            desk is made to write a reason before it can refuse anything, and
+            folding that away behind an expander is the same as not having
+            asked for it. */}
+        {booking.cancellationReason !== null &&
+          (booking.status === "Rejected" || booking.status === "Cancelled") && (
+            <span className="mt-3 block rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-900">
+              <span className="font-bold">
+                {booking.status === "Rejected"
+                  ? "The venue could not accept this booking."
+                  : "This booking was cancelled."}
+              </span>{" "}
+              <span className="font-medium">{booking.cancellationReason}</span>
+            </span>
+          )}
 
         <span className="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-slate-100 pt-3.5">
           <span className="text-sm font-semibold text-slate-600">
@@ -361,31 +402,44 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
             </div>
           )}
 
-          {booking.pendingMove && <MoveWaiting move={booking.pendingMove} />}
+          <History bookingId={booking.id} />
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-slate-200 pt-4">
+          {/* Buttons rather than lines of text. Two links side by side at the
+              foot of a card read as a footnote — and one of them is the way
+              into the whole booking. The filled one is the ordinary next step;
+              moving is the rarer choice, so it is outlined beside it. */}
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
             <Link
               href={`/bookings/${booking.id}`}
-              className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
+              className="inline-flex items-center rounded-full bg-[#2563EB] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
             >
-              Open this booking &rarr;
+              Open this booking
             </Link>
 
             {/* Moving is what a customer reaches for instead of cancelling,
-                which is not offered: the money is with the venue. */}
+                which is not offered: the money is with the venue.
+
+                Not "another date": a booking under way can only change court,
+                and naming a date the screen will not offer is a promise broken
+                by the next tap. */}
             {booking.canBeMoved && (
               <button
                 type="button"
                 onClick={onMove}
-                className="text-sm font-bold text-slate-600 underline-offset-4 hover:text-[#2563EB] hover:underline"
+                className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB]"
               >
-                Move to another date
+                Move your booking
               </button>
             )}
 
+            {/* The limit is the venue's own dial, set from its desk, so the
+                number has to come from the booking rather than be written in
+                here. A venue that allows one move would have been told three. */}
             {booking.movesLeft === 0 && (
               <span className="text-sm font-semibold text-slate-400">
-                Moved three times — the date is settled.
+                {Number.isFinite(booking.moveLimit)
+                  ? `Moved ${booking.moveLimit} ${booking.moveLimit === 1 ? "time" : "times"} — this booking stays where it is.`
+                  : "No moves left — this booking stays where it is."}
               </span>
             )}
           </div>

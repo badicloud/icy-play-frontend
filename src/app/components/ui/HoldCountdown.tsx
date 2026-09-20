@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Under this, the clock turns red: it is no longer "later", it is "now". */
 const NearlyGoneMinutes = 5;
@@ -15,21 +15,46 @@ const NearlyGoneMinutes = 5;
  *
  * `compact` is for a list, where this is one fact among several on a card;
  * the full form is for the page where paying is the only thing to do.
+ *
+ * `onExpired` fires once when the clock runs out. It exists because a page
+ * showing a hold has to do something when the hold ends — leaving an upload
+ * button on screen for hours that have gone back on sale invites somebody to
+ * pay for a court they no longer have.
  */
 function HoldCountdown({
   holdsUntil,
   compact = false,
+  onExpired,
 }: {
   holdsUntil: string;
   compact?: boolean;
+  onExpired?: () => void;
 }) {
   const [left, setLeft] = useState(() => Date.parse(holdsUntil) - Date.now());
+  const told = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setLeft(Date.parse(holdsUntil) - Date.now()), 1000);
 
     return () => clearInterval(timer);
   }, [holdsUntil]);
+
+  // A new hold is a new clock, so it gets a fresh chance to say it has ended.
+  useEffect(() => {
+    told.current = false;
+  }, [holdsUntil]);
+
+  // Once, and only once. The clock reads the browser's time, which is not the
+  // one the hold was set by — so this does not decide anything, it only asks
+  // whoever is listening to go and find out.
+  useEffect(() => {
+    if (left > 0 || told.current) {
+      return;
+    }
+
+    told.current = true;
+    onExpired?.();
+  }, [left, onExpired]);
 
   const seconds = Math.max(0, Math.floor(left / 1000));
   const minutes = Math.floor(seconds / 60);
