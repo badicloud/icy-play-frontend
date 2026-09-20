@@ -337,14 +337,14 @@ export type MoveQuote = {
   holdMinutes: number;
   isUpgrade: boolean;
   /**
-   * Whether the hours still to be played fall on the venue's today.
+   * Whether the booking has begun, on the venue's clock.
    *
-   * What the move screen reads to decide whether to offer dates at all: a
-   * booking today can change its hours but not its day. Answered on every
-   * quote rather than once with the booking, because "today" turns over while
-   * the screen is open.
+   * What the move screen reads to decide whether to offer dates: a booking
+   * under way can change court but not when it is, and one that has not
+   * started can change both. Answered on every quote rather than once with
+   * the booking, because it turns over while the screen is open.
    */
-  startsToday: boolean;
+  isInPlay: boolean;
 };
 
 /**
@@ -489,25 +489,24 @@ export function getOpenUpgrade(bookingId: string) {
  * booking checkout does it: a refresh, a second tab or somebody coming back
  * after paying all land where they actually are.
  */
-export function upgradeStep(upgrade: UpgradeRequest): 2 | 3 | 4 {
-  if (upgrade.status !== "AwaitingPayment") {
-    return 4;
-  }
-
-  return upgrade.receiptUrl === null ? 2 : 3;
+export function upgradeStep(upgrade: UpgradeRequest): 2 | 4 {
+  // Two steps left, not three, the same as the booking checkout. Sending the
+  // receipt IS the submission, and the step between them contradicted the
+  // message above it: the page already said the venue was checking.
+  return upgrade.status === "AwaitingPayment" && upgrade.receiptUrl === null ? 2 : 4;
 }
 
-/** Records the receipt the browser has just put in Cloudinary. Stops the clock. */
+/**
+ * Sends the receipt for an upgrade to the venue.
+ *
+ * One action rather than two: this records the picture AND hands it over, and
+ * stops the clock. Also takes a replacement while the venue is still looking.
+ */
 export function attachUpgradeReceipt(bookingId: string, receiptUrl: string) {
   return apiClient.post<UpgradeRequest, { receiptUrl: string }>(
     API_ENDPOINTS.BOOKINGS.UPGRADE_RECEIPT(bookingId),
     { receiptUrl },
   );
-}
-
-/** Hands the upgrade to the venue to check. The booking still does not move. */
-export function submitUpgrade(bookingId: string) {
-  return apiClient.post<UpgradeRequest>(API_ENDPOINTS.BOOKINGS.UPGRADE_SUBMIT(bookingId));
 }
 
 /**

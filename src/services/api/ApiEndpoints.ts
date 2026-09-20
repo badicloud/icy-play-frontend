@@ -39,7 +39,6 @@ export const API_ENDPOINTS = {
     HISTORY: (bookingId: string) => `${API_V1}/bookings/${bookingId}/history`,
     UPGRADE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade`,
     UPGRADE_RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade/receipt`,
-    UPGRADE_SUBMIT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade/submit`,
     RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/receipt`,
   },
   CUSTOMER_UPLOAD_SIGNATURE: `${API_V1}/assets/upload-signature`,

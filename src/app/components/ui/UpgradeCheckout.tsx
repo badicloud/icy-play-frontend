@@ -15,7 +15,6 @@ import {
   peso,
   quoteMove,
   requestUpgrade,
-  submitUpgrade,
   upgradeStep,
   type BookingDetail,
   type MoveSlot,
@@ -327,9 +326,12 @@ function Pay({
         <CheckoutSteps current={step} />
       </div>
 
-      {step === 4 && <Waiting detail={detail} upgrade={upgrade} />}
-
-      {step === 3 && <Send detail={detail} upgrade={upgrade} onChanged={onChanged} />}
+      {step === 4 && (
+        <>
+          <Waiting detail={detail} upgrade={upgrade} />
+          <SentReceipt detail={detail} upgrade={upgrade} onChanged={onChanged} />
+        </>
+      )}
 
       {step === 2 && upgrade.hasLapsed && <Lapsed onGoneBack={onGoneBack} />}
 
@@ -590,8 +592,13 @@ function Receipt({
   );
 }
 
-/** Step three: the proof is in, and one button hands it to the venue. */
-function Send({
+/**
+ * The receipt the venue is looking at, and a way to swap it for a better one.
+ *
+ * All that is left of the step that used to sit between uploading and sending.
+ * Sending the wrong picture is the one mistake worth being able to undo here.
+ */
+function SentReceipt({
   detail,
   upgrade,
   onChanged,
@@ -604,16 +611,11 @@ function Send({
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const send = useMutation({
-    mutationFn: () => submitUpgrade(detail.id),
-    onSuccess: onChanged,
-    onError: (error) =>
-      setProblem(error instanceof ApiError ? error.message : "That did not work. Try again."),
-  });
-
   const attach = useMutation({
     mutationFn: (receiptUrl: string) => attachUpgradeReceipt(detail.id, receiptUrl),
     onSuccess: onChanged,
+    onError: (error) =>
+      setProblem(error instanceof ApiError ? error.message : "That did not work. Try again."),
   });
 
   async function replace(file: File) {
@@ -621,6 +623,12 @@ function Send({
 
     if (!imageTypes.includes(file.type)) {
       setProblem("The receipt has to be a picture.");
+
+      return;
+    }
+
+    if (file.size > maximumSizeInBytes) {
+      setProblem("That picture is over 10 MB. A screenshot will be far smaller.");
 
       return;
     }
@@ -641,77 +649,50 @@ function Send({
   const busy = uploading || attach.isPending;
 
   return (
-    <>
-      <p className="mt-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
-        Your receipt is uploaded, so those hours are held while the venue checks it. The clock has
-        stopped.
-      </p>
+    <Panel>
+      <h2 className="text-lg font-bold text-[#071955]">The receipt you sent</h2>
 
-      <Panel>
-        <h2 className="text-lg font-bold text-[#071955]">Send it to {detail.facilityName}</h2>
-        <p className="mt-1 font-medium text-slate-600">
-          They will check the receipt against their GCash account and move your booking. We will
-          email you either way.
-        </p>
+      {upgrade.receiptUrl !== null && (
+        <div className="mt-4 flex flex-wrap items-start gap-4">
+          <a href={upgrade.receiptUrl} target="_blank" rel="noreferrer" title="Open full size">
+            <Image
+              src={upgrade.receiptUrl}
+              alt="Your GCash receipt"
+              width={150}
+              height={200}
+              unoptimized
+              className="max-h-52 w-auto rounded-2xl border border-slate-200 object-contain"
+            />
+          </a>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+            className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline disabled:text-slate-400"
+          >
+            {busy ? "Uploading…" : "Sent the wrong one? Upload a different one"}
+          </button>
+        </div>
+      )}
 
-        {upgrade.receiptUrl !== null && (
-          <div className="mt-5 flex flex-wrap items-start gap-4">
-            <a href={upgrade.receiptUrl} target="_blank" rel="noreferrer" title="Open full size">
-              <Image
-                src={upgrade.receiptUrl}
-                alt="Your GCash receipt"
-                width={150}
-                height={200}
-                unoptimized
-                className="max-h-52 w-auto rounded-2xl border border-slate-200 object-contain"
-              />
-            </a>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={busy}
-              className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline disabled:text-slate-400"
-            >
-              {busy ? "Uploading…" : "Upload a different one"}
-            </button>
-          </div>
-        )}
+      <input
+        ref={fileInput}
+        type="file"
+        accept={imageTypes.join(",")}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
 
-        <input
-          ref={fileInput}
-          type="file"
-          accept={imageTypes.join(",")}
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
+          event.target.value = "";
 
-            event.target.value = "";
+          if (file) {
+            void replace(file);
+          }
+        }}
+      />
 
-            if (file) {
-              void replace(file);
-            }
-          }}
-        />
-
-        {problem !== null && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
-
-        <button
-          type="button"
-          disabled={send.isPending}
-          onClick={() => {
-            setProblem(null);
-            send.mutate();
-          }}
-          className={`mt-6 w-full rounded-full py-3.5 text-base font-bold transition ${
-            send.isPending
-              ? "cursor-not-allowed bg-slate-200 text-slate-400"
-              : "bg-[#2563EB] text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
-          }`}
-        >
-          {send.isPending ? "Sending…" : "Submit payment confirmation"}
-        </button>
-      </Panel>
-    </>
+      {problem !== null && <p className="mt-3 text-sm font-semibold text-red-600">{problem}</p>}
+    </Panel>
   );
 }
 

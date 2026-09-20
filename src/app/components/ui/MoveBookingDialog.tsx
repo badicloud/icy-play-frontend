@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
@@ -43,22 +43,32 @@ function MoveBookingDialog({
   const [hours, setHours] = useState<string[]>([]);
   const [wideOpen, setWideOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [startsToday, setStartsToday] = useState<boolean | null>(null);
+  const [inPlay, setInPlay] = useState<boolean | null>(null);
+
+  // Where the schedule lands, so picking a court can carry the reader to it.
+  const scheduleRef = useRef<HTMLDivElement | null>(null);
+
+  // The day the booking is already on, which is where the picker starts.
+  //
+  // Most moves change the court and keep the day — the whole reason the dialog
+  // exists is a court that will not do. Starting on no day at all makes every
+  // one of those a choice somebody has to make before they can see any hours.
+  const ownDay = booking?.startDate ?? null;
 
   // Nothing picked against one booking may follow the dialog to the next.
   useEffect(() => {
     setChosen(null);
-    setDay(null);
+    setDay(ownDay);
     setHours([]);
     setProblem(null);
-  }, [booking?.id]);
+  }, [booking?.id, ownDay]);
 
   // A court's hours are its own, so changing court starts the schedule again.
   useEffect(() => {
-    setDay(null);
+    setDay(ownDay);
     setHours([]);
-    setStartsToday(null);
-  }, [chosen]);
+    setInPlay(null);
+  }, [chosen, ownDay]);
 
   const courts = useQuery({
     queryKey: ["catalog", "courts", "*"],
@@ -100,13 +110,34 @@ function MoveBookingDialog({
   // not to whichever hours are half-picked at the time.
   useEffect(() => {
     if (quote.data !== undefined) {
-      setStartsToday(quote.data.startsToday);
+      // Missing rather than false means an API older than this field, and the
+      // honest default is the permissive one: offer the dates and let the
+      // server refuse a move it does not like. Defaulting the other way turns
+      // a version mismatch into a screen that quietly says a booking cannot
+      // change its day, which is indistinguishable from the rule working.
+      setInPlay(quote.data.isInPlay ?? false);
     }
   }, [quote.data]);
 
+  // Picking a court carries the reader to the schedule it just opened.
+  //
+  // Waits for inPlay, because until the quote answers, the block is one
+  // line saying it is checking — scrolling to that and then having it grow
+  // underneath is worse than arriving once, at something worth reading. A
+  // booking with no hours to pick has no block and no ref, so nothing moves.
+  useEffect(() => {
+    if (chosen === null || inPlay === null) {
+      return;
+    }
+
+    scheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [chosen, inPlay]);
+
   // The day the hours are being picked on. Today's booking cannot leave its
   // day, so there is nothing to choose and the booking's own date stands.
-  const pickingDay = hourly && startsToday === false;
+  // A booking that has not begun can be carried to another day. One under
+  // way can change court but not when it is.
+  const pickingDay = hourly && inPlay === false;
   const onDay = pickingDay ? day : (booking?.startDate ?? null);
 
   const outlook = useQuery({
@@ -228,7 +259,7 @@ function MoveBookingDialog({
               There is no other {booking.sportName.toLowerCase()} court here to move to.
             </p>
           ) : (
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
               {elsewhere.map((court) => {
                 const here = chosen === court.bookableCourtId;
 
@@ -263,10 +294,10 @@ function MoveBookingDialog({
               hours on offer are that court's, and picking a different one asks
               the question again. */}
           {chosen !== null && hourly && (
-            <div className="mt-6 border-t border-slate-200 pt-5">
-              {startsToday === null && quote.isPending ? (
+            <div ref={scheduleRef} className="mt-6 border-t border-slate-200 pt-5">
+              {inPlay === null && quote.isPending ? (
                 <p className="text-sm text-slate-500">Checking that court…</p>
-              ) : startsToday === null ? null : (
+              ) : inPlay === null ? null : (
                 <>
                   <p className="text-sm font-bold text-[#071955]">
                     {pickingDay ? "Choose a day" : "Choose your hours"}
