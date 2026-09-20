@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import PublicHeader from './components/ui/PublicHeader';
-import ActivityCatalog from './components/ui/ActivityCatalog';
+import FacilityCatalog from './components/ui/FacilityCatalog';
 import PublicFooter from './components/ui/PublicFooter';
 import generateMetadata from '@/utils/generateMetadata';
 
@@ -233,22 +233,33 @@ export default function LandingPage() {
 					</div>
 				</div>
 
+				{/*
+					The venues, not the sports. A venue is the unit somebody chooses
+					first: they decide where they are going — near the office, near
+					home, the one with parking — before they decide what they are
+					playing. Which sport comes next, on the venue's own page, where
+					the answer is about that floor rather than about the platform.
+				*/}
 				<section
-					id="courts"
+					id="venues"
 					className="pt-16"
 				>
 					<div className="mb-7">
 						<div>
 							<p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#2563EB]">
-								Sports and events
+								Venues
 							</p>
 							<h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">
-								Choose what you are booking
+								Choose where you are playing
 							</h2>
+							<p className="mt-2 max-w-2xl text-slate-600">
+								Every venue taking bookings, what it is set up for, and how to get
+								there.
+							</p>
 						</div>
 					</div>
 
-					<ActivityCatalog />
+					<FacilityCatalog />
 				</section>
 
 				<section

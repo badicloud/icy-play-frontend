@@ -229,7 +229,7 @@ function HowItWorksView() {
 
         <div className="mt-12 flex flex-wrap gap-3">
           <Link
-            href="/#courts"
+            href="/#venues"
             className="inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
           >
             Find a court

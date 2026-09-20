@@ -72,6 +72,44 @@ export function getCatalogActivities() {
   return apiClient.get<CatalogActivity[]>(API_ENDPOINTS.CATALOG.ACTIVITIES);
 }
 
+/** One thing a venue is set up for, and how much of it there is. */
+export type CatalogFacilitySport = {
+  key: string;
+  name: string;
+  /** "Sport" or "Event". */
+  kind: string;
+  courtCount: number;
+};
+
+/**
+ * One venue, as the landing page lists it.
+ *
+ * A venue rather than a court, because that is the unit somebody chooses
+ * first: they pick where they are going, and only then what they are playing.
+ */
+export type CatalogFacility = {
+  id: string;
+  /** The stable public URL for this venue, and how its page is found. */
+  slug: string;
+  name: string;
+  addressLine1: string;
+  city: string;
+  province: string;
+  postalCode: string | null;
+  /** Null until the venue has pinned itself. A map link needs both. */
+  latitude: number | null;
+  longitude: number | null;
+  coverPhotoUrl: string | null;
+  /** Counting each division separately: a floor marked out three ways is three. */
+  courtCount: number;
+  /** What this venue is set up for, busiest first. */
+  sports: CatalogFacilitySport[];
+};
+
+export function getCatalogFacilities() {
+  return apiClient.get<CatalogFacility[]>(API_ENDPOINTS.CATALOG.FACILITIES);
+}
+
 /** A picture already stored, as the catalogue reads it back. */
 export type CatalogPhoto = {
   id: string;
@@ -126,9 +164,19 @@ export function courtDetailHref(court: CatalogCourt) {
 }
 
 /** Omit the key for everything on offer. */
-export function getCatalogCourts(sportKey?: string) {
+/**
+ * Bookable courts, narrowed by sport, by venue, or by neither.
+ *
+ * The venue goes by id rather than by name: a name can be edited and two
+ * venues can share one, and neither should change or widen what a filter
+ * matches.
+ */
+export function getCatalogCourts(sportKey?: string, facilityId?: string) {
   return apiClient.get<CatalogCourt[]>(API_ENDPOINTS.CATALOG.COURTS, {
-    query: sportKey ? { sport: sportKey } : {},
+    query: {
+      ...(sportKey ? { sport: sportKey } : {}),
+      ...(facilityId ? { facility: facilityId } : {}),
+    },
   });
 }
 
@@ -201,8 +249,17 @@ export function maintenanceMessage(court: CatalogCourt) {
 }
 
 /** The venue's address on one line, for a card. */
-export function formatAddress(court: CatalogCourt) {
-  return [court.addressLine1, court.city, court.province, court.postalCode]
+type Located = {
+  addressLine1: string;
+  city: string;
+  province: string;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+export function formatAddress(place: Located) {
+  return [place.addressLine1, place.city, place.province, place.postalCode]
     .filter((part) => part !== null && part !== "")
     .join(", ");
 }
@@ -211,15 +268,15 @@ export function formatAddress(court: CatalogCourt) {
  * Directions to the venue. Google's own directions URL needs no API key and no
  * script, which is the whole reason it is used rather than an embedded map.
  */
-export function directionsUrl(court: CatalogCourt) {
-  if (court.latitude === null || court.longitude === null) {
+export function directionsUrl(place: Located, name: string) {
+  if (place.latitude === null || place.longitude === null) {
     // No pin, so the best that can be done is search for the address.
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      `${court.facilityName}, ${formatAddress(court)}`,
+      `${name}, ${formatAddress(place)}`,
     )}`;
   }
 
-  return `https://www.google.com/maps/dir/?api=1&destination=${court.latitude},${court.longitude}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
 }
 
 /**

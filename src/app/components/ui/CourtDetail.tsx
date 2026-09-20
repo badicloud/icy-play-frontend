@@ -147,7 +147,7 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
 
       <div className="mx-auto max-w-6xl px-6 py-10 lg:px-8">
         <Link
-          href="/#courts"
+          href="/#venues"
           className="text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
         >
           &larr; Back to courts
@@ -164,7 +164,7 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
         <p className="mt-1 text-lg font-semibold text-slate-600">{court.facilityName}</p>
         <p className="mt-1 text-slate-500">{address}</p>
         <a
-          href={directionsUrl(court)}
+          href={directionsUrl(court, court.facilityName)}
           target="_blank"
           rel="noreferrer"
           className="mt-1 inline-block text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
@@ -177,7 +177,7 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
             <p className="text-lg font-bold text-amber-900">{closure.title}</p>
             <p className="mt-1 text-amber-800">{closure.detail}</p>
             <Link
-              href="/#courts"
+              href="/#venues"
               className="mt-3 inline-block text-sm font-bold text-amber-900 underline-offset-4 hover:underline"
             >
               See what else is available
@@ -443,7 +443,7 @@ function CourtDetail({
             It may have been taken down, or the link may be wrong.
           </p>
           <Link
-            href="/#courts"
+            href="/#venues"
             className="mt-5 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
             Browse courts

@@ -83,7 +83,7 @@ function CourtCard({ court }: { court: CatalogCourt }) {
 
         <p className="mt-3 text-sm text-slate-500">{address}</p>
         <a
-          href={directionsUrl(court)}
+          href={directionsUrl(court, court.facilityName)}
           target="_blank"
           rel="noreferrer"
           className="mt-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
@@ -179,15 +179,29 @@ function CourtCard({ court }: { court: CatalogCourt }) {
  * Every court on offer. The sport cards narrow this list rather than unlock it:
  * a visitor should see what is available before being asked to choose.
  */
-function CourtResults({ activity }: { activity: CatalogActivity | null }) {
+/**
+ * @param facilityId One venue, for its own page. By id rather than by name,
+ *   because a name can be edited and two venues can share one.
+ */
+function CourtResults({
+  activity,
+  facilityId,
+}: {
+  activity: CatalogActivity | null;
+  facilityId?: string;
+}) {
   const courts = useQuery({
-    queryKey: ["catalog", "courts", activity?.key ?? "*"],
-    queryFn: () => getCatalogCourts(activity?.key),
+    queryKey: ["catalog", "courts", activity?.key ?? "*", facilityId ?? "*"],
+    queryFn: () => getCatalogCourts(activity?.key, facilityId),
     staleTime: 5 * 60 * 1000,
   });
 
   const rows = courts.data ?? [];
   const venues = new Set(rows.map((court) => court.facilityId)).size;
+
+  // On a venue's own page the venue count is the venue you are standing on, so
+  // saying "across 1 venue" is telling somebody where they already are.
+  const atOneVenue = facilityId !== undefined;
 
   return (
     <div className="mt-10">
@@ -197,10 +211,12 @@ function CourtResults({ activity }: { activity: CatalogActivity | null }) {
       <p className="mt-1 text-slate-500">
         {courts.isPending
           ? "Finding what's available…"
-          : `${rows.length} ${rows.length === 1 ? "court" : "courts"} across ${venues} ${
-              venues === 1 ? "venue" : "venues"
-            }.`}
-        {activity && " Pick it again to see everything."}
+          : atOneVenue
+            ? `${rows.length} bookable ${rows.length === 1 ? "court" : "courts"} here.`
+            : `${rows.length} ${rows.length === 1 ? "court" : "courts"} across ${venues} ${
+                venues === 1 ? "venue" : "venues"
+              }.`}
+        {activity && !atOneVenue && " Pick it again to see everything."}
       </p>
 
       {courts.isPending ? (

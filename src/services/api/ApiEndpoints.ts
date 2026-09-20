@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
   },
   CATALOG: {
     ACTIVITIES: `${API_V1}/catalog/activities`,
+    FACILITIES: `${API_V1}/catalog/facilities`,
     COURTS: `${API_V1}/catalog/courts`,
     COURT: (courtId: string) => `${API_V1}/catalog/courts/${courtId}`,
     AVAILABILITY: (bookableCourtId: string) =>
@@ -35,10 +36,11 @@ export const API_ENDPOINTS = {
     CANCEL: (bookingId: string) => `${API_V1}/bookings/${bookingId}/cancel`,
     MOVE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/move`,
     MOVE_QUOTE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/move-quote`,
-    MOVE_RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/move/receipt`,
-    MOVE_WITHDRAW: (bookingId: string) => `${API_V1}/bookings/${bookingId}/move/withdraw`,
+    HISTORY: (bookingId: string) => `${API_V1}/bookings/${bookingId}/history`,
+    UPGRADE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade`,
+    UPGRADE_RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade/receipt`,
+    UPGRADE_SUBMIT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade/submit`,
     RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/receipt`,
-    SUBMIT_PAYMENT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/submit-payment`,
   },
   CUSTOMER_UPLOAD_SIGNATURE: `${API_V1}/assets/upload-signature`,
   ADMIN: {
@@ -117,5 +119,10 @@ export const API_ENDPOINTS = {
       `${API_V1}/desk/bookings/${bookingId}/confirm`,
     REJECT_BOOKING: (bookingId: string) =>
       `${API_V1}/desk/bookings/${bookingId}/reject`,
+    UPGRADES: `${API_V1}/desk/upgrades`,
+    APPROVE_UPGRADE: (upgradeId: string) =>
+      `${API_V1}/desk/upgrades/${upgradeId}/approve`,
+    DECLINE_UPGRADE: (upgradeId: string) =>
+      `${API_V1}/desk/upgrades/${upgradeId}/decline`,
   },
 } as const;

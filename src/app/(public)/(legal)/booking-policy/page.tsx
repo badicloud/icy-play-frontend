@@ -199,7 +199,7 @@ const sections = [
 function Page() {
   return (
     <LegalPageLayout
-      backHref="/#courts"
+      backHref="/#venues"
       backLabel="Back to courts"
       title="Booking Policy"
       summary="Bookings made through IcyPlay are final once confirmed. You pay the venue directly, so IcyPlay holds none of your money and cannot refund it. Please read this before you hold a court."
