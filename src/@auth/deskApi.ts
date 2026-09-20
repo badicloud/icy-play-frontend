@@ -194,6 +194,90 @@ export function rejectDeskBooking(bookingId: string, reason: string | null) {
   );
 }
 
+/**
+ * One upgrade as the venue's desk sees it.
+ *
+ * Both sides of the swap are carried — the hours the booking holds now and the
+ * hours it is asking for — because the question here is not "is this receipt
+ * real" alone. It is that, and whether the court being asked for is free.
+ */
+export type DeskUpgrade = {
+  id: string;
+  bookingId: string;
+  facilityId: string;
+  facilityName: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string | null;
+  sportName: string;
+  /** The sport's stable key, for artwork. */
+  sportKey: string;
+  /** The court the booking is on now. */
+  fromCourtName: string;
+  toBookableCourtId: string;
+  /** The court asked for, named as it was when the upgrade was asked for. */
+  toCourtName: string;
+  rentalNow: number;
+  rentalNew: number;
+  /** The difference, fixed when the upgrade was asked for. */
+  balanceDue: number;
+  status:
+    | "AwaitingPayment"
+    | "AwaitingApproval"
+    | "Approved"
+    | "Declined"
+    | "Withdrawn"
+    | "Expired";
+  /** The receipt the customer sent. The whole point of the page. */
+  receiptUrl: string | null;
+  receiptUploadedAt: string | null;
+  requestedAt: string;
+  settledAt: string | null;
+  /** Why the desk said no, when it did. */
+  declineReason: string | null;
+  /** The hours the booking holds today. */
+  hoursNow: BookedSlot[];
+  /** The hours it is asking for. */
+  hoursWanted: BookedSlot[];
+};
+
+export type DeskUpgradeTab = "Waiting" | "Settled";
+
+export type DeskUpgradeQuery = {
+  tab: DeskUpgradeTab;
+  facilityId?: string;
+  page: number;
+  pageSize: number;
+};
+
+type DeskUpgradeListResponse = {
+  data: DeskUpgrade[];
+  pagination: Pagination;
+};
+
+export function getDeskUpgrades(query: DeskUpgradeQuery) {
+  return apiClient.get<DeskUpgradeListResponse>(API_ENDPOINTS.DESK.UPGRADES, {
+    query: {
+      tab: query.tab,
+      facilityId: query.facilityId,
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    unwrapData: false,
+  });
+}
+
+export function approveDeskUpgrade(upgradeId: string) {
+  return apiClient.post<DeskUpgrade>(API_ENDPOINTS.DESK.APPROVE_UPGRADE(upgradeId));
+}
+
+export function declineDeskUpgrade(upgradeId: string, reason: string | null) {
+  return apiClient.post<DeskUpgrade, { reason: string | null }>(
+    API_ENDPOINTS.DESK.DECLINE_UPGRADE(upgradeId),
+    { reason },
+  );
+}
+
 /** How long a booking has been sitting there, said the way a person would. */
 export function waitingFor(submittedAt: string | null, now: Date) {
   if (submittedAt === null) {

@@ -6,9 +6,10 @@ import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import PaymentsOutlined from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlined from "@mui/icons-material/ReceiptLongOutlined";
+import TrendingUpOutlined from "@mui/icons-material/TrendingUpOutlined";
 import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
-import { useDeskBookings, useDeskVenues } from "@auth/hooks/useDesk";
+import { useDeskBookings, useDeskUpgrades, useDeskVenues } from "@auth/hooks/useDesk";
 
 type DeskSection = {
   title: string;
@@ -31,6 +32,13 @@ const sections: DeskSection[] = [
       "Payments waiting to be checked, and the ones already confirmed. Look at the receipt, then say yes or no.",
     href: "/desk/bookings",
     icon: <ReceiptLongOutlined />,
+  },
+  {
+    title: "Upgrades",
+    description:
+      "Customers who have paid to move onto a court that costs more. Check the receipt, then approve it and the booking moves.",
+    href: "/desk/upgrades",
+    icon: <TrendingUpOutlined />,
   },
   {
     title: "Court bookings",
@@ -107,8 +115,10 @@ function DeskOverviewView() {
   const { user } = useIcyPlayAuth();
   const venues = useDeskVenues();
   const waiting = useDeskBookings({ tab: "Waiting", page: 1, pageSize: 1 });
+  const upgrades = useDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 1 });
 
   const count = waiting.data?.pagination.totalItems ?? 0;
+  const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
   const firstName = user?.fullName?.split(" ")[0] ?? "there";
 
   return (
@@ -159,6 +169,33 @@ function DeskOverviewView() {
             Open the queue
           </span>
         </Link>
+
+        {/* Its own banner rather than folded into the count above. An upgrade
+            is a different job — check a receipt AND check a court is free —
+            and a single number covering both would send somebody to the wrong
+            queue. Shown only when there is one: an empty second banner is a
+            line of furniture on a page whose whole point is what needs doing. */}
+        {upgradeCount > 0 && (
+          <Link
+            href="/desk/upgrades"
+            className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-6 transition hover:border-amber-300"
+          >
+            <span>
+              <span className="block text-lg font-extrabold text-[#071955]">
+                {upgradeCount === 1
+                  ? "One upgrade is waiting to be checked"
+                  : `${upgradeCount} upgrades are waiting to be checked`}
+              </span>
+              <span className="mt-1 block text-sm text-slate-600">
+                Somebody has paid to move onto a better court and is waiting to hear they can.
+              </span>
+            </span>
+
+            <span className="rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20">
+              Open upgrades
+            </span>
+          </Link>
+        )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {sections.map((section) => (

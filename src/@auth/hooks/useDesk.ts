@@ -1,15 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  approveDeskUpgrade,
   confirmDeskBooking,
+  declineDeskUpgrade,
   getCourtBookings,
   getCourtSchedule,
   getDeskBooking,
   getDeskBookings,
   getDeskCourts,
+  getDeskUpgrades,
   getDeskVenues,
   rejectDeskBooking,
   type CourtBookingQuery,
   type DeskQuery,
+  type DeskUpgradeQuery,
 } from "@auth/deskApi";
 
 const deskKey = ["desk"] as const;
@@ -98,6 +102,46 @@ export function useDeskBooking(bookingId: string | null) {
  * One hook for the pair because they end the same way: the booking leaves the
  * waiting queue, so every page of both tabs is stale.
  */
+/**
+ * Upgrades waiting to be checked, or the ones already settled.
+ *
+ * Short-lived for the same reason the booking queue is: two people can be
+ * standing at one desk, and a queue that still shows what a colleague decided
+ * a minute ago gets pressed twice.
+ */
+export function useDeskUpgrades(query: DeskUpgradeQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "upgrades", query],
+    queryFn: () => getDeskUpgrades(query),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Both answers a desk can give an upgrade.
+ *
+ * Everything under the desk key is thrown away afterwards rather than the
+ * upgrade queue alone: approving moves a booking onto another court, so the
+ * diary, the court lists and the booking queue are all out of date too.
+ */
+export function useDeskUpgradeDecision() {
+  const client = useQueryClient();
+  const settle = () => client.invalidateQueries({ queryKey: deskKey });
+
+  const approve = useMutation({
+    mutationFn: (upgradeId: string) => approveDeskUpgrade(upgradeId),
+    onSuccess: () => void settle(),
+  });
+
+  const decline = useMutation({
+    mutationFn: ({ upgradeId, reason }: { upgradeId: string; reason: string | null }) =>
+      declineDeskUpgrade(upgradeId, reason),
+    onSuccess: () => void settle(),
+  });
+
+  return { approve, decline, isDeciding: approve.isPending || decline.isPending };
+}
+
 export function useDeskDecision() {
   const client = useQueryClient();
   const settle = () => client.invalidateQueries({ queryKey: deskKey });
