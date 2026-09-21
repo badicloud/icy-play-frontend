@@ -1,6 +1,6 @@
 import { apiClient, API_ENDPOINTS } from "@/services/api";
 import type { Pagination } from "./adminApi";
-import type { BookedSlot } from "./bookingApi";
+import type { BookedSlot, BookingHistoryEntry } from "./bookingApi";
 
 /**
  * The venue's side of a booking.
@@ -169,6 +169,19 @@ export function getCourtBookings(query: CourtBookingQuery) {
 
 export function getDeskBooking(bookingId: string) {
   return apiClient.get<DeskBooking>(API_ENDPOINTS.DESK.BOOKING(bookingId));
+}
+
+/**
+ * Everything that has happened to one booking, newest first.
+ *
+ * The same account the customer reads, from the same endpoint's worth of
+ * trail, because it is the same booking. A desk looking at a confirmation it
+ * is about to make needs to know the hours were moved this morning.
+ */
+export function getDeskBookingHistory(bookingId: string) {
+  return apiClient.get<BookingHistoryEntry[]>(
+    API_ENDPOINTS.DESK.BOOKING_HISTORY(bookingId),
+  );
 }
 
 export function getDeskBookings(query: DeskQuery) {

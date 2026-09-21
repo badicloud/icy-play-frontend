@@ -6,6 +6,7 @@ import {
   getCourtBookings,
   getCourtSchedule,
   getDeskBooking,
+  getDeskBookingHistory,
   getDeskBookings,
   getDeskCourts,
   getDeskUpgrades,
@@ -92,6 +93,21 @@ export function useDeskBooking(bookingId: string | null) {
     queryKey: [...deskKey, "booking", bookingId],
     queryFn: () => getDeskBooking(bookingId!),
     enabled: bookingId !== null,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * What has happened to one booking, for the desk.
+ *
+ * Only asked for once somebody opens the panel. A queue of twenty bookings
+ * would otherwise make twenty requests for a trail nobody has looked at.
+ */
+export function useDeskBookingHistory(bookingId: string | null, open: boolean) {
+  return useQuery({
+    queryKey: [...deskKey, "booking-history", bookingId],
+    queryFn: () => getDeskBookingHistory(bookingId!),
+    enabled: open && bookingId !== null,
     staleTime: 60 * 1000,
   });
 }

@@ -114,6 +114,8 @@ export const API_ENDPOINTS = {
     COURT_SCHEDULE: (courtId: string) => `${API_V1}/desk/courts/${courtId}/schedule`,
     COURT_BOOKINGS: (courtId: string) => `${API_V1}/desk/courts/${courtId}/bookings`,
     BOOKING: (bookingId: string) => `${API_V1}/desk/bookings/${bookingId}`,
+    BOOKING_HISTORY: (bookingId: string) =>
+      `${API_V1}/desk/bookings/${bookingId}/history`,
     CONFIRM_BOOKING: (bookingId: string) =>
       `${API_V1}/desk/bookings/${bookingId}/confirm`,
     REJECT_BOOKING: (bookingId: string) =>
