@@ -226,6 +226,22 @@ export type BookingDetail = {
    * not why, which is the one question they will ring up to ask.
    */
   cancellationReason: string | null;
+  /**
+   * The upgrade still open on this booking, and the court it is asking for.
+   *
+   * A booking can be settled and about to change at the same time, and the
+   * status alone cannot say both: "Confirmed" is true and hides the fact that
+   * a move is waiting. Null when nothing is open.
+   */
+  upgradeStatus:
+    | "AwaitingPayment"
+    | "AwaitingApproval"
+    | "Approved"
+    | "Declined"
+    | "Withdrawn"
+    | "Expired"
+    | null;
+  upgradeToCourtName: string | null;
   slots: BookedSlot[];
   /** How many moves this booking has left. Zero and it stays where it is. */
   movesLeft: number;
@@ -272,6 +288,49 @@ export function getMyBookings() {
  * `needsYou` is the part the list sorts on: a booking waiting on the customer is
  * the only kind they can do anything about, and it belongs at the top.
  */
+/**
+ * What is happening to this booking on top of its own status.
+ *
+ * Kept apart from bookingState because they are two different sentences. A
+ * booking can be confirmed AND have a move waiting on the venue, and a single
+ * badge that has to pick one of those will always be hiding the other.
+ */
+export function upgradeState(booking: BookingDetail) {
+  switch (booking.upgradeStatus) {
+    case "AwaitingPayment":
+      return {
+        label: movingCourt(booking)
+          ? `Finish your move to ${booking.upgradeToCourtName}`
+          : "Finish your change of hours",
+        // The one that is the customer's to act on, so it is counted in the
+        // "waiting on you" tally at the top of the page.
+        needsYou: true,
+      };
+    case "AwaitingApproval":
+      return {
+        label: movingCourt(booking)
+          ? `Move to ${booking.upgradeToCourtName} waiting for the venue`
+          : "New hours waiting for the venue",
+        needsYou: false,
+      };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Whether the upgrade changes which court, or only when.
+ *
+ * Both are moves and both cost the difference, but they do not read the same:
+ * "Move to Court 1" said to somebody already on Court 1 looks like a bug, and
+ * the thing that is actually changing — the hours — goes unmentioned.
+ */
+function movingCourt(booking: BookingDetail) {
+  return (
+    booking.upgradeToCourtName !== null && booking.upgradeToCourtName !== booking.courtName
+  );
+}
+
 export function bookingState(booking: BookingDetail) {
   if (booking.status === "PendingPayment") {
     if (booking.hasLapsed) {

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   bookingState,
+  upgradeState,
   clock,
   getBookingHistory,
   getMyBookings,
@@ -107,6 +108,36 @@ function History({ bookingId }: { bookingId: string }) {
   );
 }
 
+/**
+ * Whether this booking is waiting on the customer for anything at all.
+ *
+ * Its own status, or a move it has started and not finished. Both belong in
+ * the tally at the top: an upgrade left unpaid is as much unfinished business
+ * as a booking left unpaid, and the hours it is holding go back on sale the
+ * same way.
+ */
+function needsYou(booking: BookingDetail) {
+  return bookingState(booking).needsYou || (upgradeState(booking)?.needsYou ?? false);
+}
+
+/** Two arrows passing: a court being swapped for another. */
+function SwapIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5" />
+    </svg>
+  );
+}
+
 /** When it happened, in the reader's own clock — this is a record, not a rule. */
 function stamp(iso: string) {
   return new Date(iso).toLocaleString("en-PH", {
@@ -166,12 +197,12 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
   const ordered = useMemo(
     () =>
       [...bookings].sort((a, b) =>
-        Number(bookingState(b).needsYou) - Number(bookingState(a).needsYou),
+        Number(needsYou(b)) - Number(needsYou(a)),
       ),
     [bookings],
   );
 
-  const waiting = ordered.filter((booking) => bookingState(booking).needsYou).length;
+  const waiting = ordered.filter(needsYou).length;
   const pages = Math.max(1, Math.ceil(ordered.length / perPage));
   // Clamped rather than reset: shrinking the page size while sitting on the
   // last page must not throw the reader back to the first.
@@ -243,6 +274,7 @@ function List({ bookings }: { bookings: BookingDetail[] }) {
 function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void }) {
   const [open, setOpen] = useState(false);
   const state = bookingState(booking);
+  const move = upgradeState(booking);
   const icon = activityIcon(booking.sportKey);
   const first = booking.slots[0];
   const last = booking.slots[booking.slots.length - 1];
@@ -302,6 +334,17 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
         {booking.status === "PendingPayment" && !booking.hasLapsed && (
           <span className="mt-3 block">
             <HoldCountdown holdsUntil={booking.holdsUntil} compact />
+          </span>
+        )}
+
+        {/* Its own line rather than a change of badge. A booking can be
+            confirmed AND have a move waiting, and one chip cannot say both
+            without hiding one of them — which is how a customer ends up
+            reading "Confirmed" and not knowing a change is in flight. */}
+        {move !== null && (
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-800">
+            <SwapIcon />
+            {move.label}
           </span>
         )}
 
