@@ -107,7 +107,15 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
           </>
         )}
 
-        <Elsewhere note={noteFor(detail)} />
+        {/* Only once there is nothing left to do here.
+                
+            It used to sit under every step, including the one where somebody
+            is part-way through paying — and "Book another court" beside a
+            running hold is an invitation to wander off and lose it. A lapsed
+            booking does not get it either: that panel already offers "Try
+            again", which is the better door, and two competing ways out is
+            worse than one. */}
+        {!detail.hasLapsed && step === 4 && <Elsewhere note={noteFor(detail)} />}
       </div>
 
       <PublicFooter />
@@ -373,24 +381,22 @@ function Pay({
 }
 
 /**
- * What to say above the way out, by where the customer has got to.
+ * What to say above the way out.
  *
- * The same two doors on every step, because every step is a place somebody
- * stops — to open the GCash app, to think about it, to book the other court
- * they came for. What changes is whether anything is still ticking, and saying
- * a hold is running over a confirmed booking would be telling somebody to hurry
- * about nothing.
+ * The doors used to sit under every step, on the reasoning that every step is
+ * a place somebody stops — to open the GCash app, to think about it, to book
+ * the other court they came for. The trouble is the one step where stopping
+ * costs them: "Book another court" beside a running hold is an invitation to
+ * wander off and lose the one they have.
+ *
+ * So they appear once the booking is out of their hands, and this says what is
+ * true at that point rather than hurrying anybody.
  */
 function noteFor(detail: BookingDetail) {
-  if (detail.hasLapsed) {
-    return "Those hours are back on sale.";
-  }
-
+  // No PendingPayment or lapsed cases: this only renders once the booking is
+  // out of the customer's hands, and a branch that cannot be reached is a
+  // sentence the next reader has to work out is dead.
   switch (detail.status) {
-    case "PendingPayment":
-      return detail.receiptUrl === null
-        ? "You can leave this and come back — the hold keeps running."
-        : "Your receipt is in and the clock has stopped. Come back to this any time.";
     case "PendingVerification":
       return "Nothing more to do here. We will email you when the venue confirms it.";
     case "Confirmed":

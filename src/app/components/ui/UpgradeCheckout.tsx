@@ -436,14 +436,20 @@ function Pay({
         />
       )}
 
-      <div className="mt-6">
-        <Link
-          href="/bookings"
-          className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
-        >
-          ← Back to my bookings
-        </Link>
-      </div>
+      {/* Only once there is nothing left to do here. Part-way through paying,
+          a way out is a way to abandon a hold that is still running — and the
+          review step has its own, beside the button, where leaving costs
+          nothing because nothing has been committed yet. */}
+      {step === 4 && (
+        <div className="mt-6">
+          <Link
+            href="/bookings"
+            className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
+          >
+            ← Back to my bookings
+          </Link>
+        </div>
+      )}
     </Shell>
   );
 }
