@@ -77,13 +77,19 @@ function MoveBookingDialog({
     enabled: booking !== null,
   });
 
-  // The other courts for the same sport in the same building. The server
-  // refuses anything else; this is so the list does not offer what it would.
+  // Every court for the same sport in the same building, the booking's own
+  // included. The server refuses anything else; this is so the list does not
+  // offer what it would.
+  //
+  // Its own court is in the list because "keep the court, change the time" is
+  // a real move and there was no way to ask for it: choosing hours needs a
+  // court chosen first, and the only courts on offer were other people's
+  // floors. It also puts the booking's current hours back within reach of an
+  // honest "Yours now" — on its own court, an hour it already holds really is
+  // its own.
   const elsewhere = (courts.data ?? []).filter(
     (court) =>
-      court.facilityId === booking?.facilityId &&
-      court.sportKey === booking.sportKey &&
-      court.bookableCourtId !== booking.bookableCourtId,
+      court.facilityId === booking?.facilityId && court.sportKey === booking.sportKey,
   );
 
   const hourly = booking?.kind === "Hourly";
@@ -186,11 +192,20 @@ function MoveBookingDialog({
   const settled = quote.data ?? null;
   const refused = quote.isError ? (quote.error as ApiError)?.message : null;
 
-  // The hours this booking already holds on the day being looked at. Moving
-  // onto an hour it is already on is not a move, and offering it invites a
-  // customer to ask for the thing they have.
+  // The hours this booking already holds — on its own court, on this day.
+  //
+  // Both halves matter. It used to test the day alone, which put "Yours now"
+  // over free hours on other people's floors and disabled them, blocking the
+  // commonest move there is. An hour is only yours where you hold it.
+  //
+  // On your own court it is a refusal rather than a hint: moving onto an hour
+  // you already have is not a move, and the server now says so too.
+  const onOwnCourt = chosen === booking.bookableCourtId;
+
   const mine = new Set(
-    booking.slots.filter((slot) => slot.date === onDay).map((slot) => slot.startsAt),
+    onOwnCourt
+      ? booking.slots.filter((slot) => slot.date === onDay).map((slot) => slot.startsAt)
+      : [],
   );
 
   // Either leave the hours alone, or replace all of them. Half a schedule is
@@ -219,7 +234,7 @@ function MoveBookingDialog({
           <p className="mt-1 text-sm font-medium text-slate-600">
             {booking.courtName} at {booking.facilityName}.
             {hourly
-              ? " Choose a new court, then a new time."
+              ? " Choose a court, then a new time. Keeping the court and changing only the hours counts too."
               : " You can change the court. The time stays the same."}
           </p>
         </div>
@@ -250,7 +265,9 @@ function MoveBookingDialog({
 
           <MovesLeft left={booking.movesLeft} limit={booking.moveLimit} />
 
-          <p className="mt-5 text-sm font-bold text-[#071955]">Choose a new court</p>
+          {/* Not "a NEW court" any more: the booking's own is in the list,
+              because keeping the court and changing the time is a move too. */}
+          <p className="mt-5 text-sm font-bold text-[#071955]">Choose a court</p>
 
           {courts.isPending ? (
             <p className="mt-2 text-sm text-slate-500">Loading courts…</p>
@@ -262,6 +279,7 @@ function MoveBookingDialog({
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
               {elsewhere.map((court) => {
                 const here = chosen === court.bookableCourtId;
+                const own = court.bookableCourtId === booking.bookableCourtId;
 
                 return (
                   <li key={court.bookableCourtId}>
@@ -277,7 +295,17 @@ function MoveBookingDialog({
                           : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
-                      <span className="block text-sm font-bold text-[#071955]">{court.name}</span>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-bold text-[#071955]">{court.name}</span>
+                        {/* Said on the card rather than left to be worked out.
+                            Without it the list reads as though one court has
+                            been listed twice. */}
+                        {own && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                            You are here
+                          </span>
+                        )}
+                      </span>
                       <span className="block text-xs font-semibold text-slate-500">
                         {court.sportName}
                         {court.standardHourlyRate !== null &&
