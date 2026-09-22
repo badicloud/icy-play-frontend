@@ -2,7 +2,8 @@
 
 import { format } from "date-fns";
 import { useState } from "react";
-import { useDeskBookingHistory } from "@auth/hooks/useDesk";
+import { useBookingHistoryFor } from "@auth/hooks/useDesk";
+import { useBookingSource } from "./BookingSource";
 import type { DeskBooking } from "@auth/deskApi";
 
 export function peso(amount: number) {
@@ -45,7 +46,7 @@ function stamp(iso: string) {
  */
 function BookingTrail({ bookingId }: { bookingId: string }) {
   const [open, setOpen] = useState(false);
-  const history = useDeskBookingHistory(bookingId, open);
+  const history = useBookingHistoryFor(useBookingSource(), bookingId, open);
   const entries = history.data ?? [];
 
   return (
@@ -136,7 +137,15 @@ function BookingDetails({
           <h4 className="mt-5 text-xs font-bold tracking-wide text-slate-400 uppercase">
             The hours
           </h4>
-          <ul className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {/* Capped and scrolled. A long booking is a run of hours, and letting
+              it grow without limit pushes the totals and the receipt off the
+              screen — the two things the desk actually decides on. The cut
+              lands mid-row on purpose, so it reads as "there is more" rather
+              than as the end of the list. */}
+          <ul
+            tabIndex={0}
+            className="mt-2 max-h-64 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200"
+          >
             {booking.slots.map((slot) => (
               <li
                 key={`${slot.date}-${slot.startsAt}`}

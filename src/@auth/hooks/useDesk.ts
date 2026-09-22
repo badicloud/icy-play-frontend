@@ -3,6 +3,10 @@ import {
   approveDeskUpgrade,
   confirmDeskBooking,
   declineDeskUpgrade,
+  getAdminBooking,
+  getAdminBookingHistory,
+  getAdminCourtBookings,
+  getAdminCourtSchedule,
   getCourtBookings,
   getCourtSchedule,
   getDeskBooking,
@@ -16,6 +20,7 @@ import {
   type DeskQuery,
   type DeskUpgradeQuery,
 } from "@auth/deskApi";
+import type { BookingSource } from "@/app/(desk)/components/BookingSource";
 
 const deskKey = ["desk"] as const;
 
@@ -79,6 +84,78 @@ export function useCourtBookings(query: CourtBookingQuery) {
     queryFn: () => getCourtBookings(query),
     enabled: query.courtId !== "",
     staleTime: 30 * 1000,
+  });
+}
+
+/*
+ * The same four, read as the platform rather than as the venue.
+ *
+ * Their own cache keys, under "admin" rather than "desk". The answers are the
+ * same shape but they are not the same answers: an admin's are for courts they
+ * do not work, and letting the two share a key would have somebody signing out
+ * of the desk and finding the other's data still warm underneath.
+ *
+ * Each pair below is one hook that takes the source, rather than two the caller
+ * picks between. The components that use them — a calendar, a list, a history
+ * expander — are the same components on both pages, and a component choosing
+ * its own hook by an `if` is a component with two code paths to keep working.
+ */
+const adminCourtKey = ["admin", "court"] as const;
+
+function keyFor(source: BookingSource) {
+  return source === "admin" ? adminCourtKey : deskKey;
+}
+
+/** Every booked hour on one court between two dates. */
+export function useCourtScheduleFor(
+  source: BookingSource,
+  courtId: string,
+  from: string,
+  to: string,
+) {
+  return useQuery({
+    queryKey: [...keyFor(source), "schedule", courtId, from, to],
+    queryFn: () =>
+      source === "admin"
+        ? getAdminCourtSchedule(courtId, from, to)
+        : getCourtSchedule(courtId, from, to),
+    enabled: courtId !== "" && from !== "" && to !== "",
+    staleTime: 30 * 1000,
+  });
+}
+
+/** One court's bookings as a list, a page at a time. */
+export function useCourtBookingsFor(source: BookingSource, query: CourtBookingQuery) {
+  return useQuery({
+    queryKey: [...keyFor(source), "court-bookings", query],
+    queryFn: () => (source === "admin" ? getAdminCourtBookings(query) : getCourtBookings(query)),
+    enabled: query.courtId !== "",
+    staleTime: 30 * 1000,
+  });
+}
+
+/** One booking in full, for an hour somebody has clicked. */
+export function useBookingFor(source: BookingSource, bookingId: string | null) {
+  return useQuery({
+    queryKey: [...keyFor(source), "booking", bookingId],
+    queryFn: () => (source === "admin" ? getAdminBooking(bookingId!) : getDeskBooking(bookingId!)),
+    enabled: bookingId !== null,
+    staleTime: 60 * 1000,
+  });
+}
+
+/** What has happened to one booking, fetched only once somebody opens it. */
+export function useBookingHistoryFor(
+  source: BookingSource,
+  bookingId: string | null,
+  open: boolean,
+) {
+  return useQuery({
+    queryKey: [...keyFor(source), "booking-history", bookingId],
+    queryFn: () =>
+      source === "admin" ? getAdminBookingHistory(bookingId!) : getDeskBookingHistory(bookingId!),
+    enabled: open && bookingId !== null,
+    staleTime: 60 * 1000,
   });
 }
 

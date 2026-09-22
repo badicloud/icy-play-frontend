@@ -90,6 +90,16 @@ export const API_ENDPOINTS = {
     FACILITIES: `${API_V1}/admin/facilities`,
     COURTS: `${API_V1}/admin/courts`,
     COURT: (courtId: string) => `${API_V1}/admin/courts/${courtId}`,
+    // The desk answers these two at its own address, for the venue that works
+    // the court. These are the platform's door onto the same answers: an admin
+    // attends no venue, so the desk's gate turns them away from every court.
+    // Read only — confirming payments and approving upgrades stay the venue's.
+    COURT_SCHEDULE: (courtId: string) => `${API_V1}/admin/courts/${courtId}/schedule`,
+    COURT_BOOKINGS: (courtId: string) => `${API_V1}/admin/courts/${courtId}/bookings`,
+    // Both pages above lead here: an hour on the diary is clicked to see whose
+    // it is, and a row in the list opens its own history.
+    BOOKING: (bookingId: string) => `${API_V1}/admin/bookings/${bookingId}`,
+    BOOKING_HISTORY: (bookingId: string) => `${API_V1}/admin/bookings/${bookingId}/history`,
     COURT_PRICING: (courtId: string) => `${API_V1}/admin/courts/${courtId}/pricing`,
     COURT_DIVISIONS: (courtId: string) => `${API_V1}/admin/courts/${courtId}/divisions`,
     FACILITY_COURTS: (facilityId: string) =>

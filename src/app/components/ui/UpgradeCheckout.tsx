@@ -17,6 +17,7 @@ import {
   requestUpgrade,
   upgradeStep,
   type BookingDetail,
+  type MoveQuote,
   type MoveSlot,
   type UpgradeRequest,
 } from "@auth/bookingApi";
@@ -48,19 +49,34 @@ function UpgradeCheckout({
 }: {
   bookingId: string;
   bookableCourtId: string;
-  /** "2026-09-22T06:00:00,2026-09-22T07:00:00" — what the move screen picked. */
-  hours: string;
+  /**
+   * "2026-09-22T06:00:00,2026-09-22T07:00:00" — what the move screen picked.
+   *
+   * Null when there was nothing to pick: a booking being played keeps its
+   * hours and only changes court, so the move screen sends no `hours` at all
+   * and the server uses the ones the booking holds.
+   */
+  hours: string | null;
 }) {
   const client = useQueryClient();
 
-  const wanted: MoveSlot[] = hours
-    .split(",")
-    .filter(Boolean)
-    .map((pair) => {
-      const [date, startsAt] = pair.split("T");
+  // Null and empty are different answers and must stay different. Null is "the
+  // booking keeps its hours", which is a perfectly good upgrade; empty is "the
+  // address named no hours", which is a broken link. Folding them together is
+  // what left a booking under way on "Working out what you owe…" for ever: the
+  // quote below was disabled for having nothing to price, and a disabled query
+  // never stops pending.
+  const wanted: MoveSlot[] | null =
+    hours === null
+      ? null
+      : hours
+          .split(",")
+          .filter(Boolean)
+          .map((pair) => {
+            const [date, startsAt] = pair.split("T");
 
-      return { date, startsAt };
-    });
+            return { date, startsAt };
+          });
 
   const booking = useQuery({
     queryKey: ["booking", bookingId],
@@ -84,7 +100,7 @@ function UpgradeCheckout({
   const quote = useQuery({
     queryKey: ["move-quote", bookingId, bookableCourtId, wanted],
     queryFn: () => quoteMove(bookingId, bookableCourtId, wanted),
-    enabled: open === null && !upgrade.isPending && wanted.length > 0,
+    enabled: open === null && !upgrade.isPending && (wanted === null || wanted.length > 0),
     retry: false,
   });
 
@@ -122,7 +138,7 @@ function UpgradeCheckout({
     );
   }
 
-  if (quote.data === undefined || wanted.length === 0) {
+  if (quote.data === undefined || wanted?.length === 0) {
     return <Lost />;
   }
 
@@ -147,8 +163,9 @@ function Review({
 }: {
   detail: BookingDetail;
   bookableCourtId: string;
-  wanted: MoveSlot[];
-  priced: { toCourtName: string; rentalNow: number; rentalNew: number; balanceDue: number };
+  /** Null keeps the booking's own hours, which is what a booking under way does. */
+  wanted: MoveSlot[] | null;
+  priced: MoveQuote;
   onAsked: (created: UpgradeRequest) => void;
 }) {
   const [agreed, setAgreed] = useState(false);
@@ -184,11 +201,22 @@ function Review({
       <Panel>
         <h2 className="text-lg font-extrabold text-[#071955]">What you are changing to</h2>
 
-        <Hours courtName={priced.toCourtName} slots={wanted} />
+        {/* The hours the SERVER says are moving, not the ones the address
+            named. On a booking under way the address names none — they are not
+            changing — and only the server knows which of them are still ahead
+            of the customer on the venue's clock. */}
+        <Hours courtName={priced.toCourtName} slots={priced.movingSlots} />
 
         <dl className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
-          <Line label="Court rental you paid" value={peso(priced.rentalNow)} />
-          <Line label="Court rental for the new hours" value={peso(priced.rentalNew)} />
+          {/* Against the hours that are moving, not the whole booking. A
+              customer moving the last hour of a long session has most of that
+              session behind them, and it is not what they are being charged
+              against. */}
+          <Line label="What those hours cost you now" value={peso(priced.movingRentalNow)} />
+          <Line
+            label={`What they cost on ${priced.toCourtName}`}
+            value={peso(priced.movingRentalNew)}
+          />
           <div className="flex justify-between gap-4 border-t border-slate-100 pt-2">
             <dt className="font-bold text-[#071955]">Difference to pay</dt>
             <dd className="text-lg font-extrabold text-[#071955]">{peso(priced.balanceDue)}</dd>
@@ -203,9 +231,9 @@ function Review({
             You pay {peso(priced.balanceDue)} — the difference only.
           </p>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            You have already paid {peso(priced.rentalNow)} of the {peso(priced.rentalNew)} these
-            hours cost. Your platform fee does not change, because you are booking the same number
-            of hours.
+            You have already paid {peso(priced.movingRentalNow)} of the{" "}
+            {peso(priced.movingRentalNew)} these hours cost on {priced.toCourtName}. Your platform
+            fee does not change, because you are booking the same number of hours.
           </p>
         </div>
       </Panel>
@@ -416,8 +444,15 @@ function Pay({
         <Hours courtName={upgrade.toCourtName} slots={upgrade.slots} />
 
         <dl className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
-          <Line label="Court rental you paid" value={peso(upgrade.rentalNow)} />
-          <Line label="Court rental for the new hours" value={peso(upgrade.rentalNew)} />
+          {/* The upgrade records these against the hours that are moving, so
+              they are named the same way here as on the review this came
+              from — a figure that changes wording between two steps of one
+              checkout reads as a figure that changed. */}
+          <Line label="What those hours cost you now" value={peso(upgrade.rentalNow)} />
+          <Line
+            label={`What they cost on ${upgrade.toCourtName}`}
+            value={peso(upgrade.rentalNew)}
+          />
           <div className="flex justify-between gap-4 border-t border-slate-100 pt-2">
             <dt className="font-bold text-[#071955]">Difference to pay</dt>
             <dd className="text-lg font-extrabold text-[#071955]">{peso(upgrade.balanceDue)}</dd>

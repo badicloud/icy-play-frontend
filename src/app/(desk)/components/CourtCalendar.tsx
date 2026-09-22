@@ -10,7 +10,8 @@ import ChevronLeftOutlined from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightOutlined from "@mui/icons-material/ChevronRightOutlined";
 import type { DatesSetArg, EventClickArg } from "@fullcalendar/core";
 import { bookingState, type DeskCourt, type ScheduleEntry } from "@auth/deskApi";
-import { useCourtSchedule, useDeskBooking } from "@auth/hooks/useDesk";
+import { useBookingFor, useCourtScheduleFor } from "@auth/hooks/useDesk";
+import { useBookingSource } from "./BookingSource";
 import BookingDetails from "./BookingDetails";
 
 /**
@@ -109,8 +110,12 @@ function CourtCalendar({ court }: { court: DeskCourt }) {
   const [title, setTitle] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
-  const schedule = useCourtSchedule(court.id, drawn.from, drawn.to);
-  const booking = useDeskBooking(selected);
+  // Whose diary this is being read as. The same calendar serves the venue's
+  // desk and the platform's court page; only the door differs.
+  const source = useBookingSource();
+
+  const schedule = useCourtScheduleFor(source, court.id, drawn.from, drawn.to);
+  const booking = useBookingFor(source, selected);
 
   const events = useMemo(() => runs(schedule.data ?? []), [schedule.data]);
 

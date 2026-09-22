@@ -7,6 +7,7 @@ import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
 import {
   bookingHref,
+  canBeHiredWhole,
   clock,
   createBooking,
   datesBetween,
@@ -174,13 +175,20 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
     );
   }
 
+  // A run covers a stretch of the calendar and buys the days in it that can
+  // be sold whole. The rest are passed over — the same rule the picker applied,
+  // applied again here rather than trusted, because the URL carries only the
+  // ends of the stretch and a day can go between choosing and paying.
+  const taking = choice.kind === "MultiDay" ? days.filter(canBeHiredWhole) : days;
+  const skipping = choice.kind === "MultiDay" ? days.filter((day) => !canBeHiredWhole(day)) : [];
+
   // What the URL asked for, as the server sees it now.
   const wanted: { date: string; slot: AvailabilitySlot }[] =
     choice.kind === "Hourly"
       ? days[0].slots
           .filter((slot) => choice.hours.includes(slot.startsAt))
           .map((slot) => ({ date: days[0].date, slot }))
-      : days.flatMap((day) => day.slots.map((slot) => ({ date: day.date, slot })));
+      : taking.flatMap((day) => day.slots.map((slot) => ({ date: day.date, slot })));
 
   const gone = wanted.filter((entry) => !entry.slot.isOpen);
   const open = wanted.filter((entry) => entry.slot.isOpen);
@@ -188,8 +196,19 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
   const fee = open.reduce((sum, entry) => sum + entry.slot.platformFee, 0);
 
   const venue = days[0];
-  const shut = days.some((day) => day.isUnderMaintenance || day.isClosed);
-  const blocked = shut || gone.length > 0 || open.length === 0;
+
+  // A shut day inside a run is one of the days being passed over, not a reason
+  // to refuse the run. Outside one it is still a refusal: there is one day, and
+  // the venue is not open on it.
+  const shut =
+    choice.kind === "MultiDay"
+      ? taking.some((day) => day.isUnderMaintenance || day.isClosed)
+      : days.some((day) => day.isUnderMaintenance || day.isClosed);
+
+  // A run left holding one day is a whole-day booking wearing the wrong name,
+  // which the server refuses — so it is refused here, where it can be explained.
+  const tooFewDays = choice.kind === "MultiDay" && taking.length < 2;
+  const blocked = shut || tooFewDays || gone.length > 0 || open.length === 0;
 
   return (
     <main className="min-h-screen bg-[#f5f9ff]">
@@ -220,11 +239,30 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
           </p>
         )}
 
+        {/* Said again here, on the last screen before money. The picker said it
+            too, but this is the page somebody reads carefully — and a day
+            missing from a run is the one thing on it worth being sure about. */}
+        {skipping.length > 0 && !tooFewDays && (
+          <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            {skipping.length === 1
+              ? `${longDate(skipping[0].date)} cannot be booked whole, so it is not included and you are not paying for it.`
+              : `${skipping.length} days in this stretch cannot be booked whole, so they are not included and you are not paying for them.`}
+          </p>
+        )}
+
+        {tooFewDays && (
+          <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            Only one day of this stretch is still free, so it is not a run any more. Go back and
+            book that day on its own, or pick another stretch.
+          </p>
+        )}
+
         <section className="mt-6 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-6 py-4">
             <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
               {open.length} {open.length === 1 ? "hour" : "hours"}
-              {choice.kind !== "Hourly" && ` · ${dates.length > 1 ? `${dates.length} days` : "whole day"}`}
+              {choice.kind !== "Hourly" &&
+                ` · ${taking.length > 1 ? `${taking.length} days` : "whole day"}`}
             </h2>
           </div>
 

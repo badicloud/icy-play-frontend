@@ -15,9 +15,12 @@ type ReplaceAgreementDialogProps = {
 };
 
 /**
- * Swapping the paperwork on a term that already exists. Allowed because an
- * unreadable or wrong scan is a real mistake, and the swap is recorded with
- * both file names so it can be followed afterwards.
+ * The paperwork on a term that already exists: attaching it when the scan
+ * arrives late, or swapping it when the one on file is unreadable or wrong.
+ * Both are real mistakes to recover from, and either way the change is
+ * recorded with the file names on both sides so it can be followed afterwards.
+ * The wording follows which of the two is happening — "Replace" over a term
+ * with nothing attached reads as though a file went missing.
  */
 function ReplaceAgreementDialog({
   facilityOwnerId,
@@ -28,6 +31,7 @@ function ReplaceAgreementDialog({
   const replace = useReplaceAgreement(facilityOwnerId);
   const [document, setDocument] = useState<UploadedFile | null>(null);
   const [reason, setReason] = useState("");
+  const swapping = contract?.document != null;
 
   async function handleSave() {
     if (!contract || !document) {
@@ -40,7 +44,10 @@ function ReplaceAgreementDialog({
         document,
         reason: reason.trim() === "" ? null : reason.trim(),
       });
-      enqueueSnackbar("The signed agreement is replaced.", { variant: "success" });
+      enqueueSnackbar(
+        swapping ? "The signed agreement is replaced." : "The signed agreement is attached.",
+        { variant: "success" },
+      );
       onClose();
     } catch {
       // Shown in the dialog.
@@ -49,7 +56,7 @@ function ReplaceAgreementDialog({
 
   return (
     <EditDialog
-      title="Replace the signed agreement"
+      title={swapping ? "Replace the signed agreement" : "Attach the signed agreement"}
       description="The term itself does not change, only the document attached to it."
       open={contract !== null}
       isSaving={replace.isPending}
@@ -59,8 +66,8 @@ function ReplaceAgreementDialog({
       onClose={onClose}
       onSave={() => void handleSave()}
       canSave={document !== null}
-      confirmLabel="Replace the agreement"
-      busyLabel="Replacing…"
+      confirmLabel={swapping ? "Replace the agreement" : "Attach the agreement"}
+      busyLabel={swapping ? "Replacing…" : "Attaching…"}
     >
       {contract && (
         <>

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   activityIcon,
   courtDetailHref,
+  withBack,
   directionsUrl,
   maintenanceMessage,
   formatAddress,
@@ -44,7 +45,7 @@ function extraRates(court: CatalogCourt) {
   );
 }
 
-function CourtCard({ court }: { court: CatalogCourt }) {
+function CourtCard({ court, backHref }: { court: CatalogCourt; backHref: string | null }) {
   const address = formatAddress(court);
   const icon = activityIcon(court.sportKey);
   const extras = extraRates(court);
@@ -148,7 +149,7 @@ function CourtCard({ court }: { court: CatalogCourt }) {
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <Link
-            href={courtDetailHref(court)}
+            href={withBack(courtDetailHref(court), backHref)}
             className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
           >
             More details
@@ -163,7 +164,7 @@ function CourtCard({ court }: { court: CatalogCourt }) {
             </span>
           ) : (
             <Link
-              href={`/book/${court.bookableCourtId}`}
+              href={withBack(`/book/${court.bookableCourtId}`, backHref)}
               className="rounded-full bg-[#2563EB] px-7 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
             >
               Book now
@@ -182,13 +183,17 @@ function CourtCard({ court }: { court: CatalogCourt }) {
 /**
  * @param facilityId One venue, for its own page. By id rather than by name,
  *   because a name can be edited and two venues can share one.
+ * @param backHref Where a court opened from here should lead back to. Null on
+ *   the platform-wide list, which has no narrowing worth returning to.
  */
 function CourtResults({
   activity,
   facilityId,
+  backHref = null,
 }: {
   activity: CatalogActivity | null;
   facilityId?: string;
+  backHref?: string | null;
 }) {
   const courts = useQuery({
     queryKey: ["catalog", "courts", activity?.key ?? "*", facilityId ?? "*"],
@@ -249,6 +254,7 @@ function CourtResults({
             <CourtCard
               key={`${court.courtId}-${court.sportKey}-${court.divisionNumber}`}
               court={court}
+              backHref={backHref}
             />
           ))}
         </div>

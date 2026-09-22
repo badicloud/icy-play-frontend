@@ -412,10 +412,25 @@ function ContractRow({
             </button>
           </>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
-            <GavelOutlined sx={{ fontSize: 13 }} />
-            No signed agreement
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+              <GavelOutlined sx={{ fontSize: 13 }} />
+              No signed agreement
+            </span>
+            {/*
+              The gap this closes: a term whose paperwork arrives after it is
+              commenced had nowhere to go. Offered in the same colour as the
+              other edits rather than the muted "Replace", because a missing
+              agreement is the one worth acting on.
+            */}
+            <button
+              type="button"
+              onClick={onReplaceAgreement}
+              className="text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
+            >
+              Attach one
+            </button>
+          </>
         )}
       </div>
 

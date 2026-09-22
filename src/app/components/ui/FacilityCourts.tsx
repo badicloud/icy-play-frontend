@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   activityIcon,
   directionsUrl,
+  facilityHref,
   formatAddress,
   getCatalogActivities,
   getCatalogFacilities,
+  readFacilityFilter,
   type CatalogActivity,
   type CatalogFacility,
 } from "@auth/catalogApi";
@@ -58,8 +61,15 @@ function PinIcon() {
  * be edited, and neither should change what a filter matches.
  */
 function FacilityCourts({ slug }: { slug: string }) {
-  const [filter, setFilter] = useState<FilterId>("all");
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const search = useSearchParams();
+
+  // What the address bar says, read once. From then on the state leads and the
+  // URL follows it, so a refresh, a shared link, or coming back from a court
+  // all land on the tab and the sport the reader had chosen.
+  const [restored] = useState(() => readFacilityFilter(new URLSearchParams(search.toString())));
+
+  const [filter, setFilter] = useState<FilterId>(restored.kind);
+  const [selectedKey, setSelectedKey] = useState<string | null>(restored.activity);
 
   const facilities = useQuery({
     queryKey: ["catalog", "facilities"],
@@ -101,13 +111,33 @@ function FacilityCourts({ slug }: { slug: string }) {
     [here, filter],
   );
 
+  // Nothing is on screen until the venue and the catalogue have both answered,
+  // and "nothing is on screen" must not be read as "what you picked is gone" —
+  // which is what would happen to a sport restored from the address bar.
+  const ready = facility !== null && activities.data !== undefined;
+
   // Only what is on screen can stay selected: filtering to Events while a sport
   // is picked would leave the list showing something the tabs deny.
   useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
     setSelectedKey((current) =>
       current !== null && shown.some((activity) => activity.key === current) ? current : null,
     );
-  }, [shown]);
+  }, [shown, ready]);
+
+  const href = facilityHref(slug, { kind: filter, activity: selectedKey });
+
+  // replaceState rather than a router push: narrowing a list is not a place in
+  // anybody's history, and a reader who pressed back three times after trying
+  // three tabs would not thank us for it.
+  useEffect(() => {
+    if (ready) {
+      window.history.replaceState(null, "", href);
+    }
+  }, [href, ready]);
 
   const selected = shown.find((activity) => activity.key === selectedKey) ?? null;
 
@@ -220,7 +250,9 @@ function FacilityCourts({ slug }: { slug: string }) {
           </div>
         )}
 
-        <CourtResults activity={selected} facilityId={facility.id} />
+        {/* Where a court opened from this page should lead back to: here, as
+            the reader had it, rather than the platform-wide list. */}
+        <CourtResults activity={selected} facilityId={facility.id} backHref={href} />
       </section>
     </Shell>
   );

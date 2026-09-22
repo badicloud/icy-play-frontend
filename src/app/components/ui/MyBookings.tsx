@@ -162,6 +162,12 @@ function MyBookings() {
     queryFn: getMyBookings,
     // Short, because a hold runs down while the page is open.
     staleTime: 30 * 1000,
+    // And asked for again on a timer, because "Happening now" is decided by
+    // the server on the venue's clock: nothing in the browser can turn it on
+    // when the hour arrives, or off when it ends. Without this, a customer who
+    // left the page open before their booking started would watch it not
+    // start.
+    refetchInterval: 60 * 1000,
   });
 
   if (bookings.isPending) {
@@ -334,6 +340,27 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
         {booking.status === "PendingPayment" && !booking.hasLapsed && (
           <span className="mt-3 block">
             <HoldCountdown holdsUntil={booking.holdsUntil} compact />
+          </span>
+        )}
+
+        {/* The one card in the list the customer should act on right now: the
+            court is theirs at this moment. Beside "Confirmed" rather than
+            instead of it, for the same reason the move chip is — the booking
+            is still confirmed, and it is also happening.
+
+            It pulses, because this is the only thing on the page that is true
+            now and will not be later, and a customer scanning a list of
+            identical green badges has nothing else to catch their eye.
+
+            The server decides this, on the venue's clock. Nothing here reads
+            the browser's — see `isInProgress`. */}
+        {booking.isInProgress && (
+          <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-extrabold text-green-800">
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-600" />
+            </span>
+            Happening now
           </span>
         )}
 

@@ -84,6 +84,25 @@ export type BookedSlot = {
 };
 
 /**
+ * Whether a day can be sold open to close.
+ *
+ * The one definition on this side, matching AvailabilityDay.CanBeHiredWhole on
+ * the server. A day sold by the day is every hour of it: one hour gone and
+ * there is no whole day left, however many are still free.
+ *
+ * A run of days uses this twice over — to decide which days it can take, and to
+ * decide which it must pass over — so the two can never drift apart.
+ */
+export function canBeHiredWhole(day: AvailabilityDay) {
+  return (
+    !day.isClosed &&
+    !day.isUnderMaintenance &&
+    day.slots.length > 0 &&
+    day.slots.every((slot) => slot.isOpen)
+  );
+}
+
+/**
  * The choice, carried in the address bar.
  *
  * In the URL rather than in memory so a refresh, a back button, a shared link
@@ -258,6 +277,19 @@ export type BookingDetail = {
    * venue's and this decides what the move screen is allowed to offer.
    */
   isInPlay: boolean;
+  /**
+   * Whether one of the booked hours is running right now, on the venue's clock.
+   *
+   * Not `isInPlay`, which only asks whether the first hour has begun and stays
+   * true for ever after — a booking played last March is still "in play" by
+   * that reading. This one ends when the hours do.
+   *
+   * Answered by the server, and deliberately not worked out here from
+   * `slots` and `Date.now()`: the reader's clock is not the venue's, and a
+   * laptop an hour fast would tell somebody their court is theirs when it is
+   * somebody else's. A page that wants this fresher asks again.
+   */
+  isInProgress: boolean;
   createdAt: string;
 };
 
@@ -390,6 +422,28 @@ export type MoveQuote = {
   rentalNow: number;
   /** What they would come to on the new court, at the new hours. */
   rentalNew: number;
+  /**
+   * The same comparison, narrowed to the `hoursMoving` hours actually going
+   * somewhere.
+   *
+   * The pair above covers the whole booking, hours already played included.
+   * Those sit on both sides and cancel, so `balanceDue` is the same figure
+   * either way — but they cannot be shown to anybody. Telling a customer
+   * moving their last hour that they are "paying ₱1,000 now" names a session
+   * mostly behind them. These name only the part still in question, and are
+   * what the move screen puts on the page.
+   */
+  movingRentalNow: number;
+  movingRentalNew: number;
+  /**
+   * Those same hours, named, on the court they would move to.
+   *
+   * Sent because the checkout has to show what is being paid for, and on a
+   * booking under way it cannot work that out here: which hours are still to
+   * play is a question about the venue's clock, and asking the browser's would
+   * list an hour the customer is standing through.
+   */
+  movingSlots: BookedSlot[];
   /** Never less than nothing: cheaper is not a refund. */
   balanceDue: number;
   /** Minutes the new court is held while the difference is paid. */
@@ -525,10 +579,11 @@ export type UpgradeRequest = {
  * The booking does not move. This writes the request down, holds the hours on
  * a clock, and hands back what there is to pay.
  */
+/** @param slots Null keeps the hours the booking already has, as a move does. */
 export function requestUpgrade(
   bookingId: string,
   toBookableCourtId: string,
-  slots: MoveSlot[],
+  slots: MoveSlot[] | null,
 ) {
   return apiClient.post<UpgradeRequest, MoveBody>(API_ENDPOINTS.BOOKINGS.UPGRADE(bookingId), {
     toBookableCourtId,

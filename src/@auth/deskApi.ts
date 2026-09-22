@@ -145,26 +145,61 @@ export function getDeskCourts() {
   return apiClient.get<DeskCourt[]>(API_ENDPOINTS.DESK.COURTS);
 }
 
-export function getCourtSchedule(courtId: string, from: string, to: string) {
-  return apiClient.get<ScheduleEntry[]>(API_ENDPOINTS.DESK.COURT_SCHEDULE(courtId), {
-    query: { from, to },
+/*
+ * A court's diary and a court's list, from either of the two doors onto them.
+ *
+ * The venue desk reads them for the courts it works; the platform admin reads
+ * the same two for any court, because the inventory is theirs to police and
+ * "who is on this court" is the question behind closing one for maintenance.
+ *
+ * One reader, two addresses. The shapes are identical because the server
+ * answers both from the same query — only the gate differs — and a second copy
+ * of these types in an admin module would be a second answer waiting to
+ * disagree with this one.
+ */
+function scheduleFrom(url: string, from: string, to: string) {
+  return apiClient.get<ScheduleEntry[]>(url, { query: { from, to } });
+}
+
+function bookingsFrom(url: string, query: CourtBookingQuery) {
+  return apiClient.get<DeskBookingListResponse>(url, {
+    query: {
+      from: query.from,
+      to: query.to,
+      status: query.status,
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    unwrapData: false,
   });
 }
 
+export function getCourtSchedule(courtId: string, from: string, to: string) {
+  return scheduleFrom(API_ENDPOINTS.DESK.COURT_SCHEDULE(courtId), from, to);
+}
+
 export function getCourtBookings(query: CourtBookingQuery) {
-  return apiClient.get<DeskBookingListResponse>(
-    API_ENDPOINTS.DESK.COURT_BOOKINGS(query.courtId),
-    {
-      query: {
-        from: query.from,
-        to: query.to,
-        status: query.status,
-        page: query.page,
-        pageSize: query.pageSize,
-      },
-      unwrapData: false,
-    },
-  );
+  return bookingsFrom(API_ENDPOINTS.DESK.COURT_BOOKINGS(query.courtId), query);
+}
+
+/** The same diary, read as the platform rather than as the venue. */
+export function getAdminCourtSchedule(courtId: string, from: string, to: string) {
+  return scheduleFrom(API_ENDPOINTS.ADMIN.COURT_SCHEDULE(courtId), from, to);
+}
+
+/** The same list, read as the platform rather than as the venue. */
+export function getAdminCourtBookings(query: CourtBookingQuery) {
+  return bookingsFrom(API_ENDPOINTS.ADMIN.COURT_BOOKINGS(query.courtId), query);
+}
+
+/** One booking in full, read as the platform. */
+export function getAdminBooking(bookingId: string) {
+  return apiClient.get<DeskBooking>(API_ENDPOINTS.ADMIN.BOOKING(bookingId));
+}
+
+/** Its account of itself, read as the platform. */
+export function getAdminBookingHistory(bookingId: string) {
+  return apiClient.get<BookingHistoryEntry[]>(API_ENDPOINTS.ADMIN.BOOKING_HISTORY(bookingId));
 }
 
 export function getDeskBooking(bookingId: string) {

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import {
+  canBeHiredWhole,
   checkoutHref,
   choiceQuery,
   clock,
@@ -21,6 +22,7 @@ import {
   type BookingKind,
   type DayOutlook,
 } from "@auth/bookingApi";
+import { readBackHref } from "@auth/catalogApi";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -53,6 +55,11 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   // What the address bar says, read once. From then on the state leads and the
   // URL follows it — a refresh, a shared link, or coming back from the checkout
   // all land on the hours the reader actually chose.
+  // Where this court was opened from, when it was opened from a venue's page.
+  // Read once and kept: the address bar is rewritten as hours are picked, and
+  // the way back must survive that.
+  const [back] = useState(() => readBackHref(new URLSearchParams(search.toString())));
+
   const [restored] = useState(() => {
     const choice = readCheckout(new URLSearchParams(search.toString()));
 
@@ -133,11 +140,6 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const today = availability[0];
   const hourly = mode === "Hourly";
 
-  // The day whose hours are on screen. A run covers several, and a customer
-  // buying four days wants to see what they are getting on each of them, not
-  // only on the first.
-  const viewed = availability.find((day) => day.date === showing) ?? today;
-
   // A day sold open to close has to still have its opening in it. By the time
   // anyone is looking, part of today has gone, so today is an hourly booking or
   // it is nothing.
@@ -156,6 +158,26 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   // Days in the range with nothing on them at all.
   const emptyDays = hourly ? [] : availability.filter(nothingLeft);
 
+  // A run is a stretch of the calendar; the days IN the booking are the ones
+  // that stretch can be sold. The rest are passed over — not booked, not
+  // charged, and named underneath the strip so nobody has to work it out.
+  //
+  // A single day has no such split: there is one day, and it is either for sale
+  // or it is a refusal.
+  const taking = mode === "MultiDay" ? availability.filter(canBeHiredWhole) : availability;
+  const skipping = mode === "MultiDay" ? availability.filter((day) => !canBeHiredWhole(day)) : [];
+
+  // The day whose hours are on screen. A run covers several, and a customer
+  // buying four days wants to see what they are getting on each of them, not
+  // only on the first.
+  //
+  // Chosen from the days in the booking, never from the ones passed over. A day
+  // that is not being sold has no hours to show: the grid marks a whole day's
+  // hours as taken, and doing that for a day nobody is buying says the customer
+  // has it.
+  const viewed =
+    taking.find((day) => day.date === showing) ?? taking[0] ?? availability[0];
+
   // What is actually being bought, in one place: hourly is what the customer
   // ticked, days sold by the day are every hour still free on each of them.
   const chosen = cleared
@@ -164,7 +186,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
     ? (today?.slots ?? [])
         .filter((slot) => picked.includes(slot.startsAt) && slot.isOpen)
         .map((slot) => ({ date: today!.date, slot }))
-    : availability.flatMap((day) =>
+    : taking.flatMap((day) =>
         day.slots.filter((slot) => slot.isOpen).map((slot) => ({ date: day.date, slot })),
       );
 
@@ -185,12 +207,21 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   // say so while that Saturday is the one being looked at.
   const applying = new Set((viewed?.slots ?? []).map((slot) => slot.rateKind));
 
-  // Any day sold by the day is all of it or none of it, so either one stops
-  // the booking. The strip no longer offers such a day — but a choice that
-  // arrived in an address bar has not been through the strip.
-  const blocked = !hourly && (partly.length > 0 || emptyDays.length > 0);
+  // A single day sold by the day is all of it or none of it, so either one
+  // stops the booking. The strip no longer offers such a day — but a choice
+  // that arrived in an address bar has not been through the strip.
+  //
+  // A run is stopped by a different thing. Days it cannot have are ordinary and
+  // passed over, so what is left to refuse is a run with nothing in it, or one
+  // left holding a single day — which is a whole-day booking wearing the wrong
+  // name, and the server says so too.
+  const blocked =
+    mode === "MultiDay"
+      ? taking.length < 2
+      : !hourly && (partly.length > 0 || emptyDays.length > 0);
 
-  const query = choiceQuery(mode, dates, picked);
+  const choice = choiceQuery(mode, dates, picked);
+  const query = back === null ? choice : `${choice}&back=${encodeURIComponent(back)}`;
 
   useEffect(() => {
     window.history.replaceState(null, "", `${window.location.pathname}?${query}`);
@@ -303,24 +334,17 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
       return;
     }
 
-    // A run cannot skip a day it cannot have, which is what the strip says
-    // above it. It used to: an unavailable day inside a run was passed over and
-    // not charged for. That stopped being possible the moment a run became
-    // whole days — a day with an hour gone is now a day the run cannot cross,
-    // so tapping past one starts a new run there instead of quietly swallowing
-    // it.
-    const crossed = Array.from(
-      { length: Math.abs(index - firstDay) + 1 },
-      (_, step) => Math.min(index, firstDay) + step,
-    );
-
-    if (crossed.some((day) => barredBecause(day) !== null)) {
-      setFirstDay(index);
-      setLastDay(index);
-
-      return;
-    }
-
+    // A run reaches across days it cannot have, and does not buy them.
+    //
+    // It used to stop dead at one: tapping past an unavailable day started a
+    // new run there, so somebody wanting the Thursday and the Saturday with the
+    // Friday gone could not have both. What they got instead was two bookings —
+    // two holds, two clocks, two receipts — and paying one while the other
+    // lapsed left them with half a trip.
+    //
+    // The day being tapped still has to be one the run can END on; that is the
+    // guard at the top. What is passed over in between is named under the strip,
+    // so a run with a hole in it never looks like a run without one.
     setLastDay(index);
   }
 
@@ -364,8 +388,11 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
       <PublicHeader />
 
       <div className="mx-auto max-w-6xl px-6 pt-7 lg:px-8">
+        {/* Back to the venue's page as the reader had it, when that is where
+            they came from. The platform-wide list is the fallback for a link
+            somebody was sent, which has no venue behind it. */}
         <Link
-          href="/#venues"
+          href={back ?? "/#venues"}
           className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-[#071955]"
         >
           <span aria-hidden>&larr;</span> Back to courts
@@ -403,7 +430,13 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                             ? wanted
                             : firstFreeDay(option.id);
 
-                        setCleared(false);
+                        // A run starts empty. Landing on one day and calling it
+                        // a choice made the picker tell the customer their run
+                        // was too short before they had touched it — a telling
+                        // off for arriving. The day is still loaded, because
+                        // the court's name and rates are read from it; it is
+                        // just not picked, so the first tap starts the run.
+                        setCleared(option.id === "MultiDay");
                         setFirstDay(landing);
                         setLastDay(landing);
                       }}
@@ -423,10 +456,10 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
 
             <Panel title={mode === "MultiDay" ? "Which days?" : "Which day?"}>
               {mode === "MultiDay" && (
-                <p className="mb-3 text-sm text-slate-500">
+                <p className="mb-3 text-sm font-medium leading-relaxed text-slate-700">
                   Tap the first day, then the last — tap further along to add more days, up to{" "}
-                  {LongestRun}. A run cannot skip a day that is unavailable, so tapping past one
-                  starts a new run there.
+                  {LongestRun}. Greyed-out days are passed over: they are not in the booking and
+                  you are not charged for them.
                 </p>
               )}
               <div className="grid grid-cols-7 gap-2">
@@ -473,8 +506,54 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                 })}
               </div>
 
+              {/* Named, not left to be inferred from a grey square. A run
+                  that quietly dropped a day is how somebody turns up on a day
+                  they were never sold — so this says which days went, and how
+                  many are being bought. */}
+              {/* A run of one is a whole-day booking wearing the wrong name,
+                  which the server refuses, so Continue is off whenever the run
+                  holds fewer than two days. Both lines below say why it is off;
+                  they differ in whether the customer can fix it by tapping on.
+
+                  One day picked and the rest of the stretch free is the middle
+                  of picking, not a mistake. In amber it read as a refusal, and
+                  the customer had done nothing to be refused for — but in the
+                  plain grey of the notes around it, it was one more line in a
+                  stack of grey and the one sentence saying what to do next
+                  disappeared into the background copy. Blue: the panel's own
+                  colour, loud enough to be the thing you read, quiet enough
+                  not to look like something went wrong. */}
+              {mode === "MultiDay" && !cleared && taking.length < 2 && skipping.length === 0 && (
+                <p className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#071955]">
+                  Now tap the day your run ends on. Booking just this one day? Use{" "}
+                  <span className="font-extrabold">Single Day</span> above.
+                </p>
+              )}
+
+              {/* This one has earned the amber: the stretch the customer
+                  chose cannot be a run however it is read, so it stops here
+                  rather than at the greyed-out Continue. */}
+              {mode === "MultiDay" && !cleared && taking.length < 2 && skipping.length > 0 && (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                  Only one day of this stretch is free to book whole, so it cannot be a run. Try a
+                  different stretch, or book that day on its own with Single Day.
+                </p>
+              )}
+
+              {mode === "MultiDay" && !cleared && taking.length >= 2 && skipping.length > 0 && (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                  {skipping.length === 1
+                    ? `${longDate(skipping[0].date)} cannot be booked whole, so it is not in this booking.`
+                    : `${skipping.length} days in this stretch cannot be booked whole, so they are not in this booking.`}{" "}
+                  {taking.length > 0 &&
+                    `You are booking ${taking.length} ${taking.length === 1 ? "day" : "days"}: ${taking
+                      .map((day) => longDate(day.date))
+                      .join(", ")}.`}
+                </p>
+              )}
+
               {!hourly && (
-                <p className="mt-3 text-sm text-slate-500">
+                <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
                   Today is greyed out: part of it has already gone, so it can only be booked by
                   the hour.{" "}
                   <button
@@ -495,7 +574,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
               )}
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3.5">
-                <p className="text-sm text-slate-400">
+                <p className="text-sm font-medium text-slate-600">
                   You can book up to {DaysAhead} days ahead.
                 </p>
                 <button
@@ -545,14 +624,20 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                   >
                     <path d="M6 6l12 12M18 6L6 18" />
                   </svg>
-                  {span > 1 ? `Clear these ${span} days` : "Clear this day"}
+                  {/* The days in the booking, not the width of the stretch:
+                      a run across a taken Friday is two days, and a button
+                      offering to clear three is counting something the customer
+                      is not buying. */}
+                  {(mode === "MultiDay" ? taking.length : span) > 1
+                    ? `Clear these ${mode === "MultiDay" ? taking.length : span} days`
+                    : "Clear this day"}
                 </button>
               )}
             </Panel>
 
             {cleared ? (
               <Panel title="Pick your hours">
-                <p className="text-slate-500">
+                <p className="text-sm font-medium leading-relaxed text-slate-700">
                   {mode === "MultiDay"
                     ? "Pick a day above to start a run, then tap further along to add more."
                     : "Pick a day above to see the hours it has."}
@@ -565,7 +650,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                 viewed.slots.length
               } hours open`}
             >
-              <p className="mb-4 text-sm text-slate-500">
+              <p className="mb-4 text-sm font-medium leading-relaxed text-slate-700">
                 {hourly
                   ? "Tap an hour to add it, tap again to take it off. They do not have to run back to back."
                   : mode === "MultiDay"
@@ -578,13 +663,17 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                   day there is no strip and an unavailable day is a refusal,
                   because a day sold open to close is all of it or none of it. */}
               {mode === "MultiDay" ? (
-                availability.length > 1 && (
+                taking.length > 1 && (
                   <div
                     className="mb-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     role="tablist"
                     aria-label="Days in this booking"
                   >
-                    {availability.map((day) => {
+                    {/* The days in the booking, and only those. A day the run
+                        passed over is not one of them, and a tab for it is a
+                        door to a day nobody is buying — the line under the
+                        picker has already said it is not included. */}
+                    {taking.map((day) => {
                       const free = day.slots.filter((slot) => slot.isOpen).length;
                       const here = day.date === viewed.date;
 
@@ -610,14 +699,10 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                           </span>
                           <span
                             className={`block text-xs font-semibold ${
-                              free === 0 ? "text-slate-400" : here ? "text-[#2563EB]" : "text-slate-500"
+                              here ? "text-[#2563EB]" : "text-slate-500"
                             }`}
                           >
-                            {free === 0
-                              ? day.isClosed || day.isUnderMaintenance
-                                ? "Shut"
-                                : "Nothing left"
-                              : `${free} ${free === 1 ? "hour" : "hours"}`}
+                            {`${free} ${free === 1 ? "hour" : "hours"}`}
                           </span>
                         </button>
                       );
@@ -639,6 +724,9 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                     </Notice>
                   )}
 
+                  {/* Only outside a run. Inside one this is ordinary: the
+                      day is passed over, and the line under the strip has
+                      already said so. */}
                   {partly.length > 0 && (
                     <Notice>
                       Part of {longDate(partly[0].date)} is already booked, so it cannot be hired
@@ -751,7 +839,6 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
           rental={rental}
           fee={fee}
           mode={mode}
-          dates={dates}
           blocked={blocked}
           problem={problem}
           signedIn={isAuthenticated}
@@ -779,7 +866,6 @@ function Summary({
   rental,
   fee,
   mode,
-  dates,
   blocked,
   problem,
   signedIn,
@@ -790,7 +876,6 @@ function Summary({
   rental: number;
   fee: number;
   mode: BookingKind;
-  dates: string[];
   blocked: boolean;
   problem: string | null;
   signedIn: boolean;
@@ -806,10 +891,11 @@ function Summary({
   // the price has to be the one being charged for.
   const soldDays = new Set(chosen.map((entry) => entry.date)).size;
 
-  const when =
-    dates.length === 1
-      ? longDate(dates[0])
-      : `${longDate(dates[0])} – ${longDate(dates[dates.length - 1])}`;
+  // The days being paid for, said out. The span between the first and the
+  // last is not the same thing: a run passes over days it cannot have, and
+  // "24 – 26 Sep" for a booking of the 24th and the 26th is exactly how
+  // somebody turns up on a day that was never theirs.
+  const when = phraseDays([...new Set(chosen.map((entry) => entry.date))].sort());
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 sm:px-6">
@@ -1107,6 +1193,35 @@ function shortDate(iso: string) {
     weekday: "short",
     day: "numeric",
   });
+}
+
+/**
+ * A day, a run of them, or a run with holes, said the way a person would.
+ *
+ * A run that passes over a day lists its days rather than naming its ends,
+ * because the ends of a gapped run describe a booking nobody is buying. The
+ * same shape the letters use, so the screen and the email agree.
+ */
+function phraseDays(days: string[]) {
+  if (days.length === 0) {
+    return "";
+  }
+
+  if (days.length === 1) {
+    return longDate(days[0]);
+  }
+
+  const dayNumber = (iso: string) => {
+    const [year, month, day] = iso.split("-").map(Number);
+
+    return Math.round(Date.UTC(year, month - 1, day) / 86400000);
+  };
+
+  const unbroken = dayNumber(days[days.length - 1]) - dayNumber(days[0]) + 1 === days.length;
+
+  return unbroken
+    ? `${longDate(days[0])} – ${longDate(days[days.length - 1])}`
+    : days.map(longDate).join(", ");
 }
 
 function longDate(iso: string) {

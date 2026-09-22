@@ -156,6 +156,83 @@ export function getCatalogCourt(courtId: string, sportKey: string, division: num
 }
 
 /**
+ * How a venue's page was narrowed when somebody was looking at it: which tab,
+ * and which sport card.
+ *
+ * In the address bar rather than in state alone, so the page can be shared,
+ * refreshed and returned to showing what the reader had chosen rather than
+ * starting over at "All".
+ */
+export type FacilityFilter = {
+  kind: "all" | "Sport" | "Event";
+  activity: string | null;
+};
+
+export function facilityHref(slug: string, filter: FacilityFilter) {
+  const query = new URLSearchParams();
+
+  // "All" and "nothing picked" are the defaults, and a query string that spells
+  // out its own defaults is noise in a bar somebody might copy.
+  if (filter.kind !== "all") {
+    query.set("kind", filter.kind);
+  }
+
+  if (filter.activity !== null) {
+    query.set("activity", filter.activity);
+  }
+
+  const tail = query.toString();
+
+  return tail === "" ? `/facilities/${slug}` : `/facilities/${slug}?${tail}`;
+}
+
+/** Reads back what facilityHref wrote, and refuses anything it did not. */
+export function readFacilityFilter(params: URLSearchParams): FacilityFilter {
+  const kind = params.get("kind");
+
+  return {
+    kind: kind === "Sport" || kind === "Event" ? kind : "all",
+    activity: params.get("activity"),
+  };
+}
+
+/**
+ * Where a court was opened from, if it is somewhere worth sending a reader
+ * back to.
+ *
+ * A venue page only, and only as a path on this site. Anything that reaches a
+ * page through the address bar is written by whoever sends the link, and a back
+ * button that follows whatever it is handed is how a page here becomes a door
+ * to somewhere else — so "//elsewhere.example" and "https://…" are refused
+ * along with everything that is not a venue.
+ */
+const venuePath = "/facilities/";
+
+export function readBackHref(params: URLSearchParams) {
+  const value = params.get("back");
+
+  // A backslash is a slash to a browser and not to this check, which is the
+  // whole trick behind "/facilities/\\elsewhere.example".
+  if (value === null || !value.startsWith(venuePath) || value.includes("\\")) {
+    return null;
+  }
+
+  // One segment, and a real one. Everything after "?" is the venue page's own
+  // filter and is left alone; anything that climbs out of the segment — a
+  // second slash, or an encoded one — is somebody trying their luck.
+  const slug = value.slice(venuePath.length).split("?")[0].toLowerCase();
+
+  return slug !== "" && !slug.includes("/") && !slug.includes("%2f") ? value : null;
+}
+
+/** Hangs a back link off a href that may already carry a query of its own. */
+export function withBack(href: string, back: string | null) {
+  return back === null
+    ? href
+    : `${href}${href.includes("?") ? "&" : "?"}back=${encodeURIComponent(back)}`;
+}
+
+/**
  * Where one bookable court lives. The sport and division are in the URL because
  * a court set up for three sports is three separate offerings at three prices.
  */

@@ -156,7 +156,10 @@ function MoveBookingDialog({
   const grid = useQuery({
     queryKey: ["availability", chosen, onDay],
     queryFn: () => getAvailability(chosen!, onDay!),
-    enabled: chosen !== null && onDay !== null && hourly,
+    // Not asked for a booking under way. Its hours are not in question — they
+    // travel with it — so a grid of them is a question with no answer to give,
+    // and one that invites the reader to try.
+    enabled: chosen !== null && onDay !== null && hourly && inPlay === false,
     retry: false,
   });
 
@@ -212,10 +215,46 @@ function MoveBookingDialog({
   // not one, and the last tap should not be where that is explained.
   const scheduled = !hourly || hours.length === 0 || hours.length === needed;
 
-  // Priced only once hours are chosen. Until then nothing about money is on
-  // screen, and a button disabled over a figure nobody has been shown is a
-  // dead end — so the attempt is allowed and the server answers it.
-  const affordable = wanted === null || settled?.balanceDue === 0;
+  // A booking under way has no hours to pick — the court changes and the clock
+  // does not — so `wanted` is null for the whole of its move, and every rule
+  // written as "once hours are chosen" would never fire on one. Its price is
+  // settled the moment a court is: the hours are already known.
+  //
+  // Split rather than folded together, because the two are genuinely different
+  // screens and the one that works has to go on working.
+  // Whether the booking is under way, answerable before a court is picked.
+  //
+  // `inPlay` comes off the quote, and the quote needs a court — so until one is
+  // chosen it is null, which is no use to the court list itself. The booking
+  // carries the same answer and carries it from the start; the quote refines it
+  // afterwards, because it turns over while the dialog is open.
+  const underWay = inPlay ?? booking.isInPlay;
+
+  // Courts this booking could actually go to. Its own is in the list and is a
+  // real choice — until the booking is under way, when it is the one court
+  // that cannot take it. Counted rather than assumed, because a venue with a
+  // single court of this sport then has nowhere to offer at all, and a grid of
+  // one greyed-out card is not how to say so.
+  const movable = elsewhere.filter(
+    (court) => !(underWay && court.bookableCourtId === booking.bookableCourtId),
+  );
+
+  const priceable = inPlay === true ? chosen !== null : wanted !== null;
+
+  // How many hours are actually going, as the server counted them. On a
+  // booking under way that is fewer than the booking has: the hour in progress
+  // is being played on the court they are standing on and stays there.
+  const hoursMoved = settled?.hoursMoving ?? needed;
+
+  // Priced only once there is a price. On a booking not yet started, that is
+  // once hours are chosen: until then nothing about money is on screen, and a
+  // button disabled over a figure nobody has been shown is a dead end — so the
+  // attempt is allowed and the server answers it.
+  //
+  // On one under way there is no such gap. The figure IS on screen, so letting
+  // the button through would send somebody to a refusal they had just been
+  // shown the reason for.
+  const affordable = priceable ? settled?.balanceDue === 0 : true;
   const ready = chosen !== null && scheduled && affordable && !move.isPending;
 
   // Court rental alone. The platform fee is charged per hour booked and a move
@@ -233,9 +272,13 @@ function MoveBookingDialog({
           <h2 className="text-xl font-extrabold text-[#071955]">Move your booking</h2>
           <p className="mt-1 text-sm font-medium text-slate-600">
             {booking.courtName} at {booking.facilityName}.
-            {hourly
+            {/* A booking under way is told the same thing as one sold by the
+                day, because the same thing is true of it: the court is what
+                can change. Offering it "then a new time" was the line that put
+                a reader in front of an hour grid they could not use. */}
+            {hourly && !underWay
               ? " Choose a court, then a new time. Keeping the court and changing only the hours counts too."
-              : " You can change the court. The time stays the same."}
+              : " Choose the court to move to. The time stays the same."}
           </p>
         </div>
 
@@ -266,14 +309,19 @@ function MoveBookingDialog({
           <MovesLeft left={booking.movesLeft} limit={booking.moveLimit} />
 
           {/* Not "a NEW court" any more: the booking's own is in the list,
-              because keeping the court and changing the time is a move too. */}
-          <p className="mt-5 text-sm font-bold text-[#071955]">Choose a court</p>
+              because keeping the court and changing the time is a move too —
+              until it is under way, when the time is the one thing that cannot
+              change and its own court has nothing left to offer. */}
+          <p className="mt-5 text-sm font-bold text-[#071955]">
+            {underWay ? "Choose another court" : "Choose a court"}
+          </p>
 
           {courts.isPending ? (
             <p className="mt-2 text-sm text-slate-500">Loading courts…</p>
-          ) : elsewhere.length === 0 ? (
-            <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-              There is no other {booking.sportName.toLowerCase()} court here to move to.
+          ) : movable.length === 0 ? (
+            <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+              There is no other {booking.sportName.toLowerCase()} court here to move to
+              {underWay ? ", and a booking already being played cannot change its hours." : "."}
             </p>
           ) : (
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
@@ -281,35 +329,95 @@ function MoveBookingDialog({
                 const here = chosen === court.bookableCourtId;
                 const own = court.bookableCourtId === booking.bookableCourtId;
 
+                // The court they are standing on, while they are standing on
+                // it. Somebody who opened this dialog is asking to be moved
+                // somewhere else; their own court is the one place that cannot
+                // answer, because the hours are what would have had to change
+                // and a booking under way cannot change them.
+                //
+                // Only while it is under way. Before it starts, its own court
+                // is a perfectly good choice — keeping the court and changing
+                // the hours is a move, and that screen has to go on working.
+                const stuck = own && underWay;
+
                 return (
                   <li key={court.bookableCourtId}>
                     <button
                       type="button"
+                      disabled={stuck}
+                      title={
+                        stuck
+                          ? `${court.name} — you are playing here now`
+                          : court.name
+                      }
                       onClick={() => {
                         setChosen(court.bookableCourtId);
                         setProblem(null);
                       }}
                       className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                        here
-                          ? "border-[#2563EB] bg-blue-50"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                        stuck
+                          ? "cursor-not-allowed border-dashed border-slate-200 bg-slate-50"
+                          : here
+                            ? "border-[#2563EB] bg-blue-50"
+                            : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-sm font-bold text-[#071955]">{court.name}</span>
+                      {/* One line, and it stays one line. The cards sit in a
+                          grid, so a row is as tall as its tallest card: let
+                          the badge wrap under the name and the one card
+                          carrying it drags every card beside it down with it.
+                          The name gives way instead — it is truncated, with
+                          the full one on the button's tooltip — and the badge
+                          never shrinks, so each card is the same two lines
+                          whether it has a badge or not. */}
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className={`truncate text-sm font-bold ${
+                            stuck ? "text-slate-400" : "text-[#071955]"
+                          }`}
+                        >
+                          {court.name}
+                        </span>
                         {/* Said on the card rather than left to be worked out.
                             Without it the list reads as though one court has
-                            been listed twice. */}
+                            been listed twice.
+
+                            Solid navy, not the grey it was: in slate-100 it
+                            sat at the weight of the sport-and-rate line under
+                            it and read as more of the card's small print,
+                            which is exactly what the badge exists not to be.
+
+                            Navy rather than the brand blue because the blue is
+                            already spoken for on this card — it is what a
+                            picked court is drawn in. A badge in the same blue
+                            would say "chosen" on a card nobody had chosen. */}
                         {own && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
+                              stuck ? "bg-slate-300 text-slate-600" : "bg-[#071955] text-white"
+                            }`}
+                          >
                             You are here
                           </span>
                         )}
                       </span>
-                      <span className="block text-xs font-semibold text-slate-500">
-                        {court.sportName}
-                        {court.standardHourlyRate !== null &&
-                          ` · ${peso(court.standardHourlyRate)}/hr`}
+                      {/* The reason, in the place the rate would be. A card
+                          greyed out with its price still on it reads as a
+                          court that has gone, rather than the one the customer
+                          is standing on — and "you are here" alone does not
+                          say why that is now a refusal. */}
+                      <span
+                        className={`block truncate text-xs font-semibold ${
+                          stuck ? "text-slate-400" : "text-slate-500"
+                        }`}
+                      >
+                        {stuck
+                          ? "Playing here now — pick another court"
+                          : `${court.sportName}${
+                              court.standardHourlyRate !== null
+                                ? ` · ${peso(court.standardHourlyRate)}/hr`
+                                : ""
+                            }`}
                       </span>
                     </button>
                   </li>
@@ -325,7 +433,32 @@ function MoveBookingDialog({
             <div ref={scheduleRef} className="mt-6 border-t border-slate-200 pt-5">
               {inPlay === null && quote.isPending ? (
                 <p className="text-sm text-slate-500">Checking that court…</p>
-              ) : inPlay === null ? null : (
+              ) : inPlay === null ? null : inPlay ? (
+                /* A booking being played has nothing to choose here. Its hours
+                   are not moving in time, only in place, so there is no day
+                   and no grid — and offering either would be offering a change
+                   that cannot be made.
+
+                   What replaces them is the one thing the reader does need to
+                   know before they pick a court: that the hour they are on
+                   stays where they are standing, and only the whole hours
+                   ahead of it come with them. Somebody who booked three hours
+                   and is told the price of one should be able to see why. */
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                  <p className="text-sm font-bold text-[#071955]">
+                    This booking is being played now
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {hoursMoved === 0
+                      ? "There are no whole hours left to move."
+                      : `Choose the court to move to and your ${
+                          hoursMoved === 1 ? "remaining hour" : `remaining ${hoursMoved} hours`
+                        } move with you, at the same times. The hour you are playing stays on ${
+                          booking.courtName
+                        } — you are on that court now, and it is not re-charged.`}
+                  </p>
+                </div>
+              ) : (
                 <>
                   <p className="text-sm font-bold text-[#071955]">
                     {pickingDay ? "Choose a day" : "Choose your hours"}
@@ -461,7 +594,7 @@ function MoveBookingDialog({
           {/* Said only once there is something to say. Until the schedule is
               complete the price is not settled, and a figure that moves as you
               tap reads as a fault. */}
-          {wanted !== null && quote.isPending && (
+          {priceable && quote.isPending && (
             <p className="mt-3 text-sm text-slate-500">Working out what that comes to…</p>
           )}
 
@@ -517,24 +650,37 @@ function MoveBookingDialog({
               anything to settle. Against the court rental on both sides, so a
               move between two courts at the same rate reads as free, which is
               what it is. */}
-          {wanted !== null && settled && settled.balanceDue > 0 && (
+          {priceable && settled && settled.balanceDue > 0 && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-amber-900">
                   {peso(settled.balanceDue)} more to pay
                 </p>
+                {/* Against the hours that are moving, not the whole booking. On
+                    a session under way most of the booking is behind the
+                    customer and not in question, and naming its total asks them
+                    to work out which part of it still is. */}
                 <p className="mt-1 text-sm leading-6 text-amber-800">
-                  Your new hours cost {peso(settled.rentalNew)}. You are paying{" "}
-                  {peso(settled.rentalNow)} now, so there is {peso(settled.balanceDue)} to settle.
+                  {hoursMoved} {hoursMoved === 1 ? "hour" : "hours"} on{" "}
+                  {settled.toCourtName} {hoursMoved === 1 ? "costs" : "cost"}{" "}
+                  {peso(settled.movingRentalNew)}, against {peso(settled.movingRentalNow)} where{" "}
+                  {hoursMoved === 1 ? "it is" : "they are"} now — so there is{" "}
+                  {peso(settled.balanceDue)} to settle.
                 </p>
               </div>
 
               {/* The choice travels in the address, so a refresh on the next
-                  page does not lose what was picked here. */}
+                  page does not lose what was picked here. A booking under way
+                  sends no hours: it is not changing them, and the server keeps
+                  the ones it has. */}
               <Link
-                href={`/bookings/${booking.id}/upgrade?court=${chosen}&hours=${encodeURIComponent(
-                  wanted.map((slot) => `${slot.date}T${slot.startsAt}`).join(","),
-                )}`}
+                href={
+                  wanted === null
+                    ? `/bookings/${booking.id}/upgrade?court=${chosen}`
+                    : `/bookings/${booking.id}/upgrade?court=${chosen}&hours=${encodeURIComponent(
+                        wanted.map((slot) => `${slot.date}T${slot.startsAt}`).join(","),
+                      )}`
+                }
                 className="inline-flex shrink-0 items-center rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-600/20 transition hover:bg-amber-700"
               >
                 Pay and upgrade
@@ -542,15 +688,19 @@ function MoveBookingDialog({
             </div>
           )}
 
-          {wanted !== null && settled && settled.balanceDue === 0 && (
+          {priceable && settled && settled.balanceDue === 0 && (
             <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
               <p className="text-sm font-bold text-green-900">Nothing more to pay</p>
               <p className="mt-1 text-sm leading-6 text-green-800">
-                {settled.rentalNew < settled.rentalNow
-                  ? `Your new hours cost ${peso(settled.rentalNew)} instead of ${peso(
-                      settled.rentalNow,
+                {settled.movingRentalNew < settled.movingRentalNow
+                  ? `Those ${hoursMoved === 1 ? "hour costs" : "hours cost"} ${peso(
+                      settled.movingRentalNew,
+                    )} on ${settled.toCourtName} instead of ${peso(
+                      settled.movingRentalNow,
                     )}. The difference is not refunded, so your bill stays the same.`
-                  : "Your new hours cost the same as the ones you have now."}
+                  : `${settled.toCourtName} charges the same for ${
+                      hoursMoved === 1 ? "that hour" : "those hours"
+                    }, so the move is free.`}
               </p>
             </div>
           )}

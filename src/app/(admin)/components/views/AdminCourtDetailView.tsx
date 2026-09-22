@@ -10,8 +10,11 @@ import LightbulbOutlined from "@mui/icons-material/LightbulbOutlined";
 import StarOutlined from "@mui/icons-material/StarOutlined";
 import { ApiError } from "@/services/api";
 import type { Court } from "@auth/courtApi";
+import type { DeskCourt } from "@auth/deskApi";
 import { useCourt, useLiftMaintenance } from "@auth/hooks/useCourts";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
+import { BookingSourceProvider } from "@/app/(desk)/components/BookingSource";
+import CourtBookingsPanel from "@/app/(desk)/components/CourtBookingsPanel";
 import BookableCourtsPanel from "../courts/BookableCourtsPanel";
 import CourtDivisionsPanel from "../courts/CourtDivisionsPanel";
 import CourtPricingPanel from "../courts/CourtPricingPanel";
@@ -38,21 +41,43 @@ const tabs = [
   { id: "bookings", label: "Bookings" },
 ] as const;
 
-type TabId = (typeof tabs)[number]["id"];
-
 /**
- * What a tab shows when the thing it is for has not been built. Saying so
- * plainly beats an empty panel: an admin who finds nothing cannot tell whether
- * the feature is missing or their court is.
+ * The admin's court, in the shape the bookings panel reads.
+ *
+ * Two names for one thing, because the two pages were built for different
+ * readers: the inventory carries everything there is to know about a court, and
+ * the desk carries the little a diary needs. Converting here rather than
+ * widening either of them keeps the panel ignorant of who is showing it.
+ *
+ * The sport key comes off `sports` rather than off the bookable court, which
+ * does not carry one. It is only used to pick an icon, so a part whose sport
+ * has somehow gone from the list simply goes without one.
  */
-function NotBuiltYet({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
-      <h2 className="text-lg font-bold text-[#071955]">{title}</h2>
-      <div className="mx-auto mt-2 max-w-xl text-slate-500">{children}</div>
-    </section>
-  );
+function asDeskCourt(court: Court): DeskCourt {
+  const divisions = new Map(court.sports.map((sport) => [sport.sportId, sport.divisions]));
+
+  return {
+    id: court.id,
+    facilityId: court.facilityId,
+    facilityName: court.facilityName,
+    name: court.name,
+    units: court.bookableCourts.map((unit) => ({
+      bookableCourtId: unit.id,
+      sportName: unit.sportName,
+      sportKey: court.sports.find((sport) => sport.sportId === unit.sportId)?.key ?? "",
+      divisionNumber: unit.divisionNumber,
+      // "Basketball" for a whole floor, "Pickleball 2" for one of three —
+      // derived the same way the desk derives it, from the sport and how many
+      // parts it makes.
+      label:
+        (divisions.get(unit.sportId) ?? 1) <= 1
+          ? unit.sportName
+          : `${unit.sportName} ${unit.divisionNumber}`,
+    })),
+  };
 }
+
+type TabId = (typeof tabs)[number]["id"];
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -445,20 +470,25 @@ function AdminCourtDetailView({ courtId }: { courtId: string }) {
           hidden={tab !== "bookings"}
           className="mt-6"
         >
-          <NotBuiltYet title="Bookings are not open yet">
-            <p>
-              Once customers can book, this is where the bookings on this court
-              appear — and where you would check who to tell before closing it for
-              maintenance.
-            </p>
-            <p className="mt-3 text-sm text-slate-400">
-              This court runs {court.slotLengthMinutes}-minute slots with a{" "}
-              {court.minimumDurationMinutes}-minute minimum
-              {court.bufferMinutes > 0
-                ? ` and a ${court.bufferMinutes}-minute buffer between bookings.`
-                : "."}
-            </p>
-          </NotBuiltYet>
+          {/* The venue desk's own view of a court, read as the platform.
+              Same calendar, same list, same booking underneath — the server
+              answers both from one query and only the gate differs, so an
+              admin's copy of this page would have been a second answer waiting
+              to disagree with the venue's.
+
+              Read only. Confirming a payment and approving an upgrade are the
+              venue's to do and are not on this page. */}
+          <BookingSourceProvider source="admin">
+            <CourtBookingsPanel court={asDeskCourt(court)} />
+          </BookingSourceProvider>
+
+          <p className="mt-4 text-sm text-slate-500">
+            This court runs {court.slotLengthMinutes}-minute slots with a{" "}
+            {court.minimumDurationMinutes}-minute minimum
+            {court.bufferMinutes > 0
+              ? ` and a ${court.bufferMinutes}-minute buffer between bookings.`
+              : "."}
+          </p>
         </div>
       </div>
 

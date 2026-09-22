@@ -16,6 +16,7 @@ import {
   hasOneRateOnly,
   maintenanceMessage,
   peakDays,
+  withBack,
   type CatalogCourtDetail,
 } from "@auth/catalogApi";
 
@@ -105,7 +106,13 @@ function PriceRow({
   );
 }
 
-function Details({ detail }: { detail: CatalogCourtDetail }) {
+function Details({
+  detail,
+  backHref,
+}: {
+  detail: CatalogCourtDetail;
+  backHref: string | null;
+}) {
   const { court, venue } = detail;
   const address = formatAddress(court);
   const icon = activityIcon(court.sportKey);
@@ -146,8 +153,10 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
       <PublicHeader />
 
       <div className="mx-auto max-w-6xl px-6 py-10 lg:px-8">
+        {/* Back to the venue's page as the reader had it, when that is where
+            they came from; the platform-wide list otherwise. */}
         <Link
-          href="/#venues"
+          href={backHref ?? "/#venues"}
           className="text-sm font-semibold text-[#2563EB] transition hover:text-[#071955]"
         >
           &larr; Back to courts
@@ -386,7 +395,7 @@ function Details({ detail }: { detail: CatalogCourtDetail }) {
               ) : (
                 <>
                   <Link
-                    href={`/book/${court.bookableCourtId}`}
+                    href={withBack(`/book/${court.bookableCourtId}`, backHref)}
                     className="mt-5 block w-full rounded-full bg-[#2563EB] py-3.5 text-center text-base font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700"
                   >
                     Book now
@@ -410,10 +419,13 @@ function CourtDetail({
   courtId,
   sportKey,
   division,
+  backHref = null,
 }: {
   courtId: string;
   sportKey: string;
   division: number;
+  /** Where this court was opened from, when it was a venue's own page. */
+  backHref?: string | null;
 }) {
   const court = useQuery({
     queryKey: ["catalog", "court", courtId, sportKey, division],
@@ -453,7 +465,7 @@ function CourtDetail({
     );
   }
 
-  return <Details detail={court.data} />;
+  return <Details detail={court.data} backHref={backHref} />;
 }
 
 export default CourtDetail;
