@@ -58,6 +58,21 @@ function App(props: AppProps) {
 													{/* Notistack Notification Provider */}
 													<SnackbarProvider
 														maxSnack={5}
+														/* Said once here rather than left to the library’s own default,
+														   so the number is visible to whoever wonders why a message went.
+														   Long enough to read a sentence about a booking, short enough not
+														   to sit over the thing it is describing. */
+														autoHideDuration={4000}
+														/* The countdown runs whether or not the window is focused.
+														
+														   By default it pauses on blur, which is meant kindly: do not
+														   expire a message nobody was looking at. At a venue’s desk it
+														   reads as a fault instead — an attendant approves a move, turns to
+														   the customer in front of them, clicks something else, and comes
+														   back to a green bar still sitting over the screen from minutes
+														   ago. These messages confirm what has already happened, so nothing
+														   is lost by letting them go on time. */
+														disableWindowBlurListener
 														anchorOrigin={{
 															vertical: 'bottom',
 															horizontal: 'right'
