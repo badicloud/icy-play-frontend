@@ -416,7 +416,16 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
           <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
             The hours
           </h3>
-          <ul className="mt-2 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+          {/* Capped and scrolled, because the length of this list is not the
+              reader’s choice: an hourly booking is three rows and a day sold
+              open to close is sixteen, which pushes the total — the thing
+              somebody opened the card for — off the bottom of the screen. A
+              run of days is that again for every day of it.
+
+              The height stops on half a row rather than a whole one, so the
+              cut is visible. A list that ends flush at the fold looks
+              finished, and the hours below it are never found. */}
+          <ul className="mt-2 max-h-64 divide-y divide-slate-200 overflow-y-auto rounded-2xl border border-slate-200 bg-white">
             {booking.slots.map((slot) => (
               <li
                 key={`${slot.date}-${slot.startsAt}`}
