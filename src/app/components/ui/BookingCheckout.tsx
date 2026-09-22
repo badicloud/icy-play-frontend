@@ -36,6 +36,18 @@ const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 function BookingCheckout({ bookingId }: { bookingId: string }) {
   const client = useQueryClient();
 
+  // This booking has changed, so both the page showing it and the list
+  // listing it have to hear about it.
+  //
+  // The list keeps its own copy and nothing else tells it. Without this, a
+  // customer who sends their receipt here and then walks to My bookings is
+  // shown the booking exactly as they left it — still asking to be paid for
+  // — and the only way out is a reload nobody should have to think of.
+  function changed(updated: BookingDetail) {
+    client.setQueryData(["booking", bookingId], updated);
+    void client.invalidateQueries({ queryKey: ["my-bookings"] });
+  }
+
   const booking = useQuery({
     queryKey: ["booking", bookingId],
     queryFn: () => getBooking(bookingId),
@@ -94,14 +106,14 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
               <Pay
                 detail={detail}
                 onExpired={() => void booking.refetch()}
-                onAttached={(updated) => client.setQueryData(["booking", bookingId], updated)}
+                onAttached={changed}
               />
             )}
 
             {step === 4 && (
               <Waiting
                 detail={detail}
-                onReplace={(updated) => client.setQueryData(["booking", bookingId], updated)}
+                onReplace={changed}
               />
             )}
           </>

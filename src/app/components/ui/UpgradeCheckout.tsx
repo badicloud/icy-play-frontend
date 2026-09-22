@@ -60,6 +60,15 @@ function UpgradeCheckout({
 }) {
   const client = useQueryClient();
 
+  // An upgrade has moved on a step, and the booking it belongs to says so:
+  // the list shows which court it is waiting to move to and how far the
+  // request has got. Both it and the booking behind this page are asked
+  // again, because neither is told by writing to the upgrade alone.
+  function moved() {
+    void client.invalidateQueries({ queryKey: ["booking", bookingId] });
+    void client.invalidateQueries({ queryKey: ["my-bookings"] });
+  }
+
   // Null and empty are different answers and must stay different. Null is "the
   // booking keeps its hours", which is a perfectly good upgrade; empty is "the
   // address named no hours", which is a broken link. Folding them together is
@@ -123,7 +132,10 @@ function UpgradeCheckout({
       <Pay
         detail={detail}
         upgrade={open}
-        onChanged={(updated) => client.setQueryData(["upgrade", bookingId], updated)}
+        onChanged={(updated) => {
+          client.setQueryData(["upgrade", bookingId], updated);
+          moved();
+        }}
         onExpired={() => void upgrade.refetch()}
         onGoneBack={() => client.setQueryData(["upgrade", bookingId], null)}
       />
@@ -148,7 +160,10 @@ function UpgradeCheckout({
       bookableCourtId={bookableCourtId}
       wanted={wanted}
       priced={quote.data}
-      onAsked={(created) => client.setQueryData(["upgrade", bookingId], created)}
+      onAsked={(created) => {
+        client.setQueryData(["upgrade", bookingId], created);
+        moved();
+      }}
     />
   );
 }

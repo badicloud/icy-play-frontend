@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
 import {
   bookingHref,
@@ -85,6 +85,7 @@ function alreadyHeld(
  */
 function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
   const router = useRouter();
+  const client = useQueryClient();
   const search = useSearchParams();
   const [problem, setProblem] = useState<string | null>(null);
   // Unticked every time this page is reached. A booking that cannot be undone
@@ -114,7 +115,13 @@ function CheckoutReview({ bookableCourtId }: { bookableCourtId: string }) {
 
   const booking = useMutation({
     mutationFn: createBooking,
-    onSuccess: (created) => router.replace(`/bookings/${created.id}`),
+    onSuccess: (created) => {
+      // A booking that did not exist a moment ago. The list caches its own
+      // copy, so without this a customer who books and then opens My
+      // bookings is shown a list the booking they just made is not in.
+      void client.invalidateQueries({ queryKey: ["my-bookings"] });
+      router.replace(`/bookings/${created.id}`);
+    },
     onError: (error) =>
       setProblem(
         error instanceof ApiError ? error.message : "That did not work. Please try again.",
