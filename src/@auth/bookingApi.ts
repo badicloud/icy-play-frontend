@@ -525,6 +525,133 @@ export function moveBooking(
 }
 
 /** One hour an upgrade is asking for, at the price it was quoted. */
+
+/**
+ * One hour the venue is open for, said without reference to any court.
+ *
+ * The move screen asks for a date, then hours, then the courts that can take
+ * them — so there is a step where hours have to be offered and no court has
+ * been chosen. These come from the building rather than from any floor in it,
+ * and they carry no price: what an hour costs depends on the court, and that
+ * arrives with the courts.
+ */
+export type MoveWindowSlot = {
+  /** "07:00:00". */
+  startsAt: string;
+  endsAt: string;
+  /** The hour has begun on the venue's clock, so it cannot be moved onto. */
+  hasPassed: boolean;
+};
+
+export type MoveWindow = {
+  date: string;
+  /** The venue is shut that day. No slots follow. */
+  isClosed: boolean;
+  isHoliday: boolean;
+  slotLengthMinutes: number;
+  /**
+   * How many hours have to be picked: the ones still ahead of the booking, not
+   * the ones it has. An hour that has begun is being played on the court it
+   * was sold on and does not travel.
+   */
+  slotsNeeded: number;
+  slots: MoveWindowSlot[];
+};
+
+/** The hours the venue is open for on that date, before any court is chosen. */
+export function getMoveWindow(bookingId: string, date: string) {
+  return apiClient.get<MoveWindow>(
+    `${API_ENDPOINTS.BOOKINGS.MOVE_WINDOW(bookingId)}?date=${date}`,
+  );
+}
+
+/**
+ * One court the booking could move to, priced for the hours asked about.
+ *
+ * The price rides on the card rather than being fetched when a card is tapped.
+ * Somebody choosing between four courts is choosing on price as much as on
+ * name, and four round trips to find that out is four chances to be shown a
+ * figure that has since moved.
+ */
+export type MoveOption = {
+  bookableCourtId: string;
+  courtName: string;
+  sportName: string;
+  standardHourlyRate: number | null;
+  /**
+   * The court the booking is on now. It is in the list when the hours or the
+   * date would change — keeping the court and changing the time is a move —
+   * and left out when nothing would change at all.
+   */
+  isCurrentCourt: boolean;
+  /** What the hours being moved come to now, in court rental alone. */
+  movingRentalNow: number;
+  /** And what they would come to here. */
+  movingRentalNew: number;
+  /** Never less than nothing: cheaper is not a refund. */
+  balanceDue: number;
+  /**
+   * The hours this booking would land on here, priced on this court.
+   *
+   * Carried per court because on a booking sold by the day the browser
+   * cannot work them out: a day is whatever THIS court is open for, and two
+   * courts in one building need not keep the same hours. These are what the
+   * move or the upgrade is then asked for, so what was priced on the card is
+   * what gets sent.
+   */
+  slots: BookedSlot[];
+  /** Dearer than what was paid, so it goes through the upgrade rather than the move. */
+  isUpgrade: boolean;
+  holdMinutes: number;
+};
+
+/**
+ * Every court this booking could actually be moved onto, and what each costs.
+ *
+ * Only the ones it could. A court shut that day, one closed for work, one
+ * whose hours are already spoken for and one the venue has never priced are
+ * left out rather than listed and refused — a card that cannot be clicked is a
+ * question the reader has to answer twice. A dearer court stays in: that one
+ * is an upgrade rather than a refusal.
+ */
+export type MoveOptions = {
+  /** The booking has begun, so its hours travel with it and cannot be changed. */
+  isInPlay: boolean;
+  /** Hours already played. They stay where they were, at what they cost. */
+  hoursStaying: number;
+  hoursMoving: number;
+  /**
+   * The booking's hours that are on the move, as the server counted them.
+   *
+   * Sent because the browser cannot work them out on a booking under way:
+   * which hours are still to play is a question about the venue's clock, and
+   * the browser asking its own would name an hour the customer is standing
+   * through.
+   */
+  movingSlots: BookedSlot[];
+  courts: MoveOption[];
+};
+
+/**
+ * @param dates The dates a booking sold by the day would move onto: one for a
+ *   whole day, as many as it has now for a run of them. Day bookings only —
+ *   their hours are whatever each court is open for, so the dates are all
+ *   there is to ask with. They need not run back to back: the picker names
+ *   each on its own and lets it be unchosen again.
+ * @param slots The hours wanted, which carry their own date. Null keeps the
+ *   ones the booking already has, which is what a booking under way needs.
+ */
+export function getMoveOptions(
+  bookingId: string,
+  dates: string[] | null = null,
+  slots: MoveSlot[] | null = null,
+) {
+  return apiClient.post<MoveOptions, { dates: string[] | null; slots: MoveSlot[] | null }>(
+    API_ENDPOINTS.BOOKINGS.MOVE_OPTIONS(bookingId),
+    { dates, slots },
+  );
+}
+
 export type UpgradeSlot = {
   /** "2026-09-22". */
   date: string;

@@ -1,34 +1,57 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
-import { getCatalogCourts } from "@auth/catalogApi";
 import {
   clock,
-  getAvailability,
   getDayOutlook,
+  getMoveOptions,
+  getMoveWindow,
   moveBooking,
   peso,
-  quoteMove,
   type BookingDetail,
-  type MoveQuote,
+  type MoveOption,
   type MoveSlot,
 } from "@auth/bookingApi";
 
 /**
  * Moving a booking onto another court, and onto other hours.
  *
- * The court comes first because it is the thing a customer came here to change.
- * What they may change after that depends on when the booking is, and the
- * server decides that: a booking on the venue's today can change its hours but
- * not its day, because a day that has begun cannot be swapped for one that has
- * not. The browser is never asked what day it is — its clock is not the
- * venue's, and a customer abroad would be told a different truth.
+ * The question is asked in the order a customer can actually answer it: when,
+ * then which court. It used to run the other way — pick a court, then see that
+ * court's diary — which meant choosing between courts before knowing which of
+ * them could take you, and reading "that hour has gone" one court at a time.
+ * Now the date and the hours come first and the courts that can take them are
+ * what comes back. A court that is shut, closed for work, or already spoken
+ * for never appears at all, because a card that cannot be clicked is a
+ * question the reader has to answer twice.
  *
- * Only hourly bookings are offered a schedule. A whole day and a run of days
- * have rules of their own, and half of a rule is worse than none.
+ * What gets asked depends on the booking, and the server decides which:
+ *
+ *  - Hourly, not yet begun: a date, then hours from the building's own opening
+ *    times, then the courts free for them.
+ *  - Hourly, under way: no date and no hours. The whole hours still ahead of
+ *    it travel at the times they already have, and the courts free for THOSE
+ *    are what is offered. The hour being played stays where it is.
+ *  - A whole day, not yet begun: a date, and no hours. A day’s hours are
+ *    whatever each court is open for, so they cannot be named until a court
+ *    is — the server works them out per court.
+ *  - A run of days, not yet begun: as many dates as the run has, each picked
+ *    and unpicked on its own. Once they are all chosen the rest of the strip
+ *    goes quiet. They need not run back to back: the number of days is what
+ *    cannot change, and a move buys nothing that was not already paid for.
+ *
+ *    Both start on nothing chosen, and both refuse the dates the booking
+ *    already has. A booking sold by the day moves by changing its date, so
+ *    the date it is on is the one answer that is not an answer. An hourly
+ *    booking is the opposite and keeps its own day as the starting point.
+ *  - A whole day or a run of days, under way: nothing. That booking does not
+ *    move, and the button that opens this dialog is not shown for it.
+ *
+ * The browser is never asked what day it is. Its clock is not the venue's, and
+ * a customer abroad would be told a different truth.
  */
 function MoveBookingDialog({
   booking,
@@ -38,145 +61,172 @@ function MoveBookingDialog({
   onClose: () => void;
 }) {
   const client = useQueryClient();
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [day, setDay] = useState<string | null>(null);
+
+  // The dates chosen, in the order the picker keeps them: sorted, so a run
+  // reads as a run however it was clicked together.
+  //
+  // A list rather than one date because a booking sold by the day may be more
+  // than one of them, and each is chosen and unchosen on its own. An hourly
+  // booking uses the first and only entry, which is the day its hours are
+  // being picked on.
+  const [days, setDays] = useState<string[]>([]);
   const [hours, setHours] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<string | null>(null);
   const [wideOpen, setWideOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [inPlay, setInPlay] = useState<boolean | null>(null);
 
-  // Where the schedule lands, so picking a court can carry the reader to it.
-  const scheduleRef = useRef<HTMLDivElement | null>(null);
-
-  // The day the booking is already on, which is where the picker starts.
-  //
-  // Most moves change the court and keep the day — the whole reason the dialog
-  // exists is a court that will not do. Starting on no day at all makes every
-  // one of those a choice somebody has to make before they can see any hours.
-  const ownDay = booking?.startDate ?? null;
-
-  // Nothing picked against one booking may follow the dialog to the next.
-  useEffect(() => {
-    setChosen(null);
-    setDay(ownDay);
-    setHours([]);
-    setProblem(null);
-  }, [booking?.id, ownDay]);
-
-  // A court's hours are its own, so changing court starts the schedule again.
-  useEffect(() => {
-    setDay(ownDay);
-    setHours([]);
-    setInPlay(null);
-  }, [chosen, ownDay]);
-
-  const courts = useQuery({
-    queryKey: ["catalog", "courts", "*"],
-    queryFn: () => getCatalogCourts(),
-    staleTime: 5 * 60 * 1000,
-    enabled: booking !== null,
-  });
-
-  // Every court for the same sport in the same building, the booking's own
-  // included. The server refuses anything else; this is so the list does not
-  // offer what it would.
-  //
-  // Its own court is in the list because "keep the court, change the time" is
-  // a real move and there was no way to ask for it: choosing hours needs a
-  // court chosen first, and the only courts on offer were other people's
-  // floors. It also puts the booking's current hours back within reach of an
-  // honest "Yours now" — on its own court, an hour it already holds really is
-  // its own.
-  const elsewhere = (courts.data ?? []).filter(
-    (court) =>
-      court.facilityId === booking?.facilityId && court.sportKey === booking.sportKey,
-  );
+  // Where the court list lands, so finishing the hours carries the reader to
+  // the thing those hours just unlocked.
+  const courtsRef = useRef<HTMLDivElement | null>(null);
 
   const hourly = booking?.kind === "Hourly";
 
-  // Everything about the proposed move, asked as one question.
-  //
-  // With no hours picked it is still a real quote — the court changes and the
-  // hours stay, which is the move somebody reaches for when a floodlight
-  // fails. It also carries whether the booking is on the venue's today, which
-  // is what decides whether days may be offered at all.
-  //
-  // It reads `wanted`, which is worked out below it. That is not a mistake and
-  // cannot be tidied away: the day on offer depends on the answer to this
-  // query, and the hours depend on the day. The loop is real, and the closure
-  // is what lets it settle — by the time the query runs, the hours are known.
-  const quote = useQuery({
-    queryKey: ["move-quote", booking?.id, chosen, hours, day],
-    queryFn: () => quoteMove(booking!.id, chosen!, wanted),
-    enabled: booking !== null && chosen !== null,
-    retry: false,
-  });
+  // Sold by the day: a whole day, or a run of them. Neither picks hours.
+  const byTheDay = booking !== null && !hourly;
 
-  // Kept once it is known. The answer belongs to the booking and the court,
-  // not to whichever hours are half-picked at the time.
+  // Under way on the venue's clock, as the booking itself reports it. A
+  // booking sold by the day cannot move once its day has begun — the server
+  // refuses it and the button is not offered — so this dialog only ever sees
+  // that case if something has gone stale underneath it.
+  const underWay = booking?.isInPlay ?? false;
+
+  // A booking under way is not choosing anything: its hours travel with it.
+  const picksDate = booking !== null && !underWay;
+  const picksHours = hourly && !underWay;
+
+  // The dates the booking has now.
+  //
+  // On a booking sold by the day these are what it is moving OFF, and they
+  // are refused in the strip below: a move is a change of date, and offering
+  // back the date somebody is already on is offering them a move that is not
+  // one. On an hourly booking they are where the picker starts instead —
+  // "same day, other hours" and "same day, other court" are both real moves
+  // and both the commonest thing this dialog is opened for.
+  //
+  // Joined into a string so the effect below can depend on it without
+  // re-running on every render, which a fresh array would.
+  const ownDays = (booking?.slots ?? [])
+    .map((slot) => slot.date)
+    .filter((date, at, all) => all.indexOf(date) === at)
+    .sort()
+    .join(",");
+
+  const ownDates = ownDays === "" ? [] : ownDays.split(",");
+
+  // How many dates have to be picked.
+  //
+  // A booking sold by the day lands on as many days as it has now: a run of
+  // three days is three days wherever it goes, however long each of them
+  // turns out to be. An hourly booking picks one day and then its hours on
+  // it, so one is the whole of its answer.
+  const datesNeeded = byTheDay ? ownDates.length : 1;
+
+  // Nothing picked against one booking may follow the dialog to the next.
   useEffect(() => {
-    if (quote.data !== undefined) {
-      // Missing rather than false means an API older than this field, and the
-      // honest default is the permissive one: offer the dates and let the
-      // server refuse a move it does not like. Defaulting the other way turns
-      // a version mismatch into a screen that quietly says a booking cannot
-      // change its day, which is indistinguishable from the rule working.
-      setInPlay(quote.data.isInPlay ?? false);
-    }
-  }, [quote.data]);
+    // A booking sold by the day opens on nothing chosen. Its own dates are
+    // the ones it is leaving and cannot be picked, so filling them in would
+    // open the dialog on an answer the screen goes on to refuse.
+    setDays(byTheDay || ownDays === "" ? [] : [ownDays.split(",")[0]]);
+    setHours([]);
+    setChosen(null);
+    setProblem(null);
+  }, [booking?.id, ownDays, byTheDay]);
 
-  // Picking a court carries the reader to the schedule it just opened.
-  //
-  // Waits for inPlay, because until the quote answers, the block is one
-  // line saying it is checking — scrolling to that and then having it grow
-  // underneath is worse than arriving once, at something worth reading. A
-  // booking with no hours to pick has no block and no ref, so nothing moves.
+  // A different date is a different set of hours, and a different set of
+  // hours is a different set of courts. Both start again.
   useEffect(() => {
-    if (chosen === null || inPlay === null) {
-      return;
-    }
+    setHours([]);
+    setChosen(null);
+  }, [days]);
 
-    scheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [chosen, inPlay]);
+  useEffect(() => {
+    setChosen(null);
+  }, [hours]);
 
-  // The day the hours are being picked on. Today's booking cannot leave its
-  // day, so there is nothing to choose and the booking's own date stands.
-  // A booking that has not begun can be carried to another day. One under
-  // way can change court but not when it is.
-  const pickingDay = hourly && inPlay === false;
-  const onDay = pickingDay ? day : (booking?.startDate ?? null);
-
+  // The dates on offer.
+  //
+  // Read against the booking's own court, which is not where it is going — it
+  // is asked only for the window: which dates the venue is taking bookings
+  // for, counted from the venue's today rather than the browser's. What it
+  // says about those dates is that ONE court's business and is deliberately
+  // not used to grey anything out: a day full on the court you are on may be
+  // wide open on the one next to it, and a strip that greys it would hide the
+  // move the customer came here for.
   const outlook = useQuery({
-    queryKey: ["day-outlook", chosen],
-    queryFn: () => getDayOutlook(chosen!),
-    enabled: chosen !== null && pickingDay,
+    queryKey: ["day-outlook", booking?.bookableCourtId],
+    queryFn: () => getDayOutlook(booking!.bookableCourtId),
+    enabled: booking !== null && picksDate,
     staleTime: 60 * 1000,
   });
 
-  const grid = useQuery({
-    queryKey: ["availability", chosen, onDay],
-    queryFn: () => getAvailability(chosen!, onDay!),
-    // Not asked for a booking under way. Its hours are not in question — they
-    // travel with it — so a grid of them is a question with no answer to give,
-    // and one that invites the reader to try.
-    enabled: chosen !== null && onDay !== null && hourly && inPlay === false,
+  // The hours the building is open for on the chosen day. No court is named:
+  // none has been chosen, and which of them is free is the next question.
+  const openHours = useQuery({
+    queryKey: ["move-window", booking?.id, days[0]],
+    queryFn: () => getMoveWindow(booking!.id, days[0]),
+    enabled: booking !== null && picksHours && days.length === 1,
     retry: false,
   });
 
-  // How many hours the booking has to place. A move changes when and where a
-  // booking is, never how much of it there is.
-  const needed = booking?.slots.length ?? 0;
+  // How many hours have to be placed. From the server, because on a booking
+  // under way it is fewer than the booking has and only the venue's clock
+  // knows how many.
+  const needed = openHours.data?.slotsNeeded ?? booking?.slots.length ?? 0;
 
-  // Sent only once the set is complete. Asking about half of it is asking a
-  // question the server is right to refuse, and the refusal would land on a
-  // customer who is still choosing.
-  const wanted: MoveSlot[] | null =
-    hourly && onDay !== null && hours.length === needed && needed > 0
-      ? hours.map((startsAt) => ({ date: onDay, startsAt }))
-      : null;
+  // The hours being asked about, sent only once the set is complete. Half a
+  // set is a question the server is right to refuse, and the refusal would
+  // land on somebody still choosing.
+  const wanted: MoveSlot[] | null = useMemo(
+    () =>
+      picksHours && days.length === 1 && hours.length === needed && needed > 0
+        ? hours.map((startsAt) => ({ date: days[0], startsAt }))
+        : null,
+    [picksHours, days, hours, needed],
+  );
+
+  // Ready to ask for courts: an hourly booking once its hours are complete, a
+  // day booking once a date is picked, a booking under way straight away.
+  //
+  // Never for a day booking already under way. That one has nothing to ask
+  // about — the server refuses it — and asking anyway spends a round trip to
+  // be told what this screen already says in plain words above.
+  const searchable =
+    booking !== null
+    && !(byTheDay && underWay)
+    && (underWay
+      ? true
+      : byTheDay
+        ? days.length === datesNeeded && datesNeeded > 0
+        : wanted !== null);
+
+  const options = useQuery({
+    queryKey: ["move-options", booking?.id, byTheDay ? days : null, wanted],
+    queryFn: () =>
+      getMoveOptions(booking!.id, byTheDay ? days : null, underWay ? null : wanted),
+    enabled: searchable,
+    retry: false,
+  });
+
+  // Picking the last hour carries the reader to the courts it just opened.
+  useEffect(() => {
+    if (!searchable || options.data === undefined) {
+      return;
+    }
+
+    courtsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [searchable, options.data]);
 
   const move = useMutation({
-    mutationFn: () => moveBooking(booking!.id, chosen!, wanted),
+    mutationFn: (court: MoveOption) =>
+      moveBooking(
+        booking!.id,
+        court.bookableCourtId,
+        // A booking under way sends none: it is not changing its hours, and
+        // the server keeps the ones it has. Everything else sends the hours
+        // the card was priced for, which for a day booking are that court's
+        // own and could not have been worked out here.
+        underWay ? null : court.slots.map((slot) => ({ date: slot.date, startsAt: slot.startsAt })),
+      ),
     onSuccess: (updated) => {
       client.setQueryData(["booking", updated.id], updated);
       void client.invalidateQueries({ queryKey: ["my-bookings"] });
@@ -192,78 +242,28 @@ function MoveBookingDialog({
     return null;
   }
 
-  const settled = quote.data ?? null;
-  const refused = quote.isError ? (quote.error as ApiError)?.message : null;
+  const refused = options.isError ? (options.error as ApiError)?.message : null;
+  const courts = options.data?.courts ?? [];
+  const picked = courts.find((court) => court.bookableCourtId === chosen) ?? null;
 
-  // The hours this booking already holds — on its own court, on this day.
+  const calendar = outlook.data ?? [];
+  // Today is not offered to a booking sold by the day.
   //
-  // Both halves matter. It used to test the day alone, which put "Yours now"
-  // over free hours on other people's floors and disabled them, blocking the
-  // commonest move there is. An hour is only yours where you hold it.
+  // One sold open to close cannot start on a day that has already begun:
+  // the morning has gone, and what is left is most of a day rather than
+  // one. The server refuses it, so leaving it on the strip would mean
+  // waiting for a court list that comes back empty.
   //
-  // On your own court it is a refusal rather than a hint: moving onto an hour
-  // you already have is not a move, and the server now says so too.
-  const onOwnCourt = chosen === booking.bookableCourtId;
-
-  const mine = new Set(
-    onOwnCourt
-      ? booking.slots.filter((slot) => slot.date === onDay).map((slot) => slot.startsAt)
-      : [],
-  );
-
-  // Either leave the hours alone, or replace all of them. Half a schedule is
-  // not one, and the last tap should not be where that is explained.
-  const scheduled = !hourly || hours.length === 0 || hours.length === needed;
-
-  // A booking under way has no hours to pick — the court changes and the clock
-  // does not — so `wanted` is null for the whole of its move, and every rule
-  // written as "once hours are chosen" would never fire on one. Its price is
-  // settled the moment a court is: the hours are already known.
+  // Dropped rather than greyed out. A greyed date says "not this one, for
+  // some reason" and invites the reader to work out which; today is never
+  // an option for these bookings, so the strip simply starts tomorrow.
   //
-  // Split rather than folded together, because the two are genuinely different
-  // screens and the one that works has to go on working.
-  // Whether the booking is under way, answerable before a court is picked.
-  //
-  // `inPlay` comes off the quote, and the quote needs a court — so until one is
-  // chosen it is null, which is no use to the court list itself. The booking
-  // carries the same answer and carries it from the start; the quote refines it
-  // afterwards, because it turns over while the dialog is open.
-  const underWay = inPlay ?? booking.isInPlay;
+  // It is the first row because the outlook is built from the venue’s
+  // today — which is the only clock that counts here. A customer abroad
+  // reading their own would drop the wrong day.
+  const offered = byTheDay ? calendar.slice(1) : calendar;
+  const shown = wideOpen ? offered : offered.slice(0, 14);
 
-  // Courts this booking could actually go to. Its own is in the list and is a
-  // real choice — until the booking is under way, when it is the one court
-  // that cannot take it. Counted rather than assumed, because a venue with a
-  // single court of this sport then has nowhere to offer at all, and a grid of
-  // one greyed-out card is not how to say so.
-  const movable = elsewhere.filter(
-    (court) => !(underWay && court.bookableCourtId === booking.bookableCourtId),
-  );
-
-  const priceable = inPlay === true ? chosen !== null : wanted !== null;
-
-  // How many hours are actually going, as the server counted them. On a
-  // booking under way that is fewer than the booking has: the hour in progress
-  // is being played on the court they are standing on and stays there.
-  const hoursMoved = settled?.hoursMoving ?? needed;
-
-  // Priced only once there is a price. On a booking not yet started, that is
-  // once hours are chosen: until then nothing about money is on screen, and a
-  // button disabled over a figure nobody has been shown is a dead end — so the
-  // attempt is allowed and the server answers it.
-  //
-  // On one under way there is no such gap. The figure IS on screen, so letting
-  // the button through would send somebody to a refusal they had just been
-  // shown the reason for.
-  const affordable = priceable ? settled?.balanceDue === 0 : true;
-  const ready = chosen !== null && scheduled && affordable && !move.isPending;
-
-  // Court rental alone. The platform fee is charged per hour booked and a move
-  // buys no hours, so it is not part of what changes.
-  const picked = (grid.data?.slots ?? []).filter((slot) => hours.includes(slot.startsAt));
-  const rented = picked.reduce((running, slot) => running + (slot.rate ?? 0), 0);
-
-  const days = outlook.data ?? [];
-  const shown = wideOpen ? days : days.slice(0, 14);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
@@ -271,14 +271,14 @@ function MoveBookingDialog({
         <div className="shrink-0 px-6 pt-6">
           <h2 className="text-xl font-extrabold text-[#071955]">Move your booking</h2>
           <p className="mt-1 text-sm font-medium text-slate-600">
-            {booking.courtName} at {booking.facilityName}.
-            {/* A booking under way is told the same thing as one sold by the
-                day, because the same thing is true of it: the court is what
-                can change. Offering it "then a new time" was the line that put
-                a reader in front of an hour grid they could not use. */}
-            {hourly && !underWay
-              ? " Choose a court, then a new time. Keeping the court and changing only the hours counts too."
-              : " Choose the court to move to. The time stays the same."}
+            {booking.courtName} at {booking.facilityName}.{" "}
+            {underWay
+              ? "Your booking has started, so the time stays as it is — choose the court to move to."
+              : byTheDay
+                ? datesNeeded === 1
+                  ? "Choose a date, then the court to move to."
+                  : `Choose the ${datesNeeded} dates to move to, then the court.`
+                : "Choose a date, then your hours, then the court that can take them."}
           </p>
         </div>
 
@@ -293,11 +293,7 @@ function MoveBookingDialog({
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Time</dt>
-                <dd className="text-right font-bold text-[#071955]">
-                  {booking.slots
-                    .map((slot) => `${clock(slot.startsAt)}–${clock(slot.endsAt)}`)
-                    .join(", ")}
-                </dd>
+                <dd className="text-right font-bold text-[#071955]">{time(booking)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Paid</dt>
@@ -308,401 +304,312 @@ function MoveBookingDialog({
 
           <MovesLeft left={booking.movesLeft} limit={booking.moveLimit} />
 
-          {/* Not "a NEW court" any more: the booking's own is in the list,
-              because keeping the court and changing the time is a move too —
-              until it is under way, when the time is the one thing that cannot
-              change and its own court has nothing left to offer. */}
-          <p className="mt-5 text-sm font-bold text-[#071955]">
-            {underWay ? "Choose another court" : "Choose a court"}
-          </p>
-
-          {courts.isPending ? (
-            <p className="mt-2 text-sm text-slate-500">Loading courts…</p>
-          ) : movable.length === 0 ? (
-            <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-              There is no other {booking.sportName.toLowerCase()} court here to move to
-              {underWay ? ", and a booking already being played cannot change its hours." : "."}
-            </p>
+          {/* A booking sold by the day, once that day has started, does not
+              move — and the button that opens this dialog is not shown for it.
+              Said here as well because the button is drawn from a list that
+              may have been loaded before the day began, and a dialog that
+              opens on a stale answer should explain itself rather than offer a
+              date that will be refused. */}
+          {byTheDay && underWay ? (
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-bold text-amber-900">This booking has already started</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                It runs for the whole day, so there is no part of it left to carry somewhere
+                else — half of it on one court and half on another is not what you booked. It
+                stays on {booking.courtName}.
+              </p>
+            </div>
           ) : (
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-              {elsewhere.map((court) => {
-                const here = chosen === court.bookableCourtId;
-                const own = court.bookableCourtId === booking.bookableCourtId;
+            <>
+              {/* ------------------------------------------------ the date */}
+              {picksDate && (
+                <>
+                  <p className="mt-5 text-sm font-bold text-[#071955]">
+                    {datesNeeded > 1 ? `Choose ${datesNeeded} dates` : "Choose a date"}
+                  </p>
 
-                // The court they are standing on, while they are standing on
-                // it. Somebody who opened this dialog is asking to be moved
-                // somewhere else; their own court is the one place that cannot
-                // answer, because the hours are what would have had to change
-                // and a booking under way cannot change them.
-                //
-                // Only while it is under way. Before it starts, its own court
-                // is a perfectly good choice — keeping the court and changing
-                // the hours is a move, and that screen has to go on working.
-                const stuck = own && underWay;
+                  {byTheDay && datesNeeded > 1 && (
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      {days.length === datesNeeded
+                        ? "That is all of them. Tap one again to take it off."
+                        : `Your booking is ${datesNeeded} days. You have picked ${days.length}.`}
+                    </p>
+                  )}
 
-                return (
-                  <li key={court.bookableCourtId}>
-                    <button
-                      type="button"
-                      disabled={stuck}
-                      title={
-                        stuck
-                          ? `${court.name} — you are playing here now`
-                          : court.name
-                      }
-                      onClick={() => {
-                        setChosen(court.bookableCourtId);
-                        setProblem(null);
-                      }}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                        stuck
-                          ? "cursor-not-allowed border-dashed border-slate-200 bg-slate-50"
-                          : here
-                            ? "border-[#2563EB] bg-blue-50"
-                            : "border-slate-200 bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      {/* One line, and it stays one line. The cards sit in a
-                          grid, so a row is as tall as its tallest card: let
-                          the badge wrap under the name and the one card
-                          carrying it drags every card beside it down with it.
-                          The name gives way instead — it is truncated, with
-                          the full one on the button's tooltip — and the badge
-                          never shrinks, so each card is the same two lines
-                          whether it has a badge or not. */}
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className={`truncate text-sm font-bold ${
-                            stuck ? "text-slate-400" : "text-[#071955]"
-                          }`}
+                  {/* Said once, under the heading, rather than left to whoever
+                      hovers a greyed-out date. A strip that opens with some
+                      of it already dead and no reason given reads as a bug. */}
+                  {byTheDay && (
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      {datesNeeded > 1
+                        ? "The dates you are on now are greyed out — moving means moving to others."
+                        : "The date you are on now is greyed out — moving means moving to another."}
+                    </p>
+                  )}
+
+                  {outlook.isPending ? (
+                    <p className="mt-2 text-sm text-slate-500">Loading dates…</p>
+                  ) : (
+                    <>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {shown.map((option) => {
+                          const here = days.includes(option.date);
+
+                          // The date this booking is already on, which a
+                          // booking sold by the day cannot be moved to.
+                          // Moving a Saturday to Saturday is not a move, and
+                          // the server says so — better to refuse it on the
+                          // strip than to let somebody pick it, wait for the
+                          // courts, and be told no at the end.
+                          //
+                          // Not on an hourly booking. There the day staying
+                          // the same is the ordinary case: the hours change,
+                          // or the court does, or both.
+                          const own = byTheDay && ownDates.includes(option.date);
+
+                          // As many as the booking has, and no more. Once they
+                          // are all picked the rest go quiet rather than
+                          // disappearing, so the strip keeps its shape and the
+                          // reader can see what they turned down.
+                          //
+                          // Only on a booking of more than one day. Where one
+                          // date is the whole answer, greying out every other
+                          // date the moment one is picked would mean unpicking
+                          // before repicking, and the point of the strip is to
+                          // be able to try dates.
+                          const full = datesNeeded > 1 && days.length >= datesNeeded && !here;
+
+                          const shut = own || full;
+
+                          return (
+                            <li key={option.date}>
+                              <button
+                                type="button"
+                                disabled={shut}
+                                onClick={() => {
+                                  setProblem(null);
+                                  setDays((already) =>
+                                    already.includes(option.date)
+                                      ? already.filter((date) => date !== option.date)
+                                      : datesNeeded === 1
+                                        ? [option.date]
+                                        : [...already, option.date].sort(),
+                                  );
+                                }}
+                                title={
+                                  own
+                                    ? "Your booking is on this date now"
+                                    : shortDate(option.date)
+                                }
+                                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                                  here
+                                    ? "border-[#2563EB] bg-blue-50 text-[#071955]"
+                                    : shut
+                                      ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
+                                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                                }`}
+                              >
+                                {shortDate(option.date)}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      {offered.length > 14 && (
+                        <button
+                          type="button"
+                          onClick={() => setWideOpen((open) => !open)}
+                          className="mt-2 text-xs font-bold text-[#2563EB] underline underline-offset-2"
                         >
-                          {court.name}
-                        </span>
-                        {/* Said on the card rather than left to be worked out.
-                            Without it the list reads as though one court has
-                            been listed twice.
+                          {wideOpen ? "Show 14 days" : `Show all ${offered.length} days`}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
 
-                            Solid navy, not the grey it was: in slate-100 it
-                            sat at the weight of the sport-and-rate line under
-                            it and read as more of the card's small print,
-                            which is exactly what the badge exists not to be.
+              {/* ----------------------------------------------- the hours */}
+              {picksHours && days.length === 1 && (
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                  <p className="text-sm font-bold text-[#071955]">Choose your hours</p>
 
-                            Navy rather than the brand blue because the blue is
-                            already spoken for on this card — it is what a
-                            picked court is drawn in. A badge in the same blue
-                            would say "chosen" on a card nobody had chosen. */}
-                        {own && (
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
-                              stuck ? "bg-slate-300 text-slate-600" : "bg-[#071955] text-white"
-                            }`}
-                          >
-                            You are here
-                          </span>
-                        )}
-                      </span>
-                      {/* The reason, in the place the rate would be. A card
-                          greyed out with its price still on it reads as a
-                          court that has gone, rather than the one the customer
-                          is standing on — and "you are here" alone does not
-                          say why that is now a refusal. */}
-                      <span
-                        className={`block truncate text-xs font-semibold ${
-                          stuck ? "text-slate-400" : "text-slate-500"
-                        }`}
-                      >
-                        {stuck
-                          ? "Playing here now — pick another court"
-                          : `${court.sportName}${
-                              court.standardHourlyRate !== null
-                                ? ` · ${peso(court.standardHourlyRate)}/hr`
-                                : ""
-                            }`}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {hours.length === 0
+                      ? `Pick ${needed === 1 ? "one hour" : `${needed} hours`}.`
+                      : hours.length === needed
+                        ? "That is all of them."
+                        : `Pick ${needed}. You have picked ${hours.length}.`}
+                  </p>
 
-          {/* The schedule sits under the court because it belongs to it: the
-              hours on offer are that court's, and picking a different one asks
-              the question again. */}
-          {chosen !== null && hourly && (
-            <div ref={scheduleRef} className="mt-6 border-t border-slate-200 pt-5">
-              {inPlay === null && quote.isPending ? (
-                <p className="text-sm text-slate-500">Checking that court…</p>
-              ) : inPlay === null ? null : inPlay ? (
-                /* A booking being played has nothing to choose here. Its hours
-                   are not moving in time, only in place, so there is no day
-                   and no grid — and offering either would be offering a change
-                   that cannot be made.
+                  {openHours.isPending ? (
+                    <p className="mt-2 text-sm text-slate-500">Loading hours…</p>
+                  ) : openHours.data?.isClosed ? (
+                    <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      The venue is closed that day. Pick another date.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {(openHours.data?.slots ?? []).map((slot) => {
+                        const here = hours.includes(slot.startsAt);
+                        const full = hours.length >= needed && !here;
 
-                   What replaces them is the one thing the reader does need to
-                   know before they pick a court: that the hour they are on
-                   stays where they are standing, and only the whole hours
-                   ahead of it come with them. Somebody who booked three hours
-                   and is told the price of one should be able to see why. */
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                        return (
+                          <li key={slot.startsAt}>
+                            <button
+                              type="button"
+                              disabled={slot.hasPassed || full}
+                              onClick={() =>
+                                setHours((already) =>
+                                  already.includes(slot.startsAt)
+                                    ? already.filter((hour) => hour !== slot.startsAt)
+                                    : [...already, slot.startsAt].sort(),
+                                )
+                              }
+                              className={`w-full rounded-xl border px-2 py-2 text-xs font-bold transition ${
+                                here
+                                  ? "border-[#2563EB] bg-blue-50 text-[#071955]"
+                                  : slot.hasPassed || full
+                                    ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                              }`}
+                            >
+                              {clock(slot.startsAt)}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {/* Said once rather than on every greyed-out hour. A grid
+                      that starts at two o'clock otherwise reads as a venue
+                      that opens at two. */}
+                  {(openHours.data?.slots ?? []).some((slot) => slot.hasPassed) && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      The hours already greyed out have started, so they cannot be booked.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ---------------------------------------------- the courts */}
+              {underWay && (
+                <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
                   <p className="text-sm font-bold text-[#071955]">
                     This booking is being played now
                   </p>
                   <p className="mt-1 text-sm leading-6 text-slate-700">
-                    {hoursMoved === 0
-                      ? "There are no whole hours left to move."
-                      : `Choose the court to move to and your ${
-                          hoursMoved === 1 ? "remaining hour" : `remaining ${hoursMoved} hours`
-                        } move with you, at the same times. The hour you are playing stays on ${
-                          booking.courtName
-                        } — you are on that court now, and it is not re-charged.`}
+                    {options.data === undefined
+                      ? "Working out what is left of it…"
+                      : options.data.hoursMoving === 0
+                        ? "There are no whole hours left to move."
+                        : `Your remaining ${
+                            options.data.hoursMoving === 1
+                              ? "hour"
+                              : `${options.data.hoursMoving} hours`
+                          } — ${options.data.movingSlots
+                            .map((slot) => `${clock(slot.startsAt)}–${clock(slot.endsAt)}`)
+                            .join(", ")} — move with you at the same times. The hour you are
+                            playing stays on ${booking.courtName}, and it is not re-charged.`}
                   </p>
                 </div>
-              ) : (
-                <>
-                  <p className="text-sm font-bold text-[#071955]">
-                    {pickingDay ? "Choose a day" : "Choose your hours"}
-                  </p>
+              )}
 
-                  {!pickingDay && (
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      This booking is for today, so you can change the time but not the day.
+              {searchable && (
+                <div ref={courtsRef} className="mt-6 border-t border-slate-200 pt-5">
+                  <p className="text-sm font-bold text-[#071955]">Choose a court</p>
+
+                  {options.isPending ? (
+                    <p className="mt-2 text-sm text-slate-500">Looking for free courts…</p>
+                  ) : refused ? (
+                    <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                      {refused}
                     </p>
-                  )}
+                  ) : courts.length === 0 ? (
+                    /* Empty is an answer, and a true one: every court of this
+                       sport here is shut, closed for work, or already taken
+                       for what was asked. Naming the reason is the next
+                       screen's job — this one says what to do about it. */
+                    <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+                      No {booking.sportName.toLowerCase()} court here is free for that
+                      {picksHours ? " time" : " date"}.
+                      {picksDate && " Try another date."}
+                    </p>
+                  ) : (
+                    <ul className="mt-2 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                      {courts.map((court) => {
+                        const here = chosen === court.bookableCourtId;
 
-                  {pickingDay && (
-                    <>
-                      {outlook.isPending ? (
-                        <p className="mt-2 text-sm text-slate-500">Loading days…</p>
-                      ) : (
-                        <>
-                          <ul className="mt-2 flex flex-wrap gap-2">
-                            {shown.map((option) => {
-                              const here = day === option.date;
-                              const shut =
-                                option.isClosed ||
-                                option.isUnderMaintenance ||
-                                option.openHours === 0;
-
-                              return (
-                                <li key={option.date}>
-                                  <button
-                                    type="button"
-                                    disabled={shut}
-                                    onClick={() => {
-                                      setDay(option.date);
-                                      setHours([]);
-                                    }}
-                                    className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                                      here
-                                        ? "border-[#2563EB] bg-blue-50 text-[#071955]"
-                                        : shut
-                                          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    {shortDate(option.date)}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-
-                          {days.length > 14 && (
+                        return (
+                          <li key={court.bookableCourtId}>
                             <button
                               type="button"
-                              onClick={() => setWideOpen((open) => !open)}
-                              className="mt-2 text-xs font-bold text-[#2563EB] underline underline-offset-2"
+                              title={court.courtName}
+                              onClick={() => {
+                                setChosen(court.bookableCourtId);
+                                setProblem(null);
+                              }}
+                              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                                here
+                                  ? "border-[#2563EB] bg-blue-50"
+                                  : "border-slate-200 bg-white hover:border-slate-300"
+                              }`}
                             >
-                              {wideOpen ? "Show 14 days" : `Show all ${days.length} days`}
+                              {/* One line, and it stays one line. The cards sit
+                                  in a grid, so a row is as tall as its tallest
+                                  card: let a badge wrap under the name and the
+                                  one card carrying it drags every card beside
+                                  it down. The name gives way instead — it is
+                                  truncated, with the full one on the tooltip. */}
+                              <span className="flex items-center gap-1.5">
+                                <span className="truncate text-sm font-bold text-[#071955]">
+                                  {court.courtName}
+                                </span>
+
+                                {/* Said on the card rather than left to be
+                                    worked out. Without it the list reads as
+                                    though one court has been listed twice. */}
+                                {court.isCurrentCourt && (
+                                  <span className="shrink-0 rounded-full bg-[#071955] px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-white uppercase">
+                                    You are here
+                                  </span>
+                                )}
+                              </span>
+
+                              {/* The money, on the card. Somebody choosing
+                                  between four courts is choosing on price as
+                                  much as on name, and making them tap each one
+                                  to find out is four questions where there
+                                  should be none. */}
+                              <span
+                                className={`mt-0.5 block truncate text-xs font-bold ${
+                                  court.isUpgrade ? "text-amber-700" : "text-green-700"
+                                }`}
+                              >
+                                {court.isUpgrade
+                                  ? `${peso(court.balanceDue)} more to pay`
+                                  : "Free move"}
+                              </span>
+
+                              <span className="block truncate text-xs font-semibold text-slate-500">
+                                {court.standardHourlyRate !== null
+                                  ? `${peso(court.standardHourlyRate)}/hr`
+                                  : court.sportName}
+                              </span>
                             </button>
-                          )}
-                        </>
-                      )}
-                    </>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
-
-                  {onDay !== null && (
-                    <div className="mt-4">
-                      {pickingDay && (
-                        <p className="text-sm font-bold text-[#071955]">Choose your hours</p>
-                      )}
-
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        {hours.length === 0
-                          ? `Keep your current time, or pick ${
-                              needed === 1 ? "a new hour" : `${needed} new hours`
-                            }.`
-                          : `Pick ${needed}. You have picked ${hours.length}.`}
-                      </p>
-
-                      {grid.isPending ? (
-                        <p className="mt-2 text-sm text-slate-500">Loading hours…</p>
-                      ) : grid.data?.isClosed ? (
-                        <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                          The venue is closed that day.
-                        </p>
-                      ) : (
-                        <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                          {(grid.data?.slots ?? []).map((slot) => {
-                            const here = hours.includes(slot.startsAt);
-                            const ours = mine.has(slot.startsAt);
-                            const shut = !slot.isOpen || slot.hasPassed;
-                            const full = hours.length >= needed && !here;
-
-                            return (
-                              <li key={slot.startsAt}>
-                                <button
-                                  type="button"
-                                  disabled={ours || shut || full}
-                                  onClick={() =>
-                                    setHours((picked) =>
-                                      picked.includes(slot.startsAt)
-                                        ? picked.filter((hour) => hour !== slot.startsAt)
-                                        : [...picked, slot.startsAt].sort(),
-                                    )
-                                  }
-                                  className={`w-full rounded-xl border px-2 py-2 text-xs font-bold transition ${
-                                    ours
-                                      ? "cursor-default border-green-200 bg-green-50 text-green-800"
-                                      : here
-                                        ? "border-[#2563EB] bg-blue-50 text-[#071955]"
-                                        : shut || full
-                                          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                                  }`}
-                                >
-                                  {clock(slot.startsAt)}
-                                  {ours && (
-                                    <span className="mt-0.5 block text-[10px] font-bold">
-                                      Yours now
-                                    </span>
-                                  )}
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Said only once there is something to say. Until the schedule is
-              complete the price is not settled, and a figure that moves as you
-              tap reads as a fault. */}
-          {priceable && quote.isPending && (
-            <p className="mt-3 text-sm text-slate-500">Working out what that comes to…</p>
-          )}
-
-          {refused && (
-            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-              {refused}
-            </p>
-          )}
-
-          {/* What those hours come to, hour by hour. A single total invites the
-              question the breakdown answers: a peak hour and a standard one on
-              the same court are not the same money, and the reader can see
-              which is which. */}
-          {hours.length > 0 && picked.length === hours.length && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <p className="text-sm font-bold text-[#071955]">
-                {hours.length === needed ? "Your new hours" : `${hours.length} of ${needed} picked`}
-              </p>
-
-              <dl className="mt-2 space-y-1 text-sm">
-                {picked.map((slot) => (
-                  <div key={slot.startsAt} className="flex justify-between gap-4">
-                    <dt className="text-slate-500">
-                      {clock(slot.startsAt)}–{clock(slot.endsAt)}
-                      {slot.rateKind !== "Standard" && (
-                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                          {slot.rateKind}
-                        </span>
-                      )}
-                    </dt>
-                    <dd className="font-semibold text-[#071955]">
-                      {slot.rate === null ? "—" : peso(slot.rate)}
-                    </dd>
-                  </div>
-                ))}
-
-                <div className="flex justify-between gap-4 border-t border-slate-100 pt-1">
-                  <dt className="font-bold text-[#071955]">Court rental</dt>
-                  <dd className="font-extrabold text-[#071955]">{peso(rented)}</dd>
                 </div>
-              </dl>
-
-              {hours.length < needed && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Pick {needed - hours.length} more {needed - hours.length === 1 ? "hour" : "hours"}
-                  .
-                </p>
               )}
-            </div>
-          )}
 
-          {/* The one thing the customer wants to know at this point: is there
-              anything to settle. Against the court rental on both sides, so a
-              move between two courts at the same rate reads as free, which is
-              what it is. */}
-          {priceable && settled && settled.balanceDue > 0 && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-amber-900">
-                  {peso(settled.balanceDue)} more to pay
-                </p>
-                {/* Against the hours that are moving, not the whole booking. On
-                    a session under way most of the booking is behind the
-                    customer and not in question, and naming its total asks them
-                    to work out which part of it still is. */}
-                <p className="mt-1 text-sm leading-6 text-amber-800">
-                  {hoursMoved} {hoursMoved === 1 ? "hour" : "hours"} on{" "}
-                  {settled.toCourtName} {hoursMoved === 1 ? "costs" : "cost"}{" "}
-                  {peso(settled.movingRentalNew)}, against {peso(settled.movingRentalNow)} where{" "}
-                  {hoursMoved === 1 ? "it is" : "they are"} now — so there is{" "}
-                  {peso(settled.balanceDue)} to settle.
-                </p>
-              </div>
-
-              {/* The choice travels in the address, so a refresh on the next
-                  page does not lose what was picked here. A booking under way
-                  sends no hours: it is not changing them, and the server keeps
-                  the ones it has. */}
-              <Link
-                href={
-                  wanted === null
-                    ? `/bookings/${booking.id}/upgrade?court=${chosen}`
-                    : `/bookings/${booking.id}/upgrade?court=${chosen}&hours=${encodeURIComponent(
-                        wanted.map((slot) => `${slot.date}T${slot.startsAt}`).join(","),
-                      )}`
-                }
-                className="inline-flex shrink-0 items-center rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-600/20 transition hover:bg-amber-700"
-              >
-                Pay and upgrade
-              </Link>
-            </div>
-          )}
-
-          {priceable && settled && settled.balanceDue === 0 && (
-            <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
-              <p className="text-sm font-bold text-green-900">Nothing more to pay</p>
-              <p className="mt-1 text-sm leading-6 text-green-800">
-                {settled.movingRentalNew < settled.movingRentalNow
-                  ? `Those ${hoursMoved === 1 ? "hour costs" : "hours cost"} ${peso(
-                      settled.movingRentalNew,
-                    )} on ${settled.toCourtName} instead of ${peso(
-                      settled.movingRentalNow,
-                    )}. The difference is not refunded, so your bill stays the same.`
-                  : `${settled.toCourtName} charges the same for ${
-                      hoursMoved === 1 ? "that hour" : "those hours"
-                    }, so the move is free.`}
-              </p>
-            </div>
+              {/* -------------------------------------------- what it comes to */}
+              {picked !== null && <Settlement booking={booking} court={picked} />}
+            </>
           )}
 
           {problem && (
@@ -726,7 +633,7 @@ function MoveBookingDialog({
           </p>
         </div>
 
-        <div className="shrink-0 flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
+        <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -735,20 +642,136 @@ function MoveBookingDialog({
           >
             Keep it where it is
           </button>
-          <button
-            type="button"
-            disabled={!ready}
-            onClick={() => move.mutate()}
-            className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
-              ready
-                ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"
-                : "cursor-not-allowed bg-slate-200 text-slate-400"
-            }`}
-          >
-            {move.isPending ? "Moving…" : "Move it"}
-          </button>
+
+          {/* A court that costs more cannot simply be moved onto — nothing
+              collects money on the way — so it goes to the checkout instead,
+              and the button says which of the two is about to happen. The
+              choice travels in the address so a refresh on the next page does
+              not lose it. */}
+          {picked !== null && picked.isUpgrade ? (
+            <Link
+              href={upgradeHref(booking.id, picked, underWay)}
+              className="inline-flex items-center rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-600/20 transition hover:bg-amber-700"
+            >
+              Pay {peso(picked.balanceDue)} and move
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled={picked === null || move.isPending}
+              onClick={() => picked !== null && move.mutate(picked)}
+              className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
+                picked !== null && !move.isPending
+                  ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"
+                  : "cursor-not-allowed bg-slate-200 text-slate-400"
+              }`}
+            >
+              {move.isPending ? "Moving…" : "Move it"}
+            </button>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Where the upgrade checkout is, for the court that was picked.
+ *
+ * A booking under way sends no hours: it is not changing them, and the server
+ * keeps the ones it has. Everything else sends the hours the card was priced
+ * for — which on a day booking are that court's own, and were never the
+ * browser's to work out.
+ */
+function upgradeHref(bookingId: string, court: MoveOption, underWay: boolean) {
+  const base = `/bookings/${bookingId}/upgrade?court=${court.bookableCourtId}`;
+
+  if (underWay) {
+    return base;
+  }
+
+  const hours = court.slots.map((slot) => `${slot.date}T${slot.startsAt}`).join(",");
+
+  return `${base}&hours=${encodeURIComponent(hours)}`;
+}
+
+/**
+ * What the chosen court comes to, hour by hour, and whether anything is owed.
+ *
+ * The breakdown rather than a total, because the hours of a day do not cost
+ * the same: a peak hour and a standard one on the same court are different
+ * money, and a single figure invites the question this answers.
+ */
+function Settlement({ booking, court }: { booking: BookingDetail; court: MoveOption }) {
+  // A run of days is too many rows to read and the wrong question anyway — on
+  // those the day is the unit, not the hour.
+  const detailed = booking.kind === "Hourly";
+
+  return (
+    <div className="mt-5 border-t border-slate-200 pt-5">
+      <p className="text-sm font-bold text-[#071955]">
+        {detailed ? "Your new hours" : "What you would be moving to"}
+      </p>
+
+      <div className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+        <dl className="space-y-1 text-sm">
+          {detailed ? (
+            court.slots.map((slot) => (
+              <div key={`${slot.date}-${slot.startsAt}`} className="flex justify-between gap-4">
+                <dt className="text-slate-500">
+                  {clock(slot.startsAt)}–{clock(slot.endsAt)}
+                  {slot.rateKind !== "Standard" && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                      {slot.rateKind}
+                    </span>
+                  )}
+                </dt>
+                <dd className="font-semibold text-[#071955]">{peso(slot.amount)}</dd>
+              </div>
+            ))
+          ) : (
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500">
+                {court.courtName} · {court.slots.length}{" "}
+                {court.slots.length === 1 ? "hour" : "hours"}
+              </dt>
+              <dd className="font-semibold text-[#071955]">{peso(court.movingRentalNew)}</dd>
+            </div>
+          )}
+
+          <div className="flex justify-between gap-4 border-t border-slate-100 pt-1">
+            <dt className="font-bold text-[#071955]">Court rental</dt>
+            <dd className="font-extrabold text-[#071955]">{peso(court.movingRentalNew)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {/* The one thing the customer wants to know here: is there anything to
+          settle. Court rental on both sides — the platform fee is charged per
+          hour booked and a move buys no hours, so counting it would make an
+          identical move look like it cost something. */}
+      {court.isUpgrade ? (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-bold text-amber-900">{peso(court.balanceDue)} more to pay</p>
+          <p className="mt-1 text-sm leading-6 text-amber-800">
+            {court.courtName} comes to {peso(court.movingRentalNew)}, against{" "}
+            {peso(court.movingRentalNow)} where you are now — so there is{" "}
+            {peso(court.balanceDue)} to settle. The venue is asked to accept it, and your booking
+            moves once the payment clears.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
+          <p className="text-sm font-bold text-green-900">Nothing more to pay</p>
+          <p className="mt-1 text-sm leading-6 text-green-800">
+            {court.movingRentalNew < court.movingRentalNow
+              ? `That comes to ${peso(court.movingRentalNew)} instead of ${peso(
+                  court.movingRentalNow,
+                )}. The difference is not refunded, so your bill stays the same.`
+              : `${court.courtName} charges the same, so the move is free.`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -796,9 +819,10 @@ function MovesLeft({ left, limit }: { left: number; limit: number | undefined })
             <span className="font-bold">
               You can move this booking {left} more {left === 1 ? "time" : "times"}.
             </span>{" "}
-            {known && `This venue allows ${limit} ${limit === 1 ? "move" : "moves"} per booking${
-              used ? `, and you have used ${used}` : ""
-            }. `}
+            {known &&
+              `This venue allows ${limit} ${limit === 1 ? "move" : "moves"} per booking${
+                used ? `, and you have used ${used}` : ""
+              }. `}
             Once they run out, the booking stays where it is.
           </>
         )}
@@ -811,9 +835,27 @@ function MovesLeft({ left, limit }: { left: number; limit: number | undefined })
 function when(booking: BookingDetail) {
   const from = longDate(booking.startDate);
 
-  return booking.startDate === booking.endDate
-    ? from
-    : `${from} – ${longDate(booking.endDate)}`;
+  return booking.startDate === booking.endDate ? from : `${from} – ${longDate(booking.endDate)}`;
+}
+
+/**
+ * The hours, as a person would say them.
+ *
+ * A whole day is not read back hour by hour: sixteen rows to say "all of it"
+ * is a wall of text where one line will do, and a run of days is that wall
+ * again for every day of it.
+ */
+function time(booking: BookingDetail) {
+  if (booking.kind === "Hourly") {
+    return booking.slots.map((slot) => `${clock(slot.startsAt)}–${clock(slot.endsAt)}`).join(", ");
+  }
+
+  const first = booking.slots.at(0);
+  const last = booking.slots.at(-1);
+
+  return first === undefined || last === undefined
+    ? "—"
+    : `${clock(first.startsAt)}–${clock(last.endsAt)}, all day`;
 }
 
 function longDate(iso: string) {
@@ -835,5 +877,4 @@ function shortDate(iso: string) {
   });
 }
 
-export type { MoveQuote };
 export default MoveBookingDialog;
