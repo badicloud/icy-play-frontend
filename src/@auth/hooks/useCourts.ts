@@ -20,6 +20,26 @@ import {
 } from "../courtApi";
 import { adminFacilityOwnersQueryKey } from "./useAdminFacilityOwners";
 
+/**
+ * What a visitor sees, as opposed to what the console shows.
+ *
+ * The public catalog, the hour grids and the day strips are cached under
+ * keys of their own, and nothing under the owners key reaches them. Without
+ * this an owner changes a rate, opens the venue’s own page to check it, and
+ * is shown the rate they just replaced — which reads as the save having
+ * failed.
+ *
+ * All three, because a court carries its prices into the catalog listing,
+ * its own page, and the price on every hour of every grid.
+ */
+async function refreshPublicViews(queryClient: ReturnType<typeof useQueryClient>) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["catalog"] }),
+    queryClient.invalidateQueries({ queryKey: ["availability"] }),
+    queryClient.invalidateQueries({ queryKey: ["day-outlook"] }),
+  ]);
+}
+
 export function courtsQueryKey(facilityId: string) {
   return [...adminFacilityOwnersQueryKey, "courts", facilityId] as const;
 }
@@ -54,6 +74,7 @@ export function useUpdateCourt(courtId: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
       await queryClient.invalidateQueries({ queryKey: facilityInventoryQueryKey });
+      await refreshPublicViews(queryClient);
     },
   });
 }
@@ -64,8 +85,10 @@ export function useUpdateCourtDivisions(courtId: string) {
   return useMutation({
     mutationFn: (payload: UpdateCourtDivisionsPayload) =>
       updateCourtDivisions(courtId, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
+      await refreshPublicViews(queryClient);
+    },
   });
 }
 
@@ -74,8 +97,10 @@ export function useUpdateCourtPricing(courtId: string) {
 
   return useMutation({
     mutationFn: (payload: UpdateCourtPricingPayload) => updateCourtPricing(courtId, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
+      await refreshPublicViews(queryClient);
+    },
   });
 }
 
@@ -86,8 +111,10 @@ export function useCreateCourt() {
     mutationFn: (payload: CreateCourtPayload) => createCourt(payload),
     // A new court may also have created a facility, so the owner's detail and
     // the list of owners are both out of date.
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
+      await refreshPublicViews(queryClient);
+    },
   });
 }
 
@@ -99,6 +126,7 @@ export function useCreateCourt() {
 async function refreshClosures(queryClient: ReturnType<typeof useQueryClient>) {
   await queryClient.invalidateQueries({ queryKey: adminFacilityOwnersQueryKey });
   await queryClient.invalidateQueries({ queryKey: facilityInventoryQueryKey });
+  await refreshPublicViews(queryClient);
 }
 
 /**
