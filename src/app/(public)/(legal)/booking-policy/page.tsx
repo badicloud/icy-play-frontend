@@ -26,8 +26,9 @@ const sections = [
           moves: it never passes through us, so there is nothing for us to give back.
         </p>
         <p>
-          What you can do instead is move it. A booking can be carried to another date up to three
-          times — see &ldquo;Moving a booking&rdquo; below.
+          What you can do instead is move it — to another court, other hours, or another date. Each
+          venue sets how many times one booking may be moved. See &ldquo;Moving a booking&rdquo;
+          below.
         </p>
       </>
     ),
@@ -53,9 +54,11 @@ const sections = [
     content: (
       <>
         <p>
-          Choosing hours holds them for you while you pay. The hold lasts thirty minutes at most
-          venues; a venue may set its own length, and the length that applies is shown counting down
-          on the checkout page.
+          Choosing hours holds them for you while you pay. <strong>Each venue sets how long its own
+          hold lasts</strong>, anywhere between five minutes and four hours — many keep it short,
+          on the reasoning that paying by GCash takes a minute. The length that applies to your
+          booking is shown counting down on the checkout page, and that countdown is the one that
+          counts.
         </p>
         <p>
           Nothing is charged for a hold. If no payment confirmation arrives before the hold runs
@@ -106,18 +109,34 @@ const sections = [
     content: (
       <>
         <p>
-          A booking cannot be refunded, but it can be moved to another court. This is the answer to
-          something coming up, and it is what to reach for instead of asking to cancel.
+          A booking cannot be refunded, but it can be moved — to another court, to other hours, or
+          to another date. This is the answer to something coming up, and it is what to reach for
+          instead of asking to cancel.
         </p>
         <ul>
           <li>
-            <strong>Before it starts, or while it is being played.</strong> A court that fails at
-            two o&apos;clock is exactly when a move is worth most, and the hours still to come can
-            go somewhere else. Once the last hour has been played there is nothing left to move.
+            <strong>Only within the same venue, and the same sport.</strong> A move changes where
+            in the building you are playing and when; it is not a way to swap what you booked for
+            something else somewhere else.
           </li>
           <li>
-            <strong>The hours do not change.</strong> A booking from 11am to 4pm moves to 11am to
-            4pm on another court, for the same number of days. Only the court changes.
+            <strong>How much you booked does not change.</strong> An hourly booking moves the same
+            number of hours it has, and a booking sold by the day moves the same number of days.
+            Where those hours or days land is yours to choose. A move changes when and where a
+            booking is, never how much of it there is.
+          </li>
+          <li>
+            <strong>An hourly booking can move before it starts, or while it is being played.</strong>{" "}
+            A court that fails at two o&apos;clock is exactly when a move is worth most, and the
+            whole hours still to come can go somewhere else. Once it is under way,{" "}
+            <strong>only the court can change</strong> — the remaining hours travel at the times
+            they already have, and are priced against the new court at those times. Once the last
+            hour has been played there is nothing left to move.
+          </li>
+          <li>
+            <strong>A whole day or a run of days must move before it begins.</strong> Once the first
+            day is under way it stays where it is. Moving it at noon would leave you with a morning
+            on one court and an afternoon on another, which is not what you booked.
           </li>
           <li>
             <strong>A limited number of times</strong>, set by each venue. A booking that can be
@@ -126,14 +145,16 @@ const sections = [
           </li>
         </ul>
         <p>
-          <strong>If the new court costs more</strong>, you pay the difference and nothing else —
-          the hours have not changed, so the platform fee does not change either. You are told what
-          it comes to before you commit to anything, and the court is held for you while you pay.
-          The booking moves once the venue has seen the payment.
+          <strong>If the new court or the new hours cost more</strong>, you pay the difference and
+          nothing else — you are buying no extra hours, so the platform fee does not change either.
+          You are told what it comes to before you commit to anything, and the hours are held for
+          you while you pay. <strong>The booking moves only once the venue has seen the
+          payment</strong>, and the venue can decline it, in which case your booking stays exactly
+          where it was and you are told why.
         </p>
         <p>
-          <strong>If the new court costs less</strong>, nothing is charged and nothing is returned.
-          There are no refunds on this platform, and a move is what there is instead.
+          <strong>If they cost less</strong>, nothing is charged and nothing is returned. There are
+          no refunds on this platform, and a move is what there is instead.
         </p>
         <p>
           A booking already being played moves only the hours still to come. The hours you have had
@@ -155,10 +176,8 @@ const sections = [
           what happens next is between you and them, and we would expect them to make it right.
         </p>
         <p>
-          A venue can also move you itself when a court develops a problem, and has to say why. If
-          the court it moves you to costs more, the venue either asks you to upgrade — which you
-          are free to decline — or covers the difference itself. It cannot quietly charge you for
-          a move you did not ask for.
+          A venue cannot move your booking for you. If a court develops a problem they will ask you
+          to move it yourself, and the move is then yours to make and yours to refuse.
         </p>
       </>
     ),

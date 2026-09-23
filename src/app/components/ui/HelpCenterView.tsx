@@ -88,8 +88,8 @@ const topics: Topic[] = [
             <Link href="/how-it-works" className="font-bold text-[#164eaa] underline-offset-2 hover:underline">
               how it works
             </Link>{" "}
-            walks through all of them. The short version: pick hours, pay the venue by GCash, send
-            the receipt, and somebody at the venue confirms it.
+            walks through all of them. The short version: pick a venue and a court, choose your
+            hours, pay the venue by GCash, send the receipt, and somebody at the venue confirms it.
           </>
         ),
       },
@@ -155,13 +155,53 @@ const topics: Topic[] = [
         q: "How do I move a booking?",
         a: (
           <>
-            Open it from{" "}
-            <Link href="/bookings" className="font-bold text-[#164eaa] underline-offset-2 hover:underline">
-              my bookings
-            </Link>{" "}
-            and pick another court. The hours stay as they are — only the court changes. You can
-            move before it starts or while it is being played, and if the new court costs more you
-            pay the difference and nothing else.{" "}
+            <p>
+              Open it from{" "}
+              <Link
+                href="/bookings"
+                className="font-bold text-[#164eaa] underline-offset-2 hover:underline"
+              >
+                my bookings
+              </Link>
+              . What you can change depends on whether it has already started.
+            </p>
+            <ul className="ml-5 list-disc space-y-2">
+              <li>
+                <strong>Not started yet.</strong> Pick a new date, new hours if it is an hourly
+                booking, and a new court — any one of those, or all of them.
+              </li>
+              <li>
+                <strong>An hourly booking already being played.</strong> You pick a court, and only
+                a court. The hour you are on stays where it is, at what it cost; the whole hours
+                still to come move across at the times they already have.
+              </li>
+              <li>
+                <strong>A whole day or a run of days that has started.</strong> It cannot be moved
+                — a day booking has to move before its first day begins.
+              </li>
+            </ul>
+            <p>
+              It always stays at the same venue and the same sport, and you keep the same number of
+              hours — or for a day booking, the same number of days.
+            </p>
+            <p>
+              If the move costs nothing extra it happens straight away, as long as you are inside
+              the number of moves your venue allows. If it costs more you pay the difference, and
+              the booking moves only once somebody at the venue has seen that payment — they can
+              decline it, and then nothing about your booking changes.{" "}
+              <Policy section="Moving a booking" />
+            </p>
+          </>
+        ),
+      },
+      {
+        q: "I paid to move to a better court. What happens now?",
+        a: (
+          <>
+            Somebody at the venue checks the payment, the same way they checked the first one. Until
+            they do, your booking stays exactly where it is and the better hours are held for you —
+            your booking will say it is waiting on the venue. If they decline it you are told why,
+            and nothing about your original booking changes.{" "}
             <Policy section="Moving a booking" />
           </>
         ),
@@ -234,6 +274,17 @@ const topics: Topic[] = [
           </>
         ),
       },
+      {
+        q: "How long do we hold a court for, and can we change it?",
+        a: (
+          <>
+            You set it yourself, in the desk&apos;s settings: anywhere from five minutes to four
+            hours. Five is the default, because paying by GCash takes about a minute and a longer
+            hold is your court sitting dark while somebody makes up their mind. The same page sets
+            how many times one booking may be moved.
+          </>
+        ),
+      },
     ],
   },
 ];
@@ -297,7 +348,12 @@ function HelpCenterView() {
                       +
                     </span>
                   </summary>
-                  <p className="mt-3 leading-7 font-medium text-slate-600">{answer.a}</p>
+                  {/* A div rather than a paragraph: an answer describing cases
+                      is a list, and a reader looking for their own case should
+                      not have to read the others to find it. */}
+                  <div className="mt-3 space-y-3 leading-7 font-medium text-slate-600">
+                    {answer.a}
+                  </div>
                 </details>
               ))}
             </div>

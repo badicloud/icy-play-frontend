@@ -310,8 +310,10 @@ function DemoView() {
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <Card title="The hold, and why it expires">
               <p>
-                Choosing hours holds them while the customer pays — thirty minutes by default, and
-                each venue sets its own between five minutes and four hours.
+                Choosing hours holds them while the customer pays — five minutes by default, and
+                each venue sets its own between five minutes and four hours. It was half an hour
+                until venues pointed out that half an hour is a court sitting dark on a Saturday
+                because somebody wandered off.
               </p>
               <p>
                 If nothing arrives, the hours go back on sale on their own. Nothing has to run on

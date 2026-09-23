@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { anchor } from "@/app/(public)/(legal)/LegalPageLayout";
 import PublicFooter from "./PublicFooter";
@@ -13,8 +14,8 @@ import PublicHeader from "./PublicHeader";
  */
 const steps = [
   {
-    title: "Find a court",
-    body: "Search by sport, city or venue. Every court shows what it costs an hour, when it is open, and whether it is covered — before you pick anything.",
+    title: "Find a venue, then a court",
+    body: "Start with the venues. Each one shows how many bookable courts it has, which sports it runs and where it is. Open the one you want and filter by sport: every court then shows what it costs an hour, whether it is indoor, covered or outdoor, and what it is surfaced with — before you pick anything.",
   },
   {
     title: "Pick your hours",
@@ -56,17 +57,57 @@ const rates = [
 const questions = [
   {
     q: "What does the hold mean?",
-    a: "Choosing hours holds them for you while you pay — thirty minutes at most venues, and the venue can set its own. If nothing arrives in that time the hours go back on sale and nothing is charged. Uploading your receipt stops the clock: from then on you are waiting on the venue, not the other way round.",
+    a: "Choosing hours holds them for you while you pay. Each venue sets how long — anywhere from five minutes to four hours, and many keep it short, because paying by GCash takes a minute. Your booking's own countdown is on the checkout page, so have GCash open before you start. If nothing arrives in time the hours go back on sale and nothing is charged. Uploading your receipt stops the clock: from then on you are waiting on the venue, not the other way round.",
     policy: "Holding a court",
   },
   {
     q: "Can I cancel?",
-    a: "No, and there are no refunds through IcyPlay — you pay the venue directly, so we never hold your money and have nothing to give back. What you can do instead is move the booking to another date.",
+    a: "No, and there are no refunds through IcyPlay — you pay the venue directly, so we never hold your money and have nothing to give back. What you can do instead is move it: to another court, to other hours, or to another date.",
     policy: "Bookings are final",
   },
   {
     q: "How do I move a booking?",
-    a: "Open it from My bookings and pick another court. The hours stay exactly as they are — only the court changes — and you can move before it starts or while it is being played, though not once the last hour has gone. If the new court costs more you are told what the difference comes to before you commit, and you pay that and nothing else: the hours have not changed, so the platform fee does not either. If it costs less, nothing is charged and nothing is returned. Each venue sets how many times one booking can be moved. The hours you leave go straight back on sale.",
+    a: (
+      <>
+        <p>
+          Open it from My bookings. <strong>What you can change depends on whether it has already
+          started.</strong>
+        </p>
+        <ul className="ml-5 list-disc space-y-2">
+          <li>
+            <strong>It has not started yet.</strong> Pick a new date, new hours if it is an hourly
+            booking, and a new court — any one of those, or all of them.
+          </li>
+          <li>
+            <strong>An hourly booking already being played.</strong> You pick a court, and only a
+            court. The hour you are on stays where it is, at what it cost. The whole hours still to
+            come move across at the times they already have.
+          </li>
+          <li>
+            <strong>A whole day or a run of days that has started.</strong> It cannot be moved. A
+            day booking has to move before its first day begins.
+          </li>
+        </ul>
+        <p>
+          Wherever it goes it stays at the <strong>same venue and the same sport</strong>, and you
+          keep the same amount: the same number of hours, or for a day booking the same number of
+          days.
+        </p>
+        <p>
+          <strong>If the move costs nothing extra</strong>, it happens straight away — as long as
+          you are still inside the number of moves your venue allows.
+        </p>
+        <p>
+          <strong>If it costs more</strong>, you are told the difference before you commit and you
+          pay that and nothing else. The booking only moves once somebody at the venue has seen that
+          payment, and they can decline it — in which case your booking stays exactly where it was.
+        </p>
+        <p>
+          If it costs less, nothing is charged and nothing is returned. The hours you leave go
+          straight back on sale.
+        </p>
+      </>
+    ),
     policy: "Moving a booking",
   },
   {
@@ -83,7 +124,7 @@ const questions = [
     a: "The venue can turn a booking down — a wrong amount, or a receipt that does not match what they received. The hours go straight back on sale and you are not charged. It shows on your bookings with the reason they gave.",
     policy: "When a venue turns a booking down",
   },
-] as { q: string; a: string; policy?: string }[];
+] as { q: string; a: ReactNode; policy?: string }[];
 
 /**
  * Its own page rather than a strip on the landing page.
@@ -196,7 +237,11 @@ function HowItWorksView() {
                     +
                   </span>
                 </summary>
-                <p className="mt-3 leading-7 font-medium text-slate-600">{entry.a}</p>
+                {/* A div rather than a paragraph: the longer answers are several
+                    paragraphs and a list, because the rules they describe are
+                    cases rather than prose and a reader looking for their own
+                    case should not have to read the other two. */}
+                <div className="mt-3 space-y-3 leading-7 font-medium text-slate-600">{entry.a}</div>
                 {entry.policy && (
                   <p className="mt-3 text-sm font-semibold">
                     <Link
