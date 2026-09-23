@@ -497,7 +497,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
                           ? index < firstSellable
                             ? "Hourly"
                             : outlookFor?.isUnderMaintenance || outlookFor?.isClosed
-                              ? "Shut"
+                              ? "Closed"
                               : "Booked"
                           : day.toLocaleDateString("en-PH", { month: "short" })}
                       </span>
