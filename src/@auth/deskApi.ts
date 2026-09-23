@@ -379,3 +379,167 @@ export function updateDeskSettings(payload: {
 }) {
   return apiClient.put<DeskSettings, typeof payload>(API_ENDPOINTS.DESK.SETTINGS, payload);
 }
+
+/*
+ * How much of what the venue had open actually got used.
+ *
+ * Two numbers per court on purpose. `inUseMinutes` counts an hour ONCE however
+ * many parts of the floor were sold for it, which is the utilization figure;
+ * `soldMinutes` adds the parts up, which is what the rows inside the court
+ * break down. On a floor marked out three ways the second is the larger, and
+ * the page has to say so or it reads as a bug.
+ *
+ * `rental` is null for an attendant. Left out of the response rather than
+ * hidden by the page — a figure the screen does not draw is still a figure in
+ * the payload.
+ */
+export type UnitUtilization = {
+  bookableCourtId: string;
+  label: string;
+  sportName: string;
+  sportKey: string;
+  soldMinutes: number;
+  peakMinutes: number;
+  /** The venue has stopped marking the floor out this way. Listed because it sold hours. */
+  isRetired: boolean;
+  rental: number | null;
+};
+
+export type CourtUtilization = {
+  courtId: string;
+  facilityId: string;
+  facilityName: string;
+  name: string;
+  openMinutes: number;
+  inUseMinutes: number;
+  soldMinutes: number;
+  /** Open and nobody on it. Worked out on the server so it cannot go negative. */
+  idleMinutes: number;
+  /** What the timetable said, on the days the court was under maintenance. */
+  maintenanceMinutes: number;
+  awaitingMinutes: number;
+  openDays: number;
+  maintenanceDays: number;
+  rental: number | null;
+  units: UnitUtilization[];
+};
+
+export type UtilizationReport = {
+  from: string;
+  to: string;
+  openMinutes: number;
+  inUseMinutes: number;
+  idleMinutes: number;
+  maintenanceMinutes: number;
+  awaitingMinutes: number;
+  /** Court-days: one court open on one date is one. */
+  openDays: number;
+  rental: number | null;
+  courts: CourtUtilization[];
+};
+
+export type UtilizationQuery = {
+  from: string;
+  to: string;
+  facilityId?: string;
+};
+
+export function getCourtUtilization(query: UtilizationQuery) {
+  return apiClient.get<UtilizationReport>(API_ENDPOINTS.DESK.COURT_UTILIZATION, {
+    query: {
+      from: query.from,
+      to: query.to,
+      facilityId: query.facilityId,
+    },
+  });
+}
+
+/** Minutes as a venue says them: "6h", "6h 30m", "45m". */
+export function duration(minutes: number) {
+  if (minutes <= 0) {
+    return "0h";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  if (hours === 0) {
+    return `${rest}m`;
+  }
+
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+/**
+ * The share of what was open, to a whole number.
+ *
+ * Zero open hours is not zero per cent — it is a question with no answer, and
+ * a court shut all month should say so rather than read as the worst on the
+ * list.
+ */
+export function utilization(inUseMinutes: number, openMinutes: number) {
+  return openMinutes <= 0 ? null : Math.round((inUseMinutes / openMinutes) * 100);
+}
+
+/**
+ * Whole-number percentages that add up to a hundred.
+ *
+ * Rounding each share on its own does not: five, two and sixteen hours of a
+ * twenty-three hour floor round to 22, 9 and 70, and a reader who adds the
+ * column up gets 101 and starts wondering what is wrong with the report.
+ *
+ * The largest-remainder method instead — floor everything, then hand the
+ * leftover points to whichever shares were cut by most. The result still reads
+ * as each row's share, and the column totals what it says it totals.
+ */
+export function shares(parts: number[]) {
+  const total = parts.reduce((sum, part) => sum + part, 0);
+
+  if (total <= 0) {
+    return parts.map(() => 0);
+  }
+
+  const exact = parts.map((part) => (part / total) * 100);
+  const given = exact.map(Math.floor);
+  let left = 100 - given.reduce((sum, share) => sum + share, 0);
+
+  const byRemainder = exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((one, other) => other.remainder - one.remainder);
+
+  for (const { index } of byRemainder) {
+    if (left <= 0) {
+      break;
+    }
+
+    given[index] += 1;
+    left -= 1;
+  }
+
+  return given;
+}
+
+/**
+ * What the venue looks like at this moment.
+ *
+ * The three states add up to `bookableCourts`, and they are sorted in one order
+ * so that they can: under maintenance first, then booked, then whatever is
+ * left is free.
+ *
+ * **Free is not the same as sellable.** A part with no booking of its own can
+ * still be unsellable, because a clashing game has the floor — basketball
+ * across the whole hall takes all three pickleball courts with it.
+ */
+export type VenueSnapshot = {
+  courts: number;
+  bookableCourts: number;
+  availableNow: number;
+  bookedNow: number;
+  underMaintenanceNow: number;
+};
+
+export function getVenueSnapshot(facilityId?: string) {
+  return apiClient.get<VenueSnapshot>(API_ENDPOINTS.DESK.SNAPSHOT, {
+    query: { facilityId },
+  });
+}

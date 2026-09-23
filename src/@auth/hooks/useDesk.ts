@@ -12,6 +12,8 @@ import {
   getDeskBooking,
   getDeskBookingHistory,
   getDeskBookings,
+  getCourtUtilization,
+  getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
   getDeskVenues,
@@ -19,6 +21,7 @@ import {
   type CourtBookingQuery,
   type DeskQuery,
   type DeskUpgradeQuery,
+  type UtilizationQuery,
 } from "@auth/deskApi";
 import type { BookingSource } from "@/app/(desk)/components/BookingSource";
 
@@ -251,4 +254,35 @@ export function useDeskDecision() {
   });
 
   return { confirm, reject, isDeciding: confirm.isPending || reject.isPending };
+}
+
+/**
+ * How much of what the venue had open actually got used.
+ *
+ * Long-lived compared with the queues: a report is a period that has mostly
+ * already happened, and re-fetching it while somebody reads down the courts
+ * would move the numbers under them.
+ */
+export function useCourtUtilization(query: UtilizationQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "utilization", query],
+    queryFn: () => getCourtUtilization(query),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * The venue as it stands this minute.
+ *
+ * Short-lived, unlike the reports: this is the one thing on the page that
+ * changes while somebody is looking at it, and a stale count is a desk telling
+ * a customer a court is free when somebody has just taken it.
+ */
+export function useVenueSnapshot(facilityId?: string) {
+  return useQuery({
+    queryKey: [...deskKey, "snapshot", facilityId ?? null],
+    queryFn: () => getVenueSnapshot(facilityId),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
 }

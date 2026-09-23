@@ -137,5 +137,7 @@ export const API_ENDPOINTS = {
       `${API_V1}/desk/upgrades/${upgradeId}/approve`,
     DECLINE_UPGRADE: (upgradeId: string) =>
       `${API_V1}/desk/upgrades/${upgradeId}/decline`,
+    COURT_UTILIZATION: `${API_V1}/desk/reports/court-utilization`,
+    SNAPSHOT: `${API_V1}/desk/reports/snapshot`,
   },
 } as const;

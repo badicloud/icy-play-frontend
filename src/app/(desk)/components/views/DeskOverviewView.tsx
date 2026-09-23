@@ -55,7 +55,9 @@ const sections: DeskSection[] = [
   },
   {
     title: "Reports",
-    description: "What was taken, what is owed, and how busy each court has been.",
+    description:
+      "How busy each court has been, and what it took. Court utilisation is there now; the rest are named on the page as they arrive.",
+    href: "/desk/reports",
     icon: <AssessmentOutlined />,
   },
   {
