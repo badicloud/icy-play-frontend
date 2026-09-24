@@ -21,14 +21,18 @@ function ReportsNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Reports" className="lg:sticky lg:top-6">
-      {deskReportGroups.map((group, index) => (
-        <div key={group.id} className={index > 0 ? "mt-5" : undefined}>
-          <p className="px-3 text-xs font-bold tracking-wider text-slate-500 uppercase">
+    <nav aria-label="Reports" className="space-y-3 lg:sticky lg:top-6">
+      {/* A card each, rather than a heading and a gap. On a tinted page the gap
+          alone left three lists reading as one long one, and which group a
+          report belonged to was something you had to work out by scanning back
+          up to the nearest heading. */}
+      {deskReportGroups.map((group) => (
+        <div key={group.id} className="rounded-2xl border border-slate-200 bg-white p-2">
+          <p className="px-3 pt-1.5 pb-2 text-xs font-bold tracking-wider text-slate-500 uppercase">
             {group.title}
           </p>
 
-          <ul className="mt-2 space-y-0.5">
+          <ul className="space-y-0.5">
             {group.reports.map((report) => {
               const active = report.href ? pathname.startsWith(report.href) : false;
 
@@ -58,7 +62,7 @@ function ReportsNav() {
                     className={`block truncate rounded-xl px-3 py-2.5 text-base font-semibold transition ${
                       active
                         ? "bg-[#1264f7] text-white"
-                        : "text-slate-700 hover:bg-white hover:text-[#071955]"
+                        : "text-slate-700 hover:bg-slate-100 hover:text-[#071955]"
                     }`}
                   >
                     {report.title}
@@ -72,7 +76,7 @@ function ReportsNav() {
 
       <Link
         href="/desk"
-        className="mt-6 block rounded-xl px-3 py-2.5 text-base font-semibold text-slate-600 transition hover:bg-white hover:text-[#071955]"
+        className="block rounded-xl px-3 py-2.5 text-base font-semibold text-slate-600 transition hover:bg-white hover:text-[#071955]"
       >
         ← Back to the desk
       </Link>

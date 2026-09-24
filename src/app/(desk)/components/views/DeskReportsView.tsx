@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import ArrowForwardOutlined from "@mui/icons-material/ArrowForwardOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
-import { deskReports } from "../reports";
 import { useDeskVenues, useVenueSnapshot } from "@auth/hooks/useDesk";
 
 /**
@@ -109,17 +106,17 @@ function RightNow({ facilityId }: { facilityId: string }) {
 }
 
 /**
- * The way in to the reports, and what the venue looks like right now.
+ * What the venue looks like right now.
  *
- * Listing the reports is the side menu's job, so this page does not repeat all
- * of them as cards. What it does instead is answer the question somebody
- * standing at the desk actually has when they open it: how much of the place is
- * busy at this minute.
+ * Listing the reports is the side menu's job and it is on screen already, so
+ * this page does not repeat them as cards — a second copy of the same links
+ * beside the first is furniture rather than help. What it does instead is
+ * answer the question somebody standing at the desk actually has when they open
+ * it: how much of the place is busy.
  */
 function DeskReportsView() {
   const [facilityId, setFacilityId] = useState("");
   const venues = useDeskVenues();
-  const built = deskReports.filter((report) => report.href);
 
   return (
     <>
@@ -156,34 +153,6 @@ function DeskReportsView() {
       <div className="mt-3">
         <RightNow facilityId={facilityId} />
       </div>
-
-      <h2 className="mt-10 text-lg font-bold text-[#071955]">Look closer</h2>
-      <div className="mt-3 space-y-3">
-        {built.map((report) => (
-          <Link
-            key={report.id}
-            href={report.href!}
-            className="group flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-5 transition hover:border-blue-200 hover:shadow-sm"
-          >
-            <span className="min-w-0">
-              <span className="block text-lg font-bold text-[#071955]">{report.title}</span>
-              <span className="mt-1.5 block text-base leading-relaxed text-slate-700">
-                {report.blurb}
-              </span>
-            </span>
-            <ArrowForwardOutlined
-              className="mt-1 shrink-0 text-slate-300 transition group-hover:text-[#1264f7]"
-              fontSize="small"
-            />
-          </Link>
-        ))}
-      </div>
-
-      <p className="mt-8 text-base leading-relaxed text-slate-700">
-        More reports are on the way — the menu lists them, greyed until they work. The ones marked{" "}
-        <b>owner only</b> will include money: anyone on the desk can see the hours, only the owner
-        sees what was taken.
-      </p>
     </>
   );
 }

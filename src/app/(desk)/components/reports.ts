@@ -136,6 +136,3 @@ export const deskReportGroups: DeskReportGroup[] = [
     ],
   },
 ];
-
-/** Flattened, for the places that do not care which group a report sits in. */
-export const deskReports: DeskReport[] = deskReportGroups.flatMap((group) => group.reports);
