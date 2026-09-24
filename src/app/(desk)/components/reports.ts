@@ -53,8 +53,9 @@ export const deskReportGroups: DeskReportGroup[] = [
         id: "hours",
         title: "Hours over time",
         blurb:
-          "Hours sold, hours idle and hours under maintenance, drawn as a line across the period rather than totalled per court.",
+          "Hours sold and hours under maintenance, drawn as a line across the period rather than totalled per court.",
         sameSumsAs: "utilization",
+        href: "/desk/reports/hours",
       },
       {
         id: "sold",

@@ -14,28 +14,7 @@ import {
   type UtilizationReport,
 } from "@auth/deskApi";
 import { useCourtUtilization, useDeskVenues } from "@auth/hooks/useDesk";
-
-/** The first of this month to today, which is what a desk opens on. */
-function thisMonth() {
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  return { from: iso(first), to: iso(now) };
-}
-
-function iso(date: Date) {
-  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
-}
-
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <p className="text-base font-semibold text-slate-600">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-[#071955]">{value}</p>
-      {hint && <p className="mt-1.5 text-sm text-slate-600">{hint}</p>}
-    </div>
-  );
-}
+import { thisMonth, Tile } from "../reportBits";
 
 /** A filled bar, or a dash where there is no percentage to be had. */
 function Meter({ percent }: { percent: number | null }) {
@@ -110,13 +89,6 @@ function Court({ court }: { court: CourtUtilization }) {
             {duration(court.inUseMinutes)}
           </span>
           <span className="block text-sm">used</span>
-        </span>
-
-        <span className="hidden w-28 shrink-0 text-right text-base text-slate-600 md:block">
-          <span className="block text-lg font-semibold text-[#071955]">
-            {duration(court.idleMinutes)}
-          </span>
-          <span className="block text-sm">idle</span>
         </span>
 
         <span className="hidden w-32 shrink-0 text-right text-base md:block">
@@ -260,18 +232,17 @@ function Summary({ report }: { report: UtilizationReport }) {
   const percent = utilization(report.inUseMinutes, report.openMinutes);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Tile
         label="Open"
         value={duration(report.openMinutes)}
         hint={`${report.openDays} court-${report.openDays === 1 ? "day" : "days"}`}
       />
       <Tile label="Used" value={duration(report.inUseMinutes)} />
-      <Tile label="Idle" value={duration(report.idleMinutes)} />
       <Tile
         label="Maintenance"
         value={report.maintenanceMinutes > 0 ? duration(report.maintenanceMinutes) : "—"}
-        hint={report.maintenanceMinutes > 0 ? "not counted as open or idle" : undefined}
+        hint={report.maintenanceMinutes > 0 ? "not counted as open" : undefined}
       />
       <Tile
         label={report.rental === null ? "Utilisation" : "Rental"}

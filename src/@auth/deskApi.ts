@@ -413,8 +413,6 @@ export type CourtUtilization = {
   openMinutes: number;
   inUseMinutes: number;
   soldMinutes: number;
-  /** Open and nobody on it. Worked out on the server so it cannot go negative. */
-  idleMinutes: number;
   /** What the timetable said, on the days the court was under maintenance. */
   maintenanceMinutes: number;
   awaitingMinutes: number;
@@ -429,7 +427,6 @@ export type UtilizationReport = {
   to: string;
   openMinutes: number;
   inUseMinutes: number;
-  idleMinutes: number;
   maintenanceMinutes: number;
   awaitingMinutes: number;
   /** Court-days: one court open on one date is one. */
@@ -541,5 +538,58 @@ export type VenueSnapshot = {
 export function getVenueSnapshot(facilityId?: string) {
   return apiClient.get<VenueSnapshot>(API_ENDPOINTS.DESK.SNAPSHOT, {
     query: { facilityId },
+  });
+}
+
+/*
+ * The utilization figures cut by date rather than totalled per court.
+ *
+ * One row per court per period — which is enough for all three ways the page
+ * shows it: summed per period it is the venue's line, grouped by court it is a
+ * line each, and printed as it stands it is the table.
+ *
+ * `periods` is every bucket in the range, traded in or not. The rows leave out a
+ * period nobody could have traded in, so only `periods` can say it was there —
+ * and that is where a chart draws its gap.
+ */
+export type HoursGrain = "Day" | "Week" | "Month";
+
+export type ReportPeriod = { starts: string; ends: string };
+
+export type CourtPeriod = {
+  starts: string;
+  ends: string;
+  courtId: string;
+  facilityId: string;
+  facilityName: string;
+  courtName: string;
+  openMinutes: number;
+  soldMinutes: number;
+  maintenanceMinutes: number;
+};
+
+export type HoursOverTime = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  periods: ReportPeriod[];
+  rows: CourtPeriod[];
+};
+
+export type HoursQuery = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  facilityId?: string;
+};
+
+export function getHoursOverTime(query: HoursQuery) {
+  return apiClient.get<HoursOverTime>(API_ENDPOINTS.DESK.HOURS_OVER_TIME, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
+      facilityId: query.facilityId,
+    },
   });
 }

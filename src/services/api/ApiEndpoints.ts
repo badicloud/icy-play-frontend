@@ -139,5 +139,6 @@ export const API_ENDPOINTS = {
       `${API_V1}/desk/upgrades/${upgradeId}/decline`,
     COURT_UTILIZATION: `${API_V1}/desk/reports/court-utilization`,
     SNAPSHOT: `${API_V1}/desk/reports/snapshot`,
+    HOURS_OVER_TIME: `${API_V1}/desk/reports/hours-over-time`,
   },
 } as const;

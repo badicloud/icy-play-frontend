@@ -13,6 +13,7 @@ import {
   getDeskBookingHistory,
   getDeskBookings,
   getCourtUtilization,
+  getHoursOverTime,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -21,6 +22,7 @@ import {
   type CourtBookingQuery,
   type DeskQuery,
   type DeskUpgradeQuery,
+  type HoursQuery,
   type UtilizationQuery,
 } from "@auth/deskApi";
 import type { BookingSource } from "@/app/(desk)/components/BookingSource";
@@ -284,5 +286,14 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** The hours report's line and table. Long-lived, the same as the totals. */
+export function useHoursOverTime(query: HoursQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "hours-over-time", query],
+    queryFn: () => getHoursOverTime(query),
+    staleTime: 5 * 60 * 1000,
   });
 }
