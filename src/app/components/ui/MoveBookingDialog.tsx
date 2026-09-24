@@ -13,8 +13,10 @@ import {
   peso,
   type BookingDetail,
   type MoveOption,
+  type MoveReasonAnswer,
   type MoveSlot,
 } from "@auth/bookingApi";
+import MoveReasonPicker, { answerOf, NO_REASON, type MoveReasonDraft } from "./MoveReasonPicker";
 
 /**
  * Moving a booking onto another court, and onto other hours.
@@ -74,6 +76,7 @@ function MoveBookingDialog({
   const [chosen, setChosen] = useState<string | null>(null);
   const [wideOpen, setWideOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [why, setWhy] = useState<MoveReasonDraft>(NO_REASON);
 
   // Where the court list lands, so finishing the hours carries the reader to
   // the thing those hours just unlocked.
@@ -130,6 +133,7 @@ function MoveBookingDialog({
     setHours([]);
     setChosen(null);
     setProblem(null);
+    setWhy(NO_REASON);
   }, [booking?.id, ownDays, byTheDay]);
 
   // A different date is a different set of hours, and a different set of
@@ -216,8 +220,10 @@ function MoveBookingDialog({
     courtsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [searchable, options.data]);
 
+  const answer = answerOf(why);
+
   const move = useMutation({
-    mutationFn: (court: MoveOption) =>
+    mutationFn: ({ court, because }: { court: MoveOption; because: MoveReasonAnswer }) =>
       moveBooking(
         booking!.id,
         court.bookableCourtId,
@@ -226,6 +232,7 @@ function MoveBookingDialog({
         // the card was priced for, which for a day booking are that court's
         // own and could not have been worked out here.
         underWay ? null : court.slots.map((slot) => ({ date: slot.date, startsAt: slot.startsAt })),
+        because,
       ),
     onSuccess: (updated) => {
       client.setQueryData(["booking", updated.id], updated);
@@ -329,7 +336,7 @@ function MoveBookingDialog({
                   </p>
 
                   {byTheDay && datesNeeded > 1 && (
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                    <p className="mt-1 text-[12.5px] leading-6 font-medium text-slate-600">
                       {days.length === datesNeeded
                         ? "That is all of them. Tap one again to take it off."
                         : `Your booking is ${datesNeeded} days. You have picked ${days.length}.`}
@@ -340,7 +347,7 @@ function MoveBookingDialog({
                       hovers a greyed-out date. A strip that opens with some
                       of it already dead and no reason given reads as a bug. */}
                   {byTheDay && (
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                    <p className="mt-1 text-[12.5px] leading-6 font-medium text-slate-600">
                       {datesNeeded > 1
                         ? "The dates you are on now are greyed out — moving means moving to others."
                         : "The date you are on now is greyed out — moving means moving to another."}
@@ -420,7 +427,7 @@ function MoveBookingDialog({
                         <button
                           type="button"
                           onClick={() => setWideOpen((open) => !open)}
-                          className="mt-2 text-xs font-bold text-[#2563EB] underline underline-offset-2"
+                          className="mt-2 text-[12.5px] font-bold text-[#2563EB] underline underline-offset-2"
                         >
                           {wideOpen ? "Show 14 days" : `Show all ${offered.length} days`}
                         </button>
@@ -435,7 +442,7 @@ function MoveBookingDialog({
                 <div className="mt-6 border-t border-slate-200 pt-5">
                   <p className="text-sm font-bold text-[#071955]">Choose your hours</p>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-1 text-[12.5px] leading-6 font-medium text-slate-600">
                     {hours.length === 0
                       ? `Pick ${needed === 1 ? "one hour" : `${needed} hours`}.`
                       : hours.length === needed
@@ -487,7 +494,7 @@ function MoveBookingDialog({
                       that starts at two o'clock otherwise reads as a venue
                       that opens at two. */}
                   {(openHours.data?.slots ?? []).some((slot) => slot.hasPassed) && (
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-[12.5px] leading-6 font-medium text-slate-600">
                       The hours already greyed out have started, so they cannot be booked.
                     </p>
                   )}
@@ -609,6 +616,14 @@ function MoveBookingDialog({
 
               {/* -------------------------------------------- what it comes to */}
               {picked !== null && <Settlement booking={booking} court={picked} />}
+
+              {/* Asked here only for a free move, which happens the moment the
+                  button is pressed. An upgrade is asked on the checkout, before
+                  it is sent — the note is the customer's own words and does not
+                  belong in the address the button below carries. */}
+              {picked !== null && !picked.isUpgrade && (
+                <MoveReasonPicker value={why} onChange={setWhy} disabled={move.isPending} />
+              )}
             </>
           )}
 
@@ -618,7 +633,7 @@ function MoveBookingDialog({
             </p>
           )}
 
-          <p className="mt-4 text-xs leading-5 font-medium text-slate-500">
+          <p className="mt-4 text-[12.5px] leading-6 font-medium text-slate-600">
             Once your booking moves, the hours you leave go back on sale. If the new court costs
             less, the difference is not refunded — see the{" "}
             <Link
@@ -658,10 +673,12 @@ function MoveBookingDialog({
           ) : (
             <button
               type="button"
-              disabled={picked === null || move.isPending}
-              onClick={() => picked !== null && move.mutate(picked)}
+              disabled={picked === null || answer === null || move.isPending}
+              onClick={() =>
+                picked !== null && answer !== null && move.mutate({ court: picked, because: answer })
+              }
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
-                picked !== null && !move.isPending
+                picked !== null && answer !== null && !move.isPending
                   ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"
                   : "cursor-not-allowed bg-slate-200 text-slate-400"
               }`}

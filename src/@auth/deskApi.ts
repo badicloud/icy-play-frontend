@@ -594,6 +594,63 @@ export type HoursQuery = {
   facilityId?: string;
 };
 
+/**
+ * One reason and how often it was given. Null is the moves made before
+ * customers were asked, which the report shows as not asked.
+ */
+export type ReasonCount = { reason: string | null; count: number };
+
+export type MovesPeriod = ReportPeriod & {
+  /** The same price or cheaper, done the moment it was asked. */
+  free: number;
+  /** Paid for and approved at the desk. */
+  upgrade: number;
+  /** Every reason on the list, zero included, in the list's own order; then the unasked. */
+  reasons: ReasonCount[];
+};
+
+export type MovedBooking = {
+  bookingId: string;
+  movedAt: string;
+  /** The day it moved on the venue's clock — the day it is counted in. */
+  movedOn: string;
+  customerName: string;
+  facilityName: string;
+  fromCourtName: string | null;
+  toCourtName: string | null;
+  kind: "Free" | "Upgrade";
+  reason: string | null;
+  reasonNote: string | null;
+};
+
+/**
+ * How many bookings customers moved and why. A move counts on the day it went
+ * through: a free one when it was asked for, an upgrade when it was approved.
+ */
+export type MovesReport = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  periods: MovesPeriod[];
+  /** The range's reasons, most given first; a reason nobody gave is left out. */
+  reasons: ReasonCount[];
+  /** Every move in the range — the list below may stop short of it. */
+  total: number;
+  /** Newest first, up to 200. */
+  moves: MovedBooking[];
+};
+
+export function getMovesReport(query: HoursQuery) {
+  return apiClient.get<MovesReport>(API_ENDPOINTS.DESK.MOVES, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
+      facilityId: query.facilityId,
+    },
+  });
+}
+
 export function getHoursOverTime(query: HoursQuery) {
   return apiClient.get<HoursOverTime>(API_ENDPOINTS.DESK.HOURS_OVER_TIME, {
     query: {

@@ -490,7 +490,39 @@ export type MoveSlot = {
   startsAt: string;
 };
 
-type MoveBody = { toBookableCourtId: string; slots: MoveSlot[] | null };
+type MoveBody = {
+  toBookableCourtId: string;
+  slots: MoveSlot[] | null;
+  reason?: string;
+  reasonNote?: string | null;
+};
+
+/**
+ * Why a customer is moving, from the same short list the server keeps.
+ *
+ * A list rather than a box, because the venue's report counts the answers.
+ * Other asks for a few words, so it is not a way of saying nothing.
+ */
+export const MOVE_REASONS = [
+  { value: "ScheduleChanged", label: "Schedule changed" },
+  { value: "Weather", label: "Weather" },
+  { value: "CourtProblem", label: "Problem with the court" },
+  { value: "DifferentCourt", label: "Wanted a different court" },
+  { value: "Other", label: "Other" },
+] as const;
+
+export type MoveReasonValue = (typeof MOVE_REASONS)[number]["value"];
+
+/** Long enough to say what other was; the server refuses more. */
+export const MOVE_REASON_NOTE_LIMIT = 200;
+
+export type MoveReasonAnswer = { reason: MoveReasonValue; note: string };
+
+export function moveReasonLabel(reason: string | null) {
+  return reason === null
+    ? "Not asked"
+    : (MOVE_REASONS.find((option) => option.value === reason)?.label ?? reason);
+}
 
 /**
  * What moving onto that court, at those hours, would come to.
@@ -516,11 +548,14 @@ export function quoteMove(
 export function moveBooking(
   bookingId: string,
   toBookableCourtId: string,
-  slots: MoveSlot[] | null = null,
+  slots: MoveSlot[] | null,
+  why: MoveReasonAnswer,
 ) {
   return apiClient.post<BookingDetail, MoveBody>(API_ENDPOINTS.BOOKINGS.MOVE(bookingId), {
     toBookableCourtId,
     slots,
+    reason: why.reason,
+    reasonNote: why.note.trim() || null,
   });
 }
 
@@ -711,10 +746,13 @@ export function requestUpgrade(
   bookingId: string,
   toBookableCourtId: string,
   slots: MoveSlot[] | null,
+  why: MoveReasonAnswer,
 ) {
   return apiClient.post<UpgradeRequest, MoveBody>(API_ENDPOINTS.BOOKINGS.UPGRADE(bookingId), {
     toBookableCourtId,
     slots,
+    reason: why.reason,
+    reasonNote: why.note.trim() || null,
   });
 }
 

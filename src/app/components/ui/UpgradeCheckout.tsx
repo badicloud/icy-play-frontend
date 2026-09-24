@@ -18,10 +18,12 @@ import {
   upgradeStep,
   type BookingDetail,
   type MoveQuote,
+  type MoveReasonAnswer,
   type MoveSlot,
   type UpgradeRequest,
 } from "@auth/bookingApi";
 import CheckoutSteps from "./CheckoutSteps";
+import MoveReasonPicker, { answerOf, NO_REASON, type MoveReasonDraft } from "./MoveReasonPicker";
 import HoldCountdown from "./HoldCountdown";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -186,8 +188,15 @@ function Review({
   const [agreed, setAgreed] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // Asked here rather than on the move screen: the note is the customer's own
+  // words, and the move screen hands over to this page through its address.
+  const [why, setWhy] = useState<MoveReasonDraft>(NO_REASON);
+  const answer = answerOf(why);
+  const ready = agreed && answer !== null;
+
   const ask = useMutation({
-    mutationFn: () => requestUpgrade(detail.id, bookableCourtId, wanted),
+    mutationFn: (because: MoveReasonAnswer) =>
+      requestUpgrade(detail.id, bookableCourtId, wanted, because),
     onSuccess: onAsked,
     onError: (error) =>
       setProblem(
@@ -253,6 +262,15 @@ function Review({
         </div>
       </Panel>
 
+      <Panel>
+        <MoveReasonPicker
+          value={why}
+          onChange={setWhy}
+          disabled={ask.isPending}
+          className=""
+        />
+      </Panel>
+
       {/* The same shape the booking checkout uses to take a policy: the warning
           and the box that accepts it in one amber panel, so nobody ticks a
           checkbox whose consequence is somewhere else on the page. */}
@@ -303,13 +321,14 @@ function Review({
 
         <button
           type="button"
-          disabled={!agreed || ask.isPending}
+          disabled={!ready || ask.isPending}
           onClick={() => {
+            if (answer === null) return;
             setProblem(null);
-            ask.mutate();
+            ask.mutate(answer);
           }}
           className={`rounded-full px-8 py-3.5 text-sm font-bold transition ${
-            agreed && !ask.isPending
+            ready && !ask.isPending
               ? "bg-[#2563EB] text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
               : "cursor-not-allowed bg-slate-200 text-slate-400"
           }`}
@@ -323,7 +342,7 @@ function Review({
           finished with — the button lighting up is the answer they are
           waiting for. */}
       <p className="mt-3 text-right text-sm font-medium text-slate-500">
-        Please accept the booking policy to proceed.
+        Please say why you are moving and accept the booking policy to proceed.
       </p>
     </Shell>
   );

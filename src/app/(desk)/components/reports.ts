@@ -74,16 +74,11 @@ export const deskReportGroups: DeskReportGroup[] = [
         href: "/desk/reports/unsold",
       },
       {
-        id: "availability",
-        title: "What was free",
-        blurb:
-          "How many bookable courts stood free across a date range, and how many bookings were taken against them.",
-      },
-      {
         id: "moves",
         title: "Bookings moved",
         blurb:
-          "How many bookings were carried to another court, another day or another hour — and how many of those were paid upgrades.",
+          "How many bookings customers moved, and the reasons they gave — and how many of those were paid upgrades.",
+        href: "/desk/reports/moves",
       },
       {
         id: "rejections",

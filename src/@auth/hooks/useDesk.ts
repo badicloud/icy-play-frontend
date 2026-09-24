@@ -14,6 +14,7 @@ import {
   getDeskBookings,
   getCourtUtilization,
   getHoursOverTime,
+  getMovesReport,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -31,6 +32,38 @@ const deskKey = ["desk"] as const;
 
 export function deskBookingsQueryKey(query: DeskQuery) {
   return [...deskKey, "bookings", query] as const;
+}
+
+/**
+ * How many things are waiting on this person's desk: payments to check and
+ * upgrades to approve, across every venue they work.
+ *
+ * For the bell in the header, which is on every page — so it asks for one row
+ * of each and reads the totals, and polls, because nobody at a desk refreshes
+ * the page to find out a customer has paid. Off for somebody who works no
+ * desk: a customer's header must not ask the desk anything.
+ */
+export function useDeskWaiting(enabled: boolean) {
+  const payments = useQuery({
+    queryKey: deskBookingsQueryKey({ tab: "Waiting", page: 1, pageSize: 1 }),
+    queryFn: () => getDeskBookings({ tab: "Waiting", page: 1, pageSize: 1 }),
+    enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  const upgrades = useQuery({
+    queryKey: [...deskKey, "upgrades", { tab: "Waiting", page: 1, pageSize: 1 }],
+    queryFn: () => getDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 1 }),
+    enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  const paymentCount = payments.data?.pagination.totalItems ?? 0;
+  const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
+
+  return { payments: paymentCount, upgrades: upgradeCount, total: paymentCount + upgradeCount };
 }
 
 export function useDeskVenues() {
@@ -286,6 +319,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** The moves report. Short-lived: a move can land while the page is open. */
+export function useMovesReport(query: HoursQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "moves", query],
+    queryFn: () => getMovesReport(query),
+    staleTime: 60 * 1000,
   });
 }
 

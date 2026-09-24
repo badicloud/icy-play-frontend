@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
+import { useDeskWaiting } from "@auth/hooks/useDesk";
 
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -114,6 +115,73 @@ function LogoutIcon() {
   );
 }
 
+function BellIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2H4.5Z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+/** "9+" past nine: a badge is for "there is something", not for counting. */
+function badge(count: number) {
+  return count > 9 ? "9+" : `${count}`;
+}
+
+/**
+ * The bell on the account button, for somebody who works a venue's desk.
+ *
+ * Only there while something is waiting — a bell that is always on the header
+ * is one people stop seeing. It shakes, rests and shakes again, and carries
+ * the count: payments to check and upgrades to approve together, because both
+ * are a customer waiting on this desk for an answer.
+ */
+function WaitingBell({ count }: { count: number }) {
+  return (
+    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+      <span className="bell-ring">
+        <BellIcon />
+      </span>
+      <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] leading-none font-bold text-white ring-2 ring-white">
+        {badge(count)}
+      </span>
+    </span>
+  );
+}
+
+/** A menu row with a count on the end, for what is waiting on the desk. */
+function WaitingItem({
+  href,
+  label,
+  count,
+  onSelect,
+}: {
+  href: string;
+  label: string;
+  count: number;
+  onSelect: () => void;
+}) {
+  return (
+    <Link href={href} role="menuitem" onClick={onSelect} className={rowStyle}>
+      <span className="text-amber-500">
+        <BellIcon className="h-4.5 w-4.5" />
+      </span>
+      <span className="flex-1">{label}</span>
+      <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">{count}</span>
+    </Link>
+  );
+}
+
 function getInitials(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
 
@@ -185,6 +253,7 @@ function HeaderAccountMenu() {
   // Whether this person has anywhere to go besides their own account. It is
   // what decides whether the menu needs headings at all.
   const runsSomething = isPlatformAdmin || worksADesk;
+  const waiting = useDeskWaiting(worksADesk);
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -254,6 +323,11 @@ function HeaderAccountMenu() {
         onClick={() => setIsOpen((open) => !open)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label={
+          waiting.total > 0
+            ? `Account menu. ${waiting.total} waiting on your venue desk.`
+            : undefined
+        }
         className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:gap-3 sm:pr-4"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-xs font-bold text-white">
@@ -265,6 +339,7 @@ function HeaderAccountMenu() {
             {getFirstName(user.fullName)}
           </span>
         </span>
+        {waiting.total > 0 && <WaitingBell count={waiting.total} />}
         <ChevronIcon open={isOpen} />
       </button>
 
@@ -293,6 +368,22 @@ function HeaderAccountMenu() {
                   href="/desk"
                   icon={<DeskIcon />}
                   label="Venue desk"
+                  onSelect={close}
+                />
+              )}
+              {waiting.payments > 0 && (
+                <WaitingItem
+                  href="/desk/bookings"
+                  label={waiting.payments === 1 ? "Payment to check" : "Payments to check"}
+                  count={waiting.payments}
+                  onSelect={close}
+                />
+              )}
+              {waiting.upgrades > 0 && (
+                <WaitingItem
+                  href="/desk/upgrades"
+                  label={waiting.upgrades === 1 ? "Upgrade to approve" : "Upgrades to approve"}
+                  count={waiting.upgrades}
                   onSelect={close}
                 />
               )}

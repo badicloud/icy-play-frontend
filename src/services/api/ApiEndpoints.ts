@@ -140,5 +140,6 @@ export const API_ENDPOINTS = {
     COURT_UTILIZATION: `${API_V1}/desk/reports/court-utilization`,
     SNAPSHOT: `${API_V1}/desk/reports/snapshot`,
     HOURS_OVER_TIME: `${API_V1}/desk/reports/hours-over-time`,
+    MOVES: `${API_V1}/desk/reports/moves`,
   },
 } as const;
