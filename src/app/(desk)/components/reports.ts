@@ -51,25 +51,27 @@ export const deskReportGroups: DeskReportGroup[] = [
       },
       {
         id: "hours",
-        title: "Hours over time",
+        title: "Sold Hours",
         blurb:
-          "Hours sold and hours under maintenance, drawn as a line across the period rather than totalled per court.",
+          "How many hours you sold each day, week or month, drawn as a line — and the days a court was under maintenance.",
         sameSumsAs: "utilization",
         href: "/desk/reports/hours",
       },
       {
         id: "sold",
-        title: "Courts that sold",
+        title: "Sold Courts",
         blurb:
-          "Which courts earned their keep over a date range, busiest first, with the line each one traced.",
+          "Courts that had bookings in the period, busiest first.",
         sameSumsAs: "utilization",
+        href: "/desk/reports/sold",
       },
       {
         id: "unsold",
-        title: "Courts that did not",
+        title: "Not Sold Courts",
         blurb:
-          "The other end of the same list: the courts nobody booked, and how long they have been that way.",
+          "Courts with no bookings in the period, and when each was last booked.",
         sameSumsAs: "utilization",
+        href: "/desk/reports/unsold",
       },
       {
         id: "availability",

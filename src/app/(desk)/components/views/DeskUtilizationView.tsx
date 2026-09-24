@@ -13,8 +13,8 @@ import {
   type CourtUtilization,
   type UtilizationReport,
 } from "@auth/deskApi";
-import { useCourtUtilization, useDeskVenues } from "@auth/hooks/useDesk";
-import { thisMonth, Tile } from "../reportBits";
+import { useCourtUtilization } from "@auth/hooks/useDesk";
+import { ReportFilters, thisMonth, Tile } from "../reportBits";
 
 /** A filled bar, or a dash where there is no percentage to be had. */
 function Meter({ percent }: { percent: number | null }) {
@@ -264,7 +264,6 @@ function DeskUtilizationView() {
   const [range, setRange] = useState(thisMonth);
   const [facilityId, setFacilityId] = useState<string>("");
 
-  const venues = useDeskVenues();
   const report = useCourtUtilization({
     from: range.from,
     to: range.to,
@@ -289,47 +288,12 @@ function DeskUtilizationView() {
         are counted here — anything still waiting for you to check is shown separately.
       </p>
 
-        <div className="mt-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-          {(venues.data?.length ?? 0) > 1 && (
-            <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-              Venue
-              <select
-                value={facilityId}
-                onChange={(event) => setFacilityId(event.target.value)}
-                className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-              >
-                <option value="">All my venues</option>
-                {venues.data?.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-            From
-            <input
-              type="date"
-              value={range.from}
-              max={range.to}
-              onChange={(event) => setRange((was) => ({ ...was, from: event.target.value }))}
-              className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-            To
-            <input
-              type="date"
-              value={range.to}
-              min={range.from}
-              onChange={(event) => setRange((was) => ({ ...was, to: event.target.value }))}
-              className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-            />
-          </label>
-        </div>
+      <ReportFilters
+        range={range}
+        onRange={setRange}
+        facilityId={facilityId}
+        onFacility={setFacilityId}
+      />
 
         {report.isPending && (
           <p className="mt-6 text-base text-slate-600">Adding up the hours…</p>

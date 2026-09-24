@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { format, parseISO } from "date-fns";
 import FileDownloadOutlined from "@mui/icons-material/FileDownloadOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import {
@@ -11,8 +10,8 @@ import {
   type HoursOverTime,
   type ReportPeriod,
 } from "@auth/deskApi";
-import { useDeskVenues, useHoursOverTime } from "@auth/hooks/useDesk";
-import { thisMonth, Tile } from "../reportBits";
+import { useHoursOverTime } from "@auth/hooks/useDesk";
+import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
 type Scope = "venue" | "court";
 type View = "chart" | "table";
@@ -34,23 +33,6 @@ const VENUE_INK = "#2a78d6";
 
 /** Hours, from the minutes the server counts in. */
 const hours = (minutes: number) => minutes / 60;
-
-function label(period: ReportPeriod, grain: HoursGrain) {
-  const starts = parseISO(period.starts);
-  const ends = parseISO(period.ends);
-
-  if (grain === "Month") {
-    return format(starts, "MMM yyyy");
-  }
-
-  if (grain === "Week") {
-    return starts.getMonth() === ends.getMonth()
-      ? `${format(starts, "d")}–${format(ends, "d MMM")}`
-      : `${format(starts, "d MMM")}–${format(ends, "d MMM")}`;
-  }
-
-  return format(starts, "d MMM");
-}
 
 /** A round top for the axis: 2h, 4h, 6h, 10h, 20h… never a ceiling of 7. */
 function ceiling(peak: number) {
@@ -109,42 +91,6 @@ function courtsOf(rows: CourtPeriod[]) {
     // happen, because it is noise when it cannot.
     name: venues.size > 1 ? `${row.facilityName} · ${row.courtName}` : row.courtName,
   }));
-}
-
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  label: name,
-}: {
-  value: T;
-  options: { value: T; label: string; disabled?: boolean }[];
-  onChange: (value: T) => void;
-  label: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-sm font-semibold text-slate-600">{name}</span>
-      <div role="group" aria-label={name} className="inline-flex rounded-full bg-slate-100 p-1">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={option.value === value}
-            disabled={option.disabled}
-            onClick={() => onChange(option.value)}
-            className={`rounded-full px-4 py-2 text-base font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-              option.value === value
-                ? "bg-white text-[#071955] shadow-sm"
-                : "text-slate-600 hover:text-[#071955]"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 /*
@@ -355,7 +301,7 @@ function Chart({
 
         {ticks.map((index) => (
           <text key={index} x={x(index)} y={TICK_Y} textAnchor="middle" fontSize="12" fill="#475569">
-            {label(periods[index], data.grain)}
+            {periodLabel(periods[index], data.grain)}
           </text>
         ))}
 
@@ -381,7 +327,7 @@ function Chart({
             transform: x(hover) > W * 0.6 ? "translateX(calc(-100% - 12px))" : "translateX(12px)",
           }}
         >
-          <p className="font-bold text-[#071955]">{label(periods[hover], data.grain)}</p>
+          <p className="font-bold text-[#071955]">{periodLabel(periods[hover], data.grain)}</p>
 
           {venue[hover] === null ? (
             <p className="mt-1 text-slate-600">Closed — nothing was on sale.</p>
@@ -485,7 +431,7 @@ function Table({
         <tbody>
           {data.periods.map((period, index) => {
             const total = venue[index];
-            const name = label(period, data.grain);
+            const name = periodLabel(period, data.grain);
 
             if (!total) {
               return (
@@ -566,7 +512,7 @@ function exportCsv(data: HoursOverTime) {
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `hours-over-time_${data.from}_${data.to}_${data.grain.toLowerCase()}.csv`;
+  link.download = `sold-hours_${data.from}_${data.to}_${data.grain.toLowerCase()}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
 }
@@ -586,7 +532,6 @@ function DeskHoursView() {
   const [scope, setScope] = useState<Scope>("venue");
   const [view, setView] = useState<View>("chart");
 
-  const venues = useDeskVenues();
   const report = useHoursOverTime({
     from: range.from,
     to: range.to,
@@ -621,59 +566,25 @@ function DeskHoursView() {
         trail={[
           { label: "Venue desk", href: "/desk" },
           { label: "Reports", href: "/desk/reports" },
-          { label: "Hours over time" },
+          { label: "Sold Hours" },
         ]}
       />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
-        Hours over time
+        Sold Hours
       </h1>
       <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">
-        Hours sold and hours under maintenance, spread across the period. The totals match the
-        utilisation report — this shows when they happened.
+        How many hours you sold on each day, week or month, and the days a court was under
+        maintenance. The totals are the same as in Court utilisation — this page shows when the
+        hours were sold.
       </p>
 
-      <div className="mt-5 flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-        {(venues.data?.length ?? 0) > 1 && (
-          <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-            Venue
-            <select
-              value={facilityId}
-              onChange={(event) => setFacilityId(event.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-            >
-              <option value="">All my venues</option>
-              {venues.data?.map((one) => (
-                <option key={one.id} value={one.id}>
-                  {one.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-          From
-          <input
-            type="date"
-            value={range.from}
-            max={range.to}
-            onChange={(event) => setRange((was) => ({ ...was, from: event.target.value }))}
-            className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm font-semibold text-slate-600">
-          To
-          <input
-            type="date"
-            value={range.to}
-            min={range.from}
-            onChange={(event) => setRange((was) => ({ ...was, to: event.target.value }))}
-            className="rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]"
-          />
-        </label>
-
+      <ReportFilters
+        range={range}
+        onRange={setRange}
+        facilityId={facilityId}
+        onFacility={setFacilityId}
+      >
         <Segmented<HoursGrain>
           label="By"
           value={grain}
@@ -684,7 +595,7 @@ function DeskHoursView() {
             { value: "Month", label: "Month" },
           ]}
         />
-      </div>
+      </ReportFilters>
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <Segmented<Scope>

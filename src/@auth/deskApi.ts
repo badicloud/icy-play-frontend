@@ -402,6 +402,8 @@ export type UnitUtilization = {
   peakMinutes: number;
   /** The venue has stopped marking the floor out this way. Listed because it sold hours. */
   isRetired: boolean;
+  /** The last date this part was sold, up to the end of the range. Null when never. */
+  lastSoldOn: string | null;
   rental: number | null;
 };
 
@@ -418,6 +420,11 @@ export type CourtUtilization = {
   awaitingMinutes: number;
   openDays: number;
   maintenanceDays: number;
+  /**
+   * The last date anything on this court was sold, reaching back before the
+   * range if it has to. Null when nothing ever has.
+   */
+  lastSoldOn: string | null;
   rental: number | null;
   units: UnitUtilization[];
 };
@@ -566,6 +573,10 @@ export type CourtPeriod = {
   openMinutes: number;
   soldMinutes: number;
   maintenanceMinutes: number;
+  /** The parts this court is sold in, plus any retired one that still sold. */
+  parts: number;
+  /** Of those, how many had a booking at some point in the period. */
+  partsSold: number;
 };
 
 export type HoursOverTime = {
