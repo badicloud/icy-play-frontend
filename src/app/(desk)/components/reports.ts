@@ -75,16 +75,17 @@ export const deskReportGroups: DeskReportGroup[] = [
       },
       {
         id: "moves",
-        title: "Bookings moved",
+        title: "Moved Bookings",
         blurb:
           "How many bookings customers moved, and the reasons they gave — and how many of those were paid upgrades.",
         href: "/desk/reports/moves",
       },
       {
         id: "rejections",
-        title: "Bookings turned down",
+        title: "Declined Bookings",
+        href: "/desk/reports/declines",
         blurb:
-          "Every booking the desk rejected, with the reason it was given. What a venue reads when the same reason keeps coming back.",
+          "Payments the desk turned down, against how many it checked, and the reasons given. What a venue reads when the same reason keeps coming back.",
       },
     ],
   },

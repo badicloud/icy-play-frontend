@@ -12,7 +12,7 @@ import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import Pager, { perPageOptions } from "@/app/components/ui/Pager";
 import BookingDetails, { dates, day, peso } from "../BookingDetails";
 import { activityIcon } from "@auth/catalogApi";
-import { waitingFor, type DeskBooking, type DeskTab } from "@auth/deskApi";
+import { waitingFor, type DeskBooking, type DeskTab, type RejectAnswer } from "@auth/deskApi";
 import {
   useDeskBooking,
   useDeskBookings,
@@ -217,13 +217,13 @@ function DeskBookingsView() {
     }
   }
 
-  async function handleReject(reason: string | null) {
+  async function handleReject(why: RejectAnswer) {
     if (rejecting === null) {
       return;
     }
 
     try {
-      await reject.mutateAsync({ bookingId: rejecting.id, reason });
+      await reject.mutateAsync({ bookingId: rejecting.id, why });
       enqueueSnackbar(
         `${rejecting.customerName}'s booking was turned down and the hours are back on sale.`,
         { variant: "success" },
@@ -374,7 +374,7 @@ function DeskBookingsView() {
           booking={rejecting}
           isSaving={reject.isPending}
           onClose={() => setRejecting(null)}
-          onReject={(reason) => void handleReject(reason)}
+          onReject={(why) => void handleReject(why)}
         />
       </div>
     </main>

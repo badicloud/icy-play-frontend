@@ -235,10 +235,37 @@ export function confirmDeskBooking(bookingId: string) {
   return apiClient.post<DeskBooking>(API_ENDPOINTS.DESK.CONFIRM_BOOKING(bookingId));
 }
 
-export function rejectDeskBooking(bookingId: string, reason: string | null) {
-  return apiClient.post<DeskBooking, { reason: string | null }>(
+/**
+ * Why the desk turned a payment down, from the same short list the server
+ * keeps. A list so the declined-bookings report can count the answers; Other
+ * asks for a few words.
+ */
+export const REJECT_REASONS = [
+  { value: "PaymentNotReceived", label: "Payment not received" },
+  { value: "WrongAmount", label: "Wrong amount" },
+  { value: "ReceiptUnclear", label: "Receipt unclear" },
+  { value: "CourtNotAvailable", label: "Court not available" },
+  { value: "Other", label: "Other" },
+] as const;
+
+export type RejectReasonValue = (typeof REJECT_REASONS)[number]["value"];
+
+/** The server refuses a longer note. */
+export const REJECT_NOTE_LIMIT = 200;
+
+export type RejectAnswer = { reason: RejectReasonValue; note: string };
+
+/** Null is a refusal from before the desk picked from a list. */
+export function rejectReasonLabel(reason: string | null) {
+  return reason === null
+    ? "Not categorised"
+    : (REJECT_REASONS.find((option) => option.value === reason)?.label ?? reason);
+}
+
+export function rejectDeskBooking(bookingId: string, why: RejectAnswer) {
+  return apiClient.post<DeskBooking, { reason: string; note: string | null }>(
     API_ENDPOINTS.DESK.REJECT_BOOKING(bookingId),
-    { reason },
+    { reason: why.reason, note: why.note.trim() || null },
   );
 }
 
@@ -639,6 +666,66 @@ export type MovesReport = {
   /** Newest first, up to 200. */
   moves: MovedBooking[];
 };
+
+/** One refusal, as the declined-bookings report lists it. */
+export type DeclinedBooking = {
+  bookingId: string;
+  declinedAt: string;
+  /** The day it was refused on the venue's clock — the day it is counted in. */
+  declinedOn: string;
+  customerName: string;
+  facilityName: string;
+  courtName: string;
+  kind: "Hourly" | "WholeDay" | "MultiDay";
+  startDate: string;
+  endDate: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  hours: number;
+  /** Court rental and the platform's fee: what the customer sent. */
+  amount: number;
+  /** A reject reason, or null on a refusal from before the list. */
+  reason: string | null;
+  /** The desk's note, or on an old refusal, everything it wrote. */
+  note: string | null;
+  declinedByName: string | null;
+  declinedByOwner: boolean;
+};
+
+export type DeclinesPeriod = ReportPeriod & {
+  declined: number;
+  /** Refused plus confirmed in the period. */
+  checked: number;
+  reasons: ReasonCount[];
+};
+
+/**
+ * How many payments the desk turned down, against how many it checked, and
+ * why. Each counts on the day it was answered, on the venue's clock.
+ */
+export type DeclinesReport = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  periods: DeclinesPeriod[];
+  /** The range's reasons, most given first; a reason nobody gave is left out. */
+  reasons: ReasonCount[];
+  total: number;
+  checked: number;
+  /** Newest first, up to 200. */
+  declines: DeclinedBooking[];
+};
+
+export function getDeclinesReport(query: HoursQuery) {
+  return apiClient.get<DeclinesReport>(API_ENDPOINTS.DESK.DECLINES, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
+      facilityId: query.facilityId,
+    },
+  });
+}
 
 export function getMovesReport(query: HoursQuery) {
   return apiClient.get<MovesReport>(API_ENDPOINTS.DESK.MOVES, {

@@ -1,22 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DeskBooking } from "@auth/deskApi";
+import ReasonPicker, {
+  emptyReason,
+  reasonAnswerOf,
+  type ReasonDraft,
+} from "@/app/components/ui/ReasonPicker";
+import {
+  REJECT_NOTE_LIMIT,
+  REJECT_REASONS,
+  type DeskBooking,
+  type RejectAnswer,
+  type RejectReasonValue,
+} from "@auth/deskApi";
 
 type RejectBookingDialogProps = {
   /** Null when nothing is being turned down. */
   booking: DeskBooking | null;
   isSaving: boolean;
   onClose: () => void;
-  onReject: (reason: string | null) => void;
+  onReject: (why: RejectAnswer) => void;
 };
 
 /**
  * Turning a payment down.
  *
- * Asks for a reason before it will do it. A rejection with nothing written
- * against it leaves the next person at the desk — and the customer who rings
- * up about it — with no idea what was wrong.
+ * Asks for a reason from a short list before it will do it. A rejection with
+ * nothing against it leaves the next person at the desk — and the customer who
+ * rings up about it — with no idea what was wrong; and a reason typed freely
+ * cannot be counted, which is what the declined-bookings report does.
  */
 function RejectBookingDialog({
   booking,
@@ -24,19 +36,19 @@ function RejectBookingDialog({
   onClose,
   onReject,
 }: RejectBookingDialogProps) {
-  const [reason, setReason] = useState("");
+  const [why, setWhy] = useState<ReasonDraft<RejectReasonValue>>(emptyReason);
 
-  // A reason typed against one booking must not follow the dialog onto the
+  // A reason picked against one booking must not follow the dialog onto the
   // next one.
   useEffect(() => {
-    setReason("");
+    setWhy(emptyReason());
   }, [booking?.id]);
 
   if (booking === null) {
     return null;
   }
 
-  const tooShort = reason.trim().length < 5;
+  const answer = reasonAnswerOf(why, REJECT_NOTE_LIMIT);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
@@ -47,23 +59,17 @@ function RejectBookingDialog({
           sale, so somebody else can take them.
         </p>
 
-        <label
-          htmlFor="reject-reason"
-          className="mt-5 block text-sm font-bold text-[#071955]"
-        >
-          What was wrong with it?
-        </label>
-        <textarea
-          id="reject-reason"
-          rows={3}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="The amount sent does not match the total"
-          className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#2563EB]"
+        <ReasonPicker
+          name="reject-reason"
+          question="What was wrong with it?"
+          hint="The customer sees this on their booking, and it is counted in Declined Bookings."
+          options={REJECT_REASONS}
+          noteLimit={REJECT_NOTE_LIMIT}
+          notePlaceholder="The receipt is for a different booking"
+          value={why}
+          onChange={setWhy}
+          disabled={isSaving}
         />
-        <p className="mt-1 text-xs text-slate-400">
-          Recorded against the booking. The customer is not emailed this yet.
-        </p>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button
@@ -76,8 +82,8 @@ function RejectBookingDialog({
           </button>
           <button
             type="button"
-            disabled={isSaving || tooShort}
-            onClick={() => onReject(reason.trim())}
+            disabled={isSaving || answer === null}
+            onClick={() => answer !== null && onReject(answer)}
             className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Turning it down…" : "Turn it down"}

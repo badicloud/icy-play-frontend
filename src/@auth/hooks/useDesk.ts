@@ -15,6 +15,7 @@ import {
   getCourtUtilization,
   getHoursOverTime,
   getMovesReport,
+  getDeclinesReport,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -24,6 +25,7 @@ import {
   type DeskQuery,
   type DeskUpgradeQuery,
   type HoursQuery,
+  type RejectAnswer,
   type UtilizationQuery,
 } from "@auth/deskApi";
 import type { BookingSource } from "@/app/(desk)/components/BookingSource";
@@ -283,8 +285,8 @@ export function useDeskDecision() {
   });
 
   const reject = useMutation({
-    mutationFn: ({ bookingId, reason }: { bookingId: string; reason: string | null }) =>
-      rejectDeskBooking(bookingId, reason),
+    mutationFn: ({ bookingId, why }: { bookingId: string; why: RejectAnswer }) =>
+      rejectDeskBooking(bookingId, why),
     onSuccess: () => void settle(),
   });
 
@@ -319,6 +321,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** The declines report. Short-lived: the desk can refuse one while the page is open. */
+export function useDeclinesReport(query: HoursQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "declines", query],
+    queryFn: () => getDeclinesReport(query),
+    staleTime: 60 * 1000,
   });
 }
 
