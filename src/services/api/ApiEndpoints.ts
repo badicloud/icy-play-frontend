@@ -145,5 +145,6 @@ export const API_ENDPOINTS = {
     TAKINGS: `${API_V1}/desk/reports/takings`,
     MISSED: `${API_V1}/desk/reports/missed`,
     COURT_CHANGES: `${API_V1}/desk/reports/court-changes`,
+    COURT_MIX: `${API_V1}/desk/reports/court-mix`,
   },
 } as const;

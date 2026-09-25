@@ -19,6 +19,7 @@ import {
   getTakingsReport,
   getMissedReport,
   getCourtChanges,
+  getCourtMix,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -29,6 +30,7 @@ import {
   type DeskUpgradeQuery,
   type HoursQuery,
   type CourtChangesQuery,
+  type CourtMixQuery,
   type RejectAnswer,
   type UtilizationQuery,
 } from "@auth/deskApi";
@@ -325,6 +327,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** What the venue has. Long-lived: courts are set up once and sold on for months. */
+export function useCourtMix(query: CourtMixQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "court-mix", query],
+    queryFn: () => getCourtMix(query),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

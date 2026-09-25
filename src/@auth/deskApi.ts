@@ -667,6 +667,80 @@ export type MovesReport = {
   moves: MovedBooking[];
 };
 
+/** A court's venue type, as the court was registered. */
+export type VenueType = "Indoor" | "Covered" | "Outdoor";
+
+export type CourtActivity = { name: string; kind: "Sport" | "Event"; isMain: boolean; divisions: number };
+
+export type CourtMixRow = {
+  courtId: string;
+  facilityId: string;
+  facilityName: string;
+  name: string;
+  venueType: VenueType;
+  surface: string | null;
+  hasLighting: boolean;
+  isRetired: boolean;
+  bookableCourts: number;
+  activities: CourtActivity[];
+  /** The utilization figures for this court in the range. Zero for a retired court. */
+  openMinutes: number;
+  inUseMinutes: number;
+};
+
+/**
+ * What the venue has right now, by venue type and by what each court is set
+ * up for, with each venue type's share of its open hours sold in the range.
+ * Retired courts are never counted, and listed only when asked for.
+ */
+export type CourtMixReport = {
+  from: string;
+  to: string;
+  summary: {
+    courts: number;
+    bookableCourts: number;
+    underRoof: number;
+    withLighting: number;
+    takeEvents: number;
+    eventKinds: number;
+    retired: number;
+  };
+  venueTypes: {
+    venueType: VenueType;
+    courts: number;
+    courtNames: string[];
+    openMinutes: number;
+    inUseMinutes: number;
+  }[];
+  activities: {
+    sportId: string;
+    name: string;
+    kind: "Sport" | "Event";
+    courts: number;
+    bookableCourts: number;
+    mainOn: number;
+  }[];
+  courts: CourtMixRow[];
+};
+
+export type CourtMixQuery = {
+  from: string;
+  to: string;
+  facilityId?: string;
+  includeRetired: boolean;
+};
+
+export function getCourtMix(query: CourtMixQuery) {
+  return apiClient.get<CourtMixReport>(API_ENDPOINTS.DESK.COURT_MIX, {
+    query: {
+      from: query.from,
+      to: query.to,
+      facilityId: query.facilityId,
+      includeRetired: query.includeRetired,
+    },
+  });
+}
+
 export type CourtChangeKind =
   | "Added"
   | "SportsAndDivisions"

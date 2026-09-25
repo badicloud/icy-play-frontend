@@ -128,8 +128,9 @@ export const deskReportGroups: DeskReportGroup[] = [
       },
       {
         id: "mix",
-        title: "Indoor, outdoor and events",
-        blurb: "What you have, counted by venue type and by what each court is set up for.",
+        title: "Court Mix",
+        blurb: "Your courts by venue type, and the sports and events each is set up for.",
+        href: "/desk/reports/mix",
       },
     ],
   },
