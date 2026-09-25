@@ -18,6 +18,7 @@ import {
   getDeclinesReport,
   getTakingsReport,
   getMissedReport,
+  getCourtChanges,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -27,6 +28,7 @@ import {
   type DeskQuery,
   type DeskUpgradeQuery,
   type HoursQuery,
+  type CourtChangesQuery,
   type RejectAnswer,
   type UtilizationQuery,
 } from "@auth/deskApi";
@@ -323,6 +325,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** Changes to the courts. Short-lived: somebody at the console may be making one now. */
+export function useCourtChanges(query: CourtChangesQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "court-changes", query],
+    queryFn: () => getCourtChanges(query),
+    staleTime: 60 * 1000,
   });
 }
 

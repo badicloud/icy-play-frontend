@@ -122,9 +122,9 @@ export const deskReportGroups: DeskReportGroup[] = [
     reports: [
       {
         id: "changes",
-        title: "What changed",
-        blurb:
-          "Courts and bookable courts as they were added, renamed, re-marked and retired, with the date each happened.",
+        title: "Court Changes",
+        blurb: "Every change to your courts: what it was, what it became, who changed it and why.",
+        href: "/desk/reports/changes",
       },
       {
         id: "mix",

@@ -667,6 +667,77 @@ export type MovesReport = {
   moves: MovedBooking[];
 };
 
+export type CourtChangeKind =
+  | "Added"
+  | "SportsAndDivisions"
+  | "Prices"
+  | "Hours"
+  | "Maintenance"
+  | "RenamedOrRetired"
+  | "Photos"
+  | "Details";
+
+/** One line of a change. `before` is null for something added, `after` for something removed. */
+export type ChangeDetail = { label: string; before: string | null; after: string | null };
+
+/** One change to a court, worded by the server from the audit trail. */
+export type CourtChange = {
+  id: string;
+  at: string;
+  /** The day and time on the venue's clock. */
+  on: string;
+  time: string;
+  kind: CourtChangeKind;
+  /** Null when the change was to the whole venue. */
+  courtId: string | null;
+  title: string;
+  details: ChangeDetail[];
+  reason: string | null;
+  actorName: string | null;
+  /** "Owner", "Attendant" or "Platform admin". */
+  actorRole: string;
+};
+
+export type CourtChangesReport = {
+  from: string;
+  to: string;
+  summary: {
+    courts: number;
+    courtsAdded: number;
+    courtsRetired: number;
+    bookableCourts: number;
+    bookableCourtsAdded: number;
+    bookableCourtsRetired: number;
+    priceChanges: number;
+    courtsRepriced: number;
+    closures: number;
+    closedNow: number;
+  };
+  /** How many of each kind, for the chips. */
+  kinds: { kind: CourtChangeKind; count: number }[];
+  /** Newest first, up to 500. */
+  changes: CourtChange[];
+  total: number;
+};
+
+export type CourtChangesQuery = {
+  from: string;
+  to: string;
+  facilityId?: string;
+  courtId?: string;
+};
+
+export function getCourtChanges(query: CourtChangesQuery) {
+  return apiClient.get<CourtChangesReport>(API_ENDPOINTS.DESK.COURT_CHANGES, {
+    query: {
+      from: query.from,
+      to: query.to,
+      facilityId: query.facilityId,
+      courtId: query.courtId,
+    },
+  });
+}
+
 export type MissedPeriod = ReportPeriod & {
   /** Minutes the courts were open, up to now. */
   openMinutes: number;
