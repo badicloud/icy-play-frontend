@@ -102,10 +102,9 @@ export const deskReportGroups: DeskReportGroup[] = [
       },
       {
         id: "losses",
-        title: "What the empty hours cost",
-        blurb:
-          "The hours that stood open and sold nothing, priced at what they would have fetched. The same filters as takings.",
-        ownerOnly: true,
+        title: "Missed Income",
+        blurb: "What your open, unsold hours would have earned.",
+        href: "/desk/reports/missed",
         sameSumsAs: "utilization",
       },
       {

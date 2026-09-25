@@ -667,6 +667,76 @@ export type MovesReport = {
   moves: MovedBooking[];
 };
 
+export type MissedPeriod = ReportPeriod & {
+  /** Minutes the courts were open, up to now. */
+  openMinutes: number;
+  /** Of those, the minutes a court had no booking at all. */
+  notSoldMinutes: number;
+  peakNotSoldMinutes: number;
+  missed: number;
+  peakMissed: number;
+};
+
+export type CourtMissedPeriod = ReportPeriod & {
+  courtId: string;
+  facilityId: string;
+  facilityName: string;
+  courtName: string;
+  openMinutes: number;
+  notSoldMinutes: number;
+  missed: number;
+};
+
+/** One sport court on its own. The parts share one floor, so they do not add up to the court. */
+export type UnitMissed = {
+  bookableCourtId: string;
+  label: string;
+  sportName: string;
+  isMainSport: boolean;
+  notSoldMinutes: number;
+  peakNotSoldMinutes: number;
+  missed: number;
+};
+
+/** One court: minutes the whole floor had no booking, priced at its main sport. */
+export type CourtMissed = {
+  courtId: string;
+  facilityId: string;
+  facilityName: string;
+  name: string;
+  mainSportName: string;
+  openMinutes: number;
+  notSoldMinutes: number;
+  peakNotSoldMinutes: number;
+  missed: number;
+  peakMissed: number;
+  units: UnitMissed[];
+};
+
+/**
+ * What the venue's open, unsold hours would have earned at its own rates.
+ * Only hours that have begun; maintenance and closed days are not counted.
+ */
+export type MissedReport = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  periods: MissedPeriod[];
+  rows: CourtMissedPeriod[];
+  courts: CourtMissed[];
+};
+
+export function getMissedReport(query: HoursQuery) {
+  return apiClient.get<MissedReport>(API_ENDPOINTS.DESK.MISSED, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
+      facilityId: query.facilityId,
+    },
+  });
+}
+
 /** The money that came in over one period, for the whole venue or one court. */
 export type TakingsFigures = {
   /** Bookings whose payment was confirmed in the period. */

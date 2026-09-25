@@ -17,6 +17,7 @@ import {
   getMovesReport,
   getDeclinesReport,
   getTakingsReport,
+  getMissedReport,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -322,6 +323,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** The missed-income report. Short-lived: an hour stops being sellable every hour. */
+export function useMissedReport(query: HoursQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "missed", query],
+    queryFn: () => getMissedReport(query),
+    staleTime: 60 * 1000,
   });
 }
 
