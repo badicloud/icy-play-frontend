@@ -586,7 +586,7 @@ export function getVenueSnapshot(facilityId?: string) {
  * period nobody could have traded in, so only `periods` can say it was there —
  * and that is where a chart draws its gap.
  */
-export type HoursGrain = "Day" | "Week" | "Month";
+export type HoursGrain = "Day" | "Week" | "Month" | "Quarter" | "Half" | "Year";
 
 export type ReportPeriod = { starts: string; ends: string };
 
@@ -666,6 +666,54 @@ export type MovesReport = {
   /** Newest first, up to 200. */
   moves: MovedBooking[];
 };
+
+/** The money that came in over one period, for the whole venue or one court. */
+export type TakingsFigures = {
+  /** Bookings whose payment was confirmed in the period. */
+  bookings: number;
+  hours: number;
+  /** Court rental confirmed: what was paid, less the platform fee. */
+  rental: number;
+  /** Upgrade balances approved in the period. */
+  upgrades: number;
+  upgradeCount: number;
+  /** The platform's share of what was confirmed, billed to the venue later. */
+  platformFee: number;
+};
+
+export type TakingsPeriod = ReportPeriod & TakingsFigures;
+
+export type CourtTakings = ReportPeriod &
+  TakingsFigures & {
+    courtId: string;
+    facilityId: string;
+    facilityName: string;
+    courtName: string;
+  };
+
+/**
+ * What customers paid the venue: a booking's payment on the day the desk
+ * confirmed it, an upgrade's balance on the day it was approved. Every period
+ * is in `periods`; `rows` has a court only where money came in.
+ */
+export type TakingsReport = {
+  from: string;
+  to: string;
+  grain: HoursGrain;
+  periods: TakingsPeriod[];
+  rows: CourtTakings[];
+};
+
+export function getTakingsReport(query: HoursQuery) {
+  return apiClient.get<TakingsReport>(API_ENDPOINTS.DESK.TAKINGS, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
+      facilityId: query.facilityId,
+    },
+  });
+}
 
 /** One refusal, as the declined-bookings report lists it. */
 export type DeclinedBooking = {

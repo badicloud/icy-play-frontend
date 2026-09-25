@@ -580,6 +580,28 @@ function Waiting({
     );
   }
 
+  // Declined by the venue: said in red, with the reason they gave — the same
+  // sentence the customer was emailed — because somebody who paid and reads
+  // only a grey "rejected" does not know whether to turn up or what went wrong.
+  if (detail.status === "Rejected") {
+    return (
+      <div className="mt-6 rounded-[24px] border border-red-200 bg-red-50 p-6">
+        <h2 className="text-lg font-bold text-red-900">This booking was declined</h2>
+        {detail.cancellationReason && (
+          <p className="mt-1.5 font-semibold text-red-900">{detail.cancellationReason}</p>
+        )}
+        <p className="mt-1.5 text-red-800">
+          {detail.facilityName} checked your payment and could not accept it, so the court is not
+          held for you and the hours are back on sale. If you sent money, speak to the venue — you
+          paid them directly.
+        </p>
+        {/* No button of its own: the panel under this already offers
+            "Book another court", and two of them read as two different
+            places to go. */}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-6">
       <h2 className="text-lg font-bold text-[#071955]">This booking is {detail.status.toLowerCase()}</h2>

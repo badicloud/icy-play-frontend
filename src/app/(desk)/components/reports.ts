@@ -97,8 +97,8 @@ export const deskReportGroups: DeskReportGroup[] = [
         id: "takings",
         title: "Takings",
         blurb:
-          "What you took over a date range, by day, week, month, quarter, half or year.",
-        ownerOnly: true,
+          "What your customers paid you, by day, week, month, quarter, half or year — with the platform fee inside it set apart.",
+        href: "/desk/reports/takings",
       },
       {
         id: "losses",

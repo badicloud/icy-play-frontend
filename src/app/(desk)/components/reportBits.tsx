@@ -157,6 +157,18 @@ export function periodLabel(period: ReportPeriod, grain: HoursGrain) {
   const starts = parseISO(period.starts);
   const ends = parseISO(period.ends);
 
+  if (grain === "Year") {
+    return format(starts, "yyyy");
+  }
+
+  if (grain === "Half") {
+    return `${starts.getMonth() < 6 ? "H1" : "H2"} ${format(starts, "yyyy")}`;
+  }
+
+  if (grain === "Quarter") {
+    return `Q${Math.floor(starts.getMonth() / 3) + 1} ${format(starts, "yyyy")}`;
+  }
+
   if (grain === "Month") {
     return format(starts, "MMM yyyy");
   }

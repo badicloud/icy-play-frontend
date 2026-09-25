@@ -16,6 +16,7 @@ import {
   getHoursOverTime,
   getMovesReport,
   getDeclinesReport,
+  getTakingsReport,
   getVenueSnapshot,
   getDeskCourts,
   getDeskUpgrades,
@@ -321,6 +322,15 @@ export function useVenueSnapshot(facilityId?: string) {
     queryFn: () => getVenueSnapshot(facilityId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
+  });
+}
+
+/** The takings report. Short-lived: the desk can confirm a payment while the page is open. */
+export function useTakingsReport(query: HoursQuery) {
+  return useQuery({
+    queryKey: [...deskKey, "takings", query],
+    queryFn: () => getTakingsReport(query),
+    staleTime: 60 * 1000,
   });
 }
 

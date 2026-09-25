@@ -62,7 +62,7 @@ function RejectBookingDialog({
         <ReasonPicker
           name="reject-reason"
           question="What was wrong with it?"
-          hint="The customer sees this on their booking, and it is counted in Declined Bookings."
+          hint="The customer is emailed this and sees it on their booking. It is counted in Declined Bookings."
           options={REJECT_REASONS}
           noteLimit={REJECT_NOTE_LIMIT}
           notePlaceholder="The receipt is for a different booking"

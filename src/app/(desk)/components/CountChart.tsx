@@ -4,11 +4,30 @@ import { useState } from "react";
 import type { HoursGrain, ReportPeriod } from "@auth/deskApi";
 import { periodLabel } from "./reportBits";
 
+/** What one period is called in a sentence: "the only month in this range". */
+const GRAIN_NOUN: Record<HoursGrain, string> = {
+  Day: "day",
+  Week: "week",
+  Month: "month",
+  Quarter: "quarter",
+  Half: "half-year",
+  Year: "year",
+};
+
 /** One line of counts: a value for every period, in order. */
 export type CountSeries = { key: string; name: string; ink: string; dash?: string; values: number[] };
 
-/** A round top for a count axis: 2, 4, 6, 10, 20… and never a ceiling of 7. */
+/**
+ * A round top for the axis: 2, 4, 6, 10, 20… and never a ceiling of 7. Past a
+ * hundred — pesos, say — the next 1, 2, 2.5 or 5 of its power of ten.
+ */
 function ceiling(peak: number) {
+  if (peak > 100) {
+    const power = 10 ** Math.floor(Math.log10(peak));
+    const step = [1, 2, 2.5, 5, 10].find((one) => peak <= one * power) ?? 10;
+    return step * power;
+  }
+
   if (peak <= 2) return 2;
   const step = peak <= 10 ? 2 : peak <= 40 ? 5 : peak <= 100 ? 10 : 50;
   return Math.ceil(peak / step) * step;
@@ -34,15 +53,47 @@ function CountChart({
   grain,
   series,
   label,
+  format = (value: number) => `${value}`,
+  axisFormat = format,
 }: {
   periods: ReportPeriod[];
   grain: HoursGrain;
   series: CountSeries[];
   /** What the chart shows, for a screen reader. */
   label: string;
+  /** How a value reads in the tooltip. A count, unless it is money. */
+  format?: (value: number) => string;
+  /** How a value reads on the axis, where there is less room. */
+  axisFormat?: (value: number) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const n = periods.length;
+
+  // One period is one point per line — two dots in the middle of an empty
+  // chart, which says less than the tiles above it. Say what the range is and
+  // how to get a line out of it instead.
+  if (n === 1) {
+    return (
+      <div className="py-6">
+        <p className="text-base font-semibold text-[#071955]">
+          {periodLabel(periods[0], grain)} is the only {GRAIN_NOUN[grain]} in this range, so there
+          is no line to draw.
+        </p>
+        <ul className="mt-3 space-y-1.5">
+          {series.map((one) => (
+            <li key={one.key} className="flex items-center gap-2 text-base text-slate-700">
+              <i className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: one.ink }} />
+              <span>{one.name}</span>
+              <span className="font-semibold text-[#071955] tabular-nums">{format(one.values[0])}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-slate-600">
+          Pick a longer range, or a shorter By, to see how it changes.
+        </p>
+      </div>
+    );
+  }
 
   const peak = Math.max(0, ...series.flatMap((one) => one.values));
   const top = ceiling(peak);
@@ -74,7 +125,7 @@ function CountChart({
               strokeWidth="1"
             />
             <text x={LEFT - 8} y={y(value) + 4} textAnchor="end" fontSize="12" fill="#475569">
-              {value}
+              {axisFormat(value)}
             </text>
           </g>
         ))}
@@ -146,7 +197,7 @@ function CountChart({
                 <i className="h-2 w-2 shrink-0 rounded-sm" style={{ background: one.ink }} />
                 <span className="truncate">{one.name}</span>
               </span>
-              <span className="font-semibold tabular-nums">{one.values[hover]}</span>
+              <span className="font-semibold tabular-nums">{format(one.values[hover])}</span>
             </p>
           ))}
         </div>
