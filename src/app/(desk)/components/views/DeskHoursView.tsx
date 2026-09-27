@@ -10,7 +10,8 @@ import {
   type HoursOverTime,
   type ReportPeriod,
 } from "@auth/deskApi";
-import { useHoursOverTime } from "@auth/hooks/useDesk";
+import { useHoursReport } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
 type Scope = "venue" | "court";
@@ -532,12 +533,8 @@ function DeskHoursView() {
   const [scope, setScope] = useState<Scope>("venue");
   const [view, setView] = useState<View>("chart");
 
-  const report = useHoursOverTime({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const report = useHoursReport(range, grain, facilityId);
+  const reportScope = useReportScope();
 
   const data = report.data;
   const venue = useMemo(() => (data ? venueBy(data.periods, data.rows) : []), [data]);
@@ -562,13 +559,7 @@ function DeskHoursView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Sold Hours" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Sold Hours")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Sold Hours

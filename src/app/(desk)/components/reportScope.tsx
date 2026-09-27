@@ -62,6 +62,11 @@ export function AdminReportScope({ children }: { children: ReactNode }) {
   );
 }
 
+/** Another report, in the same console and scope: "unsold" → its address there. */
+export function reportHref(scope: ReportScope, path: string) {
+  return scope.kind === "admin" ? `/admin/reports/${path}${scope.search}` : `/desk/reports/${path}`;
+}
+
 /** The breadcrumb for a report, back to the right console's reports. */
 export function reportTrail(scope: ReportScope, title: string) {
   return scope.kind === "admin"

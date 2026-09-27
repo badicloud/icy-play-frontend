@@ -5,7 +5,8 @@ import Link from "next/link";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { peso } from "../BookingDetails";
 import { duration, shares, type HoursGrain } from "@auth/deskApi";
-import { useCourtUtilization, useHoursOverTime } from "@auth/hooks/useDesk";
+import { useHoursReport, useUtilizationReport } from "../reportData";
+import { reportHref, reportTrail, useReportScope } from "../reportScope";
 import { CourtCountLine } from "../CourtCountLine";
 import { ReportFilters, Segmented, thisMonth } from "../reportBits";
 import {
@@ -208,17 +209,9 @@ function DeskCourtsSoldView() {
   const [view, setView] = useState<View>("chart");
   const [grain, setGrain] = useState<HoursGrain>("Day");
 
-  const report = useCourtUtilization({
-    from: range.from,
-    to: range.to,
-    facilityId: facilityId || undefined,
-  });
-  const trend = useHoursOverTime({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const scope = useReportScope();
+  const report = useUtilizationReport(range, facilityId);
+  const trend = useHoursReport(range, grain, facilityId);
 
   const data = report.data;
 
@@ -249,13 +242,7 @@ function DeskCourtsSoldView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Sold Courts" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(scope, "Sold Courts")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Sold Courts
@@ -347,7 +334,7 @@ function DeskCourtsSoldView() {
                 </b>{" "}
                 sold nothing in this period.
               </span>
-              <Link href="/desk/reports/unsold" className="font-semibold text-[#1264f7] hover:underline">
+              <Link href={reportHref(scope, "unsold")} className="font-semibold text-[#1264f7] hover:underline">
                 Not Sold Courts →
               </Link>
             </div>

@@ -387,10 +387,11 @@ export function useMovesReport(query: HoursQuery) {
 }
 
 /** The hours report's line and table. Long-lived, the same as the totals. */
-export function useHoursOverTime(query: HoursQuery) {
+export function useHoursOverTime(query: HoursQuery, enabled = true) {
   return useQuery({
     queryKey: [...deskKey, "hours-over-time", query],
     queryFn: () => getHoursOverTime(query),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 }

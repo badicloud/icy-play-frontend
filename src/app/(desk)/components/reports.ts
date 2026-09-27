@@ -63,6 +63,7 @@ export const deskReportGroups: DeskReportGroup[] = [
           "How many hours you sold each day, week or month, drawn as a line — and the days a court was under maintenance.",
         sameSumsAs: "utilization",
         href: "/desk/reports/hours",
+        adminHref: "/admin/reports/hours",
       },
       {
         id: "sold",
@@ -71,6 +72,7 @@ export const deskReportGroups: DeskReportGroup[] = [
           "Courts that had bookings in the period, busiest first.",
         sameSumsAs: "utilization",
         href: "/desk/reports/sold",
+        adminHref: "/admin/reports/sold",
       },
       {
         id: "unsold",
@@ -79,6 +81,7 @@ export const deskReportGroups: DeskReportGroup[] = [
           "Courts with no bookings in the period, and when each was last booked.",
         sameSumsAs: "utilization",
         href: "/desk/reports/unsold",
+        adminHref: "/admin/reports/unsold",
       },
       {
         id: "moves",

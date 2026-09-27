@@ -51,6 +51,7 @@ export const API_ENDPOINTS = {
     REPORT_OWNERS: `${API_V1}/admin/reports/owners`,
     REPORT_SNAPSHOT: `${API_V1}/admin/reports/snapshot`,
     REPORT_UTILIZATION: `${API_V1}/admin/reports/court-utilization`,
+    REPORT_HOURS_OVER_TIME: `${API_V1}/admin/reports/hours-over-time`,
     RESEND_INVITATION: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/resend-invitation`,
     FACILITY_OWNER_BUSINESS: (id: string) =>

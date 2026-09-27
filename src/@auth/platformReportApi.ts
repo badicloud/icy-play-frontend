@@ -1,5 +1,5 @@
 import { API_ENDPOINTS, apiClient } from "@/services/api";
-import type { DeskVenue, UtilizationReport, VenueSnapshot } from "./deskApi";
+import type { DeskVenue, HoursGrain, HoursOverTime, UtilizationReport, VenueSnapshot } from "./deskApi";
 
 /*
  * The venue desk's reports, for the platform admin: every venue on the
@@ -44,6 +44,19 @@ export function getPlatformUtilization(query: PlatformRange) {
     query: {
       from: query.from,
       to: query.to,
+      facilityOwnerId: query.facilityOwnerId,
+      facilityId: query.facilityId,
+    },
+  });
+}
+
+/** The utilisation figures cut by date, court by court, across the scope. */
+export function getPlatformHoursOverTime(query: PlatformRange & { grain: HoursGrain }) {
+  return apiClient.get<HoursOverTime>(API_ENDPOINTS.ADMIN.REPORT_HOURS_OVER_TIME, {
+    query: {
+      from: query.from,
+      to: query.to,
+      grain: query.grain,
       facilityOwnerId: query.facilityOwnerId,
       facilityId: query.facilityId,
     },

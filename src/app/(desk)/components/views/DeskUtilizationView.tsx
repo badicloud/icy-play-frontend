@@ -13,9 +13,8 @@ import {
   type CourtUtilization,
   type UtilizationReport,
 } from "@auth/deskApi";
-import { useCourtUtilization } from "@auth/hooks/useDesk";
-import { usePlatformUtilization } from "@auth/hooks/usePlatformReports";
 import { ReportFilters, thisMonth, Tile } from "../reportBits";
+import { useUtilizationReport } from "../reportData";
 import { reportTrail, useReportScope } from "../reportScope";
 
 /** A filled bar, or a dash where there is no percentage to be had. */
@@ -266,24 +265,7 @@ function DeskUtilizationView() {
   const [range, setRange] = useState(thisMonth);
   const [facilityId, setFacilityId] = useState<string>("");
   const scope = useReportScope();
-  const admin = scope.kind === "admin";
-
-  // The same page for the desk and the admin console. Only one of the two is
-  // ever asked: the other is switched off, not merely ignored.
-  const desk = useCourtUtilization(
-    { from: range.from, to: range.to, facilityId: facilityId || undefined },
-    !admin,
-  );
-  const platform = usePlatformUtilization(
-    {
-      from: range.from,
-      to: range.to,
-      facilityOwnerId: admin ? scope.ownerId || undefined : undefined,
-      facilityId: admin ? scope.facilityId || undefined : undefined,
-    },
-    admin,
-  );
-  const report = admin ? platform : desk;
+  const report = useUtilizationReport(range, facilityId);
 
   return (
     <>

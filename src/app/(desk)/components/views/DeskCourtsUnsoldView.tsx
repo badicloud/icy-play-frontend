@@ -6,7 +6,8 @@ import { format, parseISO } from "date-fns";
 import BuildOutlined from "@mui/icons-material/BuildOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { duration, type HoursGrain } from "@auth/deskApi";
-import { useCourtUtilization, useHoursOverTime } from "@auth/hooks/useDesk";
+import { useHoursReport, useUtilizationReport } from "../reportData";
+import { reportHref, reportTrail, useReportScope } from "../reportScope";
 import { CourtCountLine } from "../CourtCountLine";
 import { ReportFilters, Segmented, thisMonth } from "../reportBits";
 import { courtsOf, daysSince, partsOf, sold, unsold, type RankLevel, type Ranked } from "../rankings";
@@ -120,20 +121,12 @@ function DeskCourtsUnsoldView() {
   const [view, setView] = useState<View>("chart");
   const [grain, setGrain] = useState<HoursGrain>("Day");
 
-  const report = useCourtUtilization({
-    from: range.from,
-    to: range.to,
-    facilityId: facilityId || undefined,
-  });
+  const scope = useReportScope();
+  const report = useUtilizationReport(range, facilityId);
 
   // Only drawn on the chart, but asked for either way: switching views should
   // not make somebody wait for a line the page could already have.
-  const lines = useHoursOverTime({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const lines = useHoursReport(range, grain, facilityId);
 
   const data = report.data;
 
@@ -147,13 +140,7 @@ function DeskCourtsUnsoldView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Not Sold Courts" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(scope, "Not Sold Courts")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Not Sold Courts
@@ -232,7 +219,7 @@ function DeskCourtsUnsoldView() {
                 </b>{" "}
                 did sell in this period.
               </span>
-              <Link href="/desk/reports/sold" className="font-semibold text-[#1264f7] hover:underline">
+              <Link href={reportHref(scope, "sold")} className="font-semibold text-[#1264f7] hover:underline">
                 Sold Courts →
               </Link>
             </div>

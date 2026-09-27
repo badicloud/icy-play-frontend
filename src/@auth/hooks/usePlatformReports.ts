@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import type { HoursGrain } from "../deskApi";
 import {
+  getPlatformHoursOverTime,
   getPlatformSnapshot,
   getPlatformUtilization,
   getReportOwners,
@@ -37,6 +39,16 @@ export function usePlatformUtilization(query: PlatformRange, enabled = true) {
   return useQuery({
     queryKey: [...platformReportsKey, "utilization", query],
     queryFn: () => getPlatformUtilization(query),
+    staleTime: 5 * 60 * 1000,
+    enabled,
+  });
+}
+
+/** The utilisation figures cut by date, across the scope. */
+export function usePlatformHoursOverTime(query: PlatformRange & { grain: HoursGrain }, enabled = true) {
+  return useQuery({
+    queryKey: [...platformReportsKey, "hours-over-time", query],
+    queryFn: () => getPlatformHoursOverTime(query),
     staleTime: 5 * 60 * 1000,
     enabled,
   });
