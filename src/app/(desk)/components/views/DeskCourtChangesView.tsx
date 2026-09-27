@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import AddCircleOutline from "@mui/icons-material/AddCircleOutline";
@@ -15,7 +15,8 @@ import ViewWeekOutlined from "@mui/icons-material/ViewWeekOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { clock } from "@auth/bookingApi";
 import type { CourtChange, CourtChangeKind, CourtChangesReport } from "@auth/deskApi";
-import { useCourtChanges, useDeskCourts } from "@auth/hooks/useDesk";
+import { useCourtChangesData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import { ReportFilters, thisMonth, Tile } from "../reportBits";
 
 /**
@@ -174,13 +175,18 @@ function DeskCourtChangesView() {
   const [courtId, setCourtId] = useState("");
   const [kind, setKind] = useState<CourtChangeKind | null>(null);
 
-  const courts = useDeskCourts();
-  const report = useCourtChanges({
-    from: range.from,
-    to: range.to,
-    facilityId: facilityId || undefined,
-    courtId: courtId || undefined,
-  });
+  const reportScope = useReportScope();
+
+  // A court picked under one owner or venue is not one under the next: the
+  // admin changing scope starts again from every court, as the desk's venue
+  // picker does.
+  const scopeKey = reportScope.kind === "admin" ? `${reportScope.ownerId}|${reportScope.facilityId}` : "";
+  useEffect(() => setCourtId(""), [scopeKey]);
+
+  const report = useCourtChangesData(
+    { from: range.from, to: range.to, courtId: courtId || undefined },
+    facilityId,
+  );
 
   const data = report.data;
   const shown = useMemo(
@@ -195,7 +201,10 @@ function DeskCourtChangesView() {
     return [...grouped.entries()];
   }, [shown]);
 
-  const offered = (courts.data ?? []).filter((court) => !facilityId || court.facilityId === facilityId);
+  // The report's own list: every court at the venues in scope, retired ones
+  // too, because a court taken off sale still has a history.
+  const offered = report.data?.courts ?? [];
+  const severalVenues = new Set(offered.map((court) => court.facilityId)).size > 1;
   const chip = (active: boolean) =>
     `rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
       active
@@ -205,13 +214,7 @@ function DeskCourtChangesView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Court Changes" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Court Changes")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">Court Changes</h1>
       <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">
@@ -238,7 +241,8 @@ function DeskCourtChangesView() {
             <option value="">All courts</option>
             {offered.map((court) => (
               <option key={court.id} value={court.id}>
-                {court.name}
+                {severalVenues ? `${court.facilityName} · ${court.name}` : court.name}
+                {court.isActive ? "" : " (retired)"}
               </option>
             ))}
           </select>

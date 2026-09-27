@@ -12,7 +12,8 @@ import {
   type DeclinesReport,
   type HoursGrain,
 } from "@auth/deskApi";
-import { useDeclinesReport } from "@auth/hooks/useDesk";
+import { useDeclinesData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import CountChart, { type CountSeries } from "../CountChart";
 import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
@@ -322,12 +323,8 @@ function DeskDeclinesView() {
   const [scope, setScope] = useState<Scope>("all");
   const [view, setView] = useState<View>("chart");
 
-  const report = useDeclinesReport({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const reportScope = useReportScope();
+  const report = useDeclinesData({ from: range.from, to: range.to, grain }, facilityId);
 
   const data = report.data;
   const series = useMemo(() => (data ? seriesOf(data, scope) : []), [data, scope]);
@@ -335,13 +332,7 @@ function DeskDeclinesView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Declined Bookings" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Declined Bookings")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Declined Bookings

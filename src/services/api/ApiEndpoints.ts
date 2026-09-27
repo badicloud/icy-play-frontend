@@ -52,6 +52,8 @@ export const API_ENDPOINTS = {
     REPORT_SNAPSHOT: `${API_V1}/admin/reports/snapshot`,
     REPORT_UTILIZATION: `${API_V1}/admin/reports/court-utilization`,
     REPORT_HOURS_OVER_TIME: `${API_V1}/admin/reports/hours-over-time`,
+    /** The rest of the desk's reports, by the same path the desk uses. */
+    REPORT: (path: string) => `${API_V1}/admin/reports/${path}`,
     RESEND_INVITATION: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/resend-invitation`,
     FACILITY_OWNER_BUSINESS: (id: string) =>

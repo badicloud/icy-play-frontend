@@ -6,7 +6,8 @@ import FileDownloadOutlined from "@mui/icons-material/FileDownloadOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { peso } from "@auth/bookingApi";
 import { duration, type CourtMissed, type HoursGrain, type MissedReport } from "@auth/deskApi";
-import { useMissedReport, useTakingsReport } from "@auth/hooks/useDesk";
+import { useMissedData, useTakingsData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import CountChart, { type CountSeries } from "../CountChart";
 import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
@@ -309,9 +310,10 @@ function DeskMissedView() {
   const [scope, setScope] = useState<Scope>("venue");
   const [view, setView] = useState<View>("chart");
 
-  const query = { from: range.from, to: range.to, grain, facilityId: facilityId || undefined };
-  const report = useMissedReport(query);
-  const takingsReport = useTakingsReport(query);
+  const reportScope = useReportScope();
+  const query = { from: range.from, to: range.to, grain };
+  const report = useMissedData(query, facilityId);
+  const takingsReport = useTakingsData(query, facilityId);
 
   const data = report.data;
   const takingsByPeriod = useMemo(
@@ -344,13 +346,7 @@ function DeskMissedView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Missed Income" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Missed Income")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">Missed Income</h1>
       <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">

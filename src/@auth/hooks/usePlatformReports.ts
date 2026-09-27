@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { HoursGrain } from "../deskApi";
 import {
   getPlatformHoursOverTime,
+  getPlatformReport,
   getPlatformSnapshot,
   getPlatformUtilization,
   getReportOwners,
@@ -50,6 +51,25 @@ export function usePlatformHoursOverTime(query: PlatformRange & { grain: HoursGr
     queryKey: [...platformReportsKey, "hours-over-time", query],
     queryFn: () => getPlatformHoursOverTime(query),
     staleTime: 5 * 60 * 1000,
+    enabled,
+  });
+}
+
+/**
+ * Any other desk report across the scope. Short-lived, the same as the desk's
+ * own queues and reports, and it keeps the last answer on screen while the
+ * next loads so a filter change does not blank the page.
+ */
+export function usePlatformReport<T>(
+  path: string,
+  query: Record<string, string | boolean | undefined>,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...platformReportsKey, path, query],
+    queryFn: () => getPlatformReport<T>(path, query),
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
     enabled,
   });
 }

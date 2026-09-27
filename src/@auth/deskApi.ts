@@ -792,6 +792,8 @@ export type CourtChangesReport = {
   /** Newest first, up to 500. */
   changes: CourtChange[];
   total: number;
+  /** Every court at the venues in scope, retired ones too, for the court picker. */
+  courts: { id: string; facilityId: string; facilityName: string; name: string; isActive: boolean }[];
 };
 
 export type CourtChangesQuery = {

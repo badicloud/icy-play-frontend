@@ -63,6 +63,14 @@ export function getPlatformHoursOverTime(query: PlatformRange & { grain: HoursGr
   });
 }
 
+/**
+ * Any other desk report across the scope, by the path both consoles share:
+ * "moves", "declines", "takings", "missed", "court-changes", "court-mix".
+ */
+export function getPlatformReport<T>(path: string, query: Record<string, string | boolean | undefined>) {
+  return apiClient.get<T>(API_ENDPOINTS.ADMIN.REPORT(path), { query });
+}
+
 export function getReportOwners() {
   return apiClient.get<ReportOwner[]>(API_ENDPOINTS.ADMIN.REPORT_OWNERS);
 }

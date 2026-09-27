@@ -5,7 +5,8 @@ import FileDownloadOutlined from "@mui/icons-material/FileDownloadOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { peso } from "@auth/bookingApi";
 import type { CourtTakings, HoursGrain, TakingsFigures, TakingsReport } from "@auth/deskApi";
-import { useTakingsReport } from "@auth/hooks/useDesk";
+import { useTakingsData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import CountChart, { type CountSeries } from "../CountChart";
 import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
@@ -257,12 +258,8 @@ function DeskTakingsView() {
   const [scope, setScope] = useState<Scope>("venue");
   const [view, setView] = useState<View>("chart");
 
-  const report = useTakingsReport({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const reportScope = useReportScope();
+  const report = useTakingsData({ from: range.from, to: range.to, grain }, facilityId);
 
   const data = report.data;
   const series = useMemo(() => (data ? seriesOf(data, scope) : []), [data, scope]);
@@ -272,13 +269,7 @@ function DeskTakingsView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Takings" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Takings")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">Takings</h1>
       <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">

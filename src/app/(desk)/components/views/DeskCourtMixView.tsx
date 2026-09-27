@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import type { CourtMixReport, CourtMixRow, VenueType } from "@auth/deskApi";
-import { useCourtMix } from "@auth/hooks/useDesk";
+import { useCourtMixData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import { ReportFilters, thisMonth, Tile } from "../reportBits";
 
 /** One colour per venue type, darkest for the most sheltered. */
@@ -225,24 +226,14 @@ function DeskCourtMixView() {
   const [facilityId, setFacilityId] = useState("");
   const [includeRetired, setIncludeRetired] = useState(false);
 
-  const report = useCourtMix({
-    from: range.from,
-    to: range.to,
-    facilityId: facilityId || undefined,
-    includeRetired,
-  });
+  const reportScope = useReportScope();
+  const report = useCourtMixData({ from: range.from, to: range.to, includeRetired }, facilityId);
 
   const data = report.data;
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Court Mix" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Court Mix")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">Court Mix</h1>
       <p className="mt-2 max-w-3xl text-base leading-relaxed text-slate-700">

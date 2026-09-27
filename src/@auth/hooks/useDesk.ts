@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveDeskUpgrade,
   confirmDeskBooking,
@@ -333,8 +333,9 @@ export function useVenueSnapshot(facilityId?: string) {
 }
 
 /** What the venue has. Long-lived: courts are set up once and sold on for months. */
-export function useCourtMix(query: CourtMixQuery) {
+export function useCourtMix(query: CourtMixQuery, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...deskKey, "court-mix", query],
     queryFn: () => getCourtMix(query),
     staleTime: 5 * 60 * 1000,
@@ -342,8 +343,10 @@ export function useCourtMix(query: CourtMixQuery) {
 }
 
 /** Changes to the courts. Short-lived: somebody at the console may be making one now. */
-export function useCourtChanges(query: CourtChangesQuery) {
+export function useCourtChanges(query: CourtChangesQuery, enabled = true) {
   return useQuery({
+    enabled,
+    placeholderData: keepPreviousData,
     queryKey: [...deskKey, "court-changes", query],
     queryFn: () => getCourtChanges(query),
     staleTime: 60 * 1000,
@@ -351,8 +354,9 @@ export function useCourtChanges(query: CourtChangesQuery) {
 }
 
 /** The missed-income report. Short-lived: an hour stops being sellable every hour. */
-export function useMissedReport(query: HoursQuery) {
+export function useMissedReport(query: HoursQuery, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...deskKey, "missed", query],
     queryFn: () => getMissedReport(query),
     staleTime: 60 * 1000,
@@ -360,8 +364,9 @@ export function useMissedReport(query: HoursQuery) {
 }
 
 /** The takings report. Short-lived: the desk can confirm a payment while the page is open. */
-export function useTakingsReport(query: HoursQuery) {
+export function useTakingsReport(query: HoursQuery, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...deskKey, "takings", query],
     queryFn: () => getTakingsReport(query),
     staleTime: 60 * 1000,
@@ -369,8 +374,9 @@ export function useTakingsReport(query: HoursQuery) {
 }
 
 /** The declines report. Short-lived: the desk can refuse one while the page is open. */
-export function useDeclinesReport(query: HoursQuery) {
+export function useDeclinesReport(query: HoursQuery, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...deskKey, "declines", query],
     queryFn: () => getDeclinesReport(query),
     staleTime: 60 * 1000,
@@ -378,8 +384,9 @@ export function useDeclinesReport(query: HoursQuery) {
 }
 
 /** The moves report. Short-lived: a move can land while the page is open. */
-export function useMovesReport(query: HoursQuery) {
+export function useMovesReport(query: HoursQuery, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...deskKey, "moves", query],
     queryFn: () => getMovesReport(query),
     staleTime: 60 * 1000,

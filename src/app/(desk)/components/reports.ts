@@ -89,11 +89,13 @@ export const deskReportGroups: DeskReportGroup[] = [
         blurb:
           "How many bookings customers moved, and the reasons they gave — and how many of those were paid upgrades.",
         href: "/desk/reports/moves",
+        adminHref: "/admin/reports/moves",
       },
       {
         id: "rejections",
         title: "Declined Bookings",
         href: "/desk/reports/declines",
+        adminHref: "/admin/reports/declines",
         blurb:
           "Payments the desk turned down, against how many it checked, and the reasons given. What a venue reads when the same reason keeps coming back.",
       },
@@ -109,12 +111,14 @@ export const deskReportGroups: DeskReportGroup[] = [
         blurb:
           "What your customers paid you, by day, week, month, quarter, half or year — with the platform fee inside it set apart.",
         href: "/desk/reports/takings",
+        adminHref: "/admin/reports/takings",
       },
       {
         id: "losses",
         title: "Missed Income",
         blurb: "What your open, unsold hours would have earned.",
         href: "/desk/reports/missed",
+        adminHref: "/admin/reports/missed",
         sameSumsAs: "utilization",
       },
       {
@@ -135,12 +139,14 @@ export const deskReportGroups: DeskReportGroup[] = [
         title: "Court Changes",
         blurb: "Every change to your courts: what it was, what it became, who changed it and why.",
         href: "/desk/reports/changes",
+        adminHref: "/admin/reports/changes",
       },
       {
         id: "mix",
         title: "Court Mix",
         blurb: "Your courts by venue type, and the sports and events each is set up for.",
         href: "/desk/reports/mix",
+        adminHref: "/admin/reports/mix",
       },
     ],
   },

@@ -6,7 +6,8 @@ import FileDownloadOutlined from "@mui/icons-material/FileDownloadOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { MOVE_REASONS, moveReasonLabel } from "@auth/bookingApi";
 import type { HoursGrain, MovedBooking, MovesReport } from "@auth/deskApi";
-import { useMovesReport } from "@auth/hooks/useDesk";
+import { useMovesData } from "../reportData";
+import { reportTrail, useReportScope } from "../reportScope";
 import CountChart, { type CountSeries } from "../CountChart";
 import { periodLabel, ReportFilters, Segmented, thisMonth, Tile } from "../reportBits";
 
@@ -258,12 +259,8 @@ function DeskMovesView() {
   const [scope, setScope] = useState<Scope>("all");
   const [view, setView] = useState<View>("chart");
 
-  const report = useMovesReport({
-    from: range.from,
-    to: range.to,
-    grain,
-    facilityId: facilityId || undefined,
-  });
+  const reportScope = useReportScope();
+  const report = useMovesData({ from: range.from, to: range.to, grain }, facilityId);
 
   const data = report.data;
   const series = useMemo(() => (data ? seriesOf(data, scope) : []), [data, scope]);
@@ -273,13 +270,7 @@ function DeskMovesView() {
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Moved Bookings" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(reportScope, "Moved Bookings")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Moved Bookings
