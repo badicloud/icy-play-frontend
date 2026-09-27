@@ -5,6 +5,7 @@ import AddOutlined from "@mui/icons-material/AddOutlined";
 import ApartmentOutlined from "@mui/icons-material/ApartmentOutlined";
 import EventOutlined from "@mui/icons-material/EventOutlined";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
+import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import PeopleAltOutlined from "@mui/icons-material/PeopleAltOutlined";
 import SportsBasketballOutlined from "@mui/icons-material/SportsBasketballOutlined";
@@ -57,6 +58,19 @@ const groups: AdminGroup[] = [
           "Every court on the platform, whichever venue it sits in. Filter by owner or facility.",
         href: "/admin/courts",
         icon: <SportsTennisOutlined />,
+      },
+    ],
+  },
+  {
+    title: "How the venues are doing",
+    description: "The venue desk's own reports, across every venue or one owner's.",
+    sections: [
+      {
+        title: "Reports",
+        description:
+          "Where every venue stands this minute, owner by owner — and, as they arrive, the same reports each venue's desk reads.",
+        href: "/admin/reports",
+        icon: <InsightsOutlined />,
       },
     ],
   },

@@ -16,6 +16,12 @@ export type DeskReport = {
   blurb: string;
   /** Absent means not built. The menu greys it; the landing page leaves it out. */
   href?: string;
+  /**
+   * The same report in the admin console, across every venue or narrowed to
+   * one facility owner. Absent until that version is built; the admin menu
+   * greys it the same way.
+   */
+  adminHref?: string;
   /** True where an attendant would see a page with nothing on it. */
   ownerOnly?: boolean;
   /**

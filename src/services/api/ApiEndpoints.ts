@@ -48,6 +48,8 @@ export const API_ENDPOINTS = {
     USERS: `${API_V1}/admin/users`,
     FACILITY_OWNERS: `${API_V1}/admin/facility-owners`,
     FACILITY_OWNER: (id: string) => `${API_V1}/admin/facility-owners/${id}`,
+    REPORT_OWNERS: `${API_V1}/admin/reports/owners`,
+    REPORT_SNAPSHOT: `${API_V1}/admin/reports/snapshot`,
     RESEND_INVITATION: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/resend-invitation`,
     FACILITY_OWNER_BUSINESS: (id: string) =>

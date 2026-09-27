@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LockOutlined from "@mui/icons-material/LockOutlined";
-import { deskReportGroups } from "./reports";
+import { deskReportGroups, type DeskReport } from "./reports";
 
 /**
  * Moving between reports without going back out to the desk.
@@ -16,9 +16,18 @@ import { deskReportGroups } from "./reports";
  *
  * The unbuilt ones stay on the list, greyed. A menu that showed only what
  * works would have one item on it and say nothing about what is coming.
+ *
+ * The admin console uses the same menu over the same list, so the two cannot
+ * drift apart: `variant` decides which address each report has there, and
+ * where "back" goes. A report the admin does not have yet is greyed the same
+ * way an unbuilt one is.
  */
-function ReportsNav() {
+function ReportsNav({ variant = "desk" }: { variant?: "desk" | "admin" }) {
   const pathname = usePathname();
+  const hrefOf = (report: DeskReport) => (variant === "admin" ? report.adminHref : report.href);
+  const back = variant === "admin"
+    ? { href: "/admin", label: "← Back to the console" }
+    : { href: "/desk", label: "← Back to the desk" };
 
   return (
     <nav aria-label="Reports" className="space-y-3 lg:sticky lg:top-6">
@@ -34,9 +43,10 @@ function ReportsNav() {
 
           <ul className="space-y-0.5">
             {group.reports.map((report) => {
-              const active = report.href ? pathname.startsWith(report.href) : false;
+              const href = hrefOf(report);
+              const active = href ? pathname.startsWith(href) : false;
 
-              if (!report.href) {
+              if (!href) {
                 return (
                   <li key={report.id}>
                     <span
@@ -57,7 +67,7 @@ function ReportsNav() {
               return (
                 <li key={report.id}>
                   <Link
-                    href={report.href}
+                    href={href}
                     aria-current={active ? "page" : undefined}
                     className={`block truncate rounded-xl px-3 py-2.5 text-base font-semibold transition ${
                       active
@@ -75,10 +85,10 @@ function ReportsNav() {
       ))}
 
       <Link
-        href="/desk"
+        href={back.href}
         className="block rounded-xl px-3 py-2.5 text-base font-semibold text-slate-600 transition hover:bg-white hover:text-[#071955]"
       >
-        ← Back to the desk
+        {back.label}
       </Link>
     </nav>
   );
