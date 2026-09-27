@@ -22,6 +22,12 @@ export type DeskReport = {
    * greys it the same way.
    */
   adminHref?: string;
+  /**
+   * The whole report is money. An attendant reads it only once their owner
+   * has shared the venue's money with them; until then the desk menu leaves
+   * it out altogether.
+   */
+  money?: boolean;
   /** True where an attendant would see a page with nothing on it. */
   ownerOnly?: boolean;
   /**
@@ -108,6 +114,7 @@ export const deskReportGroups: DeskReportGroup[] = [
       {
         id: "takings",
         title: "Takings",
+        money: true,
         blurb:
           "What your customers paid you, by day, week, month, quarter, half or year — with the platform fee inside it set apart.",
         href: "/desk/reports/takings",
@@ -116,6 +123,7 @@ export const deskReportGroups: DeskReportGroup[] = [
       {
         id: "losses",
         title: "Missed Income",
+        money: true,
         blurb: "What your open, unsold hours would have earned.",
         href: "/desk/reports/missed",
         adminHref: "/admin/reports/missed",
@@ -124,6 +132,7 @@ export const deskReportGroups: DeskReportGroup[] = [
       {
         id: "commissions",
         title: "Platform commission",
+        money: true,
         blurb:
           "What the platform charged over a date range. The billing reference attaches here once billing is built.",
         ownerOnly: true,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BadgeOutlined from "@mui/icons-material/BadgeOutlined";
 import AssessmentOutlined from "@mui/icons-material/AssessmentOutlined";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
@@ -16,6 +17,10 @@ type DeskSection = {
   description: string;
   href?: string;
   icon: React.ReactNode;
+  /** Only the venue's owner is shown it: who works the desk is theirs to manage. */
+  ownerOnly?: boolean;
+  /** Money: left out for an attendant whose owner has not shared the money. */
+  money?: boolean;
 };
 
 /**
@@ -54,6 +59,14 @@ const sections: DeskSection[] = [
     icon: <TuneOutlined />,
   },
   {
+    title: "Attendants",
+    description:
+      "Add the people who work your desk, send their invitations, and choose which of them may see your money figures.",
+    href: "/desk/attendants",
+    icon: <BadgeOutlined />,
+    ownerOnly: true,
+  },
+  {
     title: "Reports",
     description:
       "How busy each court has been, and what it took. Court utilisation is there now; the rest are named on the page as they arrive.",
@@ -62,6 +75,7 @@ const sections: DeskSection[] = [
   },
   {
     title: "Payouts and fees",
+    money: true,
     description: "The platform fee against what you have taken, period by period.",
     icon: <PaymentsOutlined />,
   },
@@ -115,7 +129,9 @@ function SectionCard({ section }: { section: DeskSection }) {
  */
 function DeskOverviewView() {
   const { user } = useIcyPlayAuth();
+  const isOwner = Boolean(user?.roles.includes("FacilityOwner"));
   const venues = useDeskVenues();
+  const seesMoney = venues.data?.every((venue) => venue.canSeeMoney) ?? false;
   const waiting = useDeskBookings({ tab: "Waiting", page: 1, pageSize: 1 });
   const upgrades = useDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 1 });
 
@@ -200,7 +216,9 @@ function DeskOverviewView() {
         )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {sections.map((section) => (
+          {sections
+            .filter((section) => (!section.ownerOnly || isOwner) && (!section.money || seesMoney))
+            .map((section) => (
             <SectionCard key={section.title} section={section} />
           ))}
         </div>

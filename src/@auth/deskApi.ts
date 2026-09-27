@@ -46,7 +46,30 @@ export type DeskBooking = {
 export type DeskVenue = {
   id: string;
   name: string;
+  /** Whether its money reports are this person's to read: always the owner's; an attendant's once the owner shares them. */
+  canSeeMoney: boolean;
 };
+
+/** One attendant as their owner sees them on the desk. */
+export type DeskAttendant = {
+  id: string;
+  facilityId: string;
+  facilityName: string;
+  fullName: string;
+  email: string;
+  /** Whether they have set a password and taken the account over. */
+  hasAccepted: boolean;
+  /** Whether they may read the venue's money reports. */
+  canSeeMoney: boolean;
+};
+
+/** Lets one attendant read the venue's money, or stops them. Owners only. */
+export function setAttendantMoney(attendantId: string, canSeeMoney: boolean) {
+  return apiClient.put<DeskAttendant, { canSeeMoney: boolean }>(
+    API_ENDPOINTS.DESK.ATTENDANT_MONEY(attendantId),
+    { canSeeMoney },
+  );
+}
 
 /** A court as the venue registered it, with the parts it is sold in. */
 export type DeskCourt = {
@@ -947,8 +970,8 @@ export type DeclinedBooking = {
   startsAt: string | null;
   endsAt: string | null;
   hours: number;
-  /** Court rental and the platform's fee: what the customer sent. */
-  amount: number;
+  /** Court rental and the platform's fee: what the customer sent. Null when the money is not this person's to see. */
+  amount: number | null;
   /** A reject reason, or null on a refusal from before the list. */
   reason: string | null;
   /** The desk's note, or on an old refusal, everything it wrote. */

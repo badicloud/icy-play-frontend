@@ -472,6 +472,8 @@ export type FacilityAttendantDetail = {
   /** When the newest of those was issued. */
   lastInvitedAt: string | null;
   addedAt: string | null;
+  /** Whether they may read the venue's money reports. Always for the owner; for an attendant, what the owner set on their desk. */
+  canSeeMoney: boolean;
 };
 
 /**

@@ -1,6 +1,18 @@
 const API_V1 = "/api/v1";
 const AUTH_BASE = `${API_V1}/auth`;
 
+/**
+ * In place of a facility owner's id, the owner who is signed in: their own
+ * desk's attendant endpoints rather than the admin console's. The attendants
+ * panel and invite dialog are the same on both, and only the address differs.
+ */
+export const OWN_DESK = "own-desk";
+
+const attendantsBase = (id: string, facilityId: string) =>
+  id === OWN_DESK
+    ? `${API_V1}/desk/venues/${facilityId}/attendants`
+    : `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants`;
+
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: `${AUTH_BASE}/login`,
@@ -68,14 +80,13 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/document`,
     CONTRACT_TERM: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}`,
-    FACILITY_ATTENDANTS: (id: string, facilityId: string) =>
-      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants`,
+    FACILITY_ATTENDANTS: (id: string, facilityId: string) => attendantsBase(id, facilityId),
     FACILITY_ATTENDANT: (id: string, facilityId: string, attendantId: string) =>
-      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/${attendantId}`,
+      `${attendantsBase(id, facilityId)}/${attendantId}`,
     FACILITY_ATTENDANT_RESEND: (id: string, facilityId: string, attendantId: string) =>
-      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/${attendantId}/resend-invitation`,
+      `${attendantsBase(id, facilityId)}/${attendantId}/resend-invitation`,
     FACILITY_ATTENDANT_EMAIL_CHECK: (id: string, facilityId: string) =>
-      `${API_V1}/admin/facility-owners/${id}/facilities/${facilityId}/attendants/check`,
+      `${attendantsBase(id, facilityId)}/check`,
     FACILITY_OWNER_PAYMENT_DETAILS: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/payment-details`,
     CONTRACT_RATES: (id: string, contractId: string) =>
@@ -126,6 +137,7 @@ export const API_ENDPOINTS = {
   /** The venue's desk: what an owner or attendant confirms. */
   DESK: {
     SETTINGS: `${API_V1}/desk/settings`,
+    ATTENDANT_MONEY: (attendantId: string) => `${API_V1}/desk/attendants/${attendantId}/money`,
     VENUES: `${API_V1}/desk/venues`,
     BOOKINGS: `${API_V1}/desk/bookings`,
     COURTS: `${API_V1}/desk/courts`,

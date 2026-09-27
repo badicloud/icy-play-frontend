@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import { deskReportGroups, type DeskReport } from "./reports";
 import { useReportScope } from "./reportScope";
+import { useDeskVenues } from "@auth/hooks/useDesk";
 
 /**
  * Moving between reports without going back out to the desk.
@@ -27,8 +28,25 @@ function ReportsNav({ variant = "desk" }: { variant?: "desk" | "admin" }) {
   const pathname = usePathname();
   const scope = useReportScope();
   const search = scope.kind === "admin" ? scope.search : "";
+
+  // At the desk, money is somebody's to see only when every venue they work
+  // has shared it — the reports total across all of them.
+  const venues = useDeskVenues(variant === "desk");
+  const moneyHidden = variant === "desk" && (venues.data?.some((venue) => !venue.canSeeMoney) ?? false);
+
   const hrefOf = (report: DeskReport) =>
     variant === "admin" ? (report.adminHref ? `${report.adminHref}${search}` : undefined) : report.href;
+
+  // Somebody who may not see the money is not shown the money reports at all
+  // — not even locked. A locked row says there is something here they are not
+  // allowed, which is the owner's business rather than theirs. A group left
+  // with nothing in it goes too.
+  const groups = deskReportGroups
+    .map((group) => ({
+      ...group,
+      reports: group.reports.filter((report) => !(report.money && moneyHidden)),
+    }))
+    .filter((group) => group.reports.length > 0);
   const back = variant === "admin"
     ? { href: "/admin", label: "← Back to the console" }
     : { href: "/desk", label: "← Back to the desk" };
@@ -39,7 +57,7 @@ function ReportsNav({ variant = "desk" }: { variant?: "desk" | "admin" }) {
           alone left three lists reading as one long one, and which group a
           report belonged to was something you had to work out by scanning back
           up to the nearest heading. */}
-      {deskReportGroups.map((group) => (
+      {groups.map((group) => (
         <div key={group.id} className="rounded-2xl border border-slate-200 bg-white p-2">
           <p className="px-3 pt-1.5 pb-2 text-xs font-bold tracking-wider text-slate-500 uppercase">
             {group.title}

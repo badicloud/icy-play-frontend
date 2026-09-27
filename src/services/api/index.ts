@@ -1,6 +1,6 @@
 export { apiClient } from "./apiClient";
 export { ApiError } from "./ApiError";
-export { API_ENDPOINTS } from "./ApiEndpoints";
+export { API_ENDPOINTS, OWN_DESK } from "./ApiEndpoints";
 export type {
   ApiClientConfiguration,
   ApiEnvelope,

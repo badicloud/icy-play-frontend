@@ -9,6 +9,7 @@ import HourglassEmptyOutlined from "@mui/icons-material/HourglassEmptyOutlined";
 import PersonRemoveOutlined from "@mui/icons-material/PersonRemoveOutlined";
 import SendOutlined from "@mui/icons-material/SendOutlined";
 import { ApiError } from "@/services/api";
+import { useSetAttendantMoney } from "@auth/hooks/useDesk";
 import type { FacilityAttendantDetail } from "@auth/adminApi";
 import {
   useFacilityAttendants,
@@ -45,11 +46,32 @@ function AttendantsPanel({
   facilityOwnerId,
   facilityId,
   facilityName,
+  onDesk = false,
 }: {
+  /** An owner's id in the admin console, or OWN_DESK on the owner's own desk. */
   facilityOwnerId: string;
   facilityId: string;
   facilityName: string;
+  /**
+   * On the owner's own desk: the owner decides who may see the money, so each
+   * attendant gets the checkbox. In the admin console it is only shown.
+   */
+  onDesk?: boolean;
 }) {
+  const money = useSetAttendantMoney();
+
+  async function handleMoney(attendantId: string, name: string, canSeeMoney: boolean) {
+    try {
+      await money.mutateAsync({ attendantId, canSeeMoney });
+      enqueueSnackbar(
+        canSeeMoney ? `${name} can now see your money figures.` : `${name} can no longer see your money figures.`,
+        { variant: "success" },
+      );
+    } catch (error) {
+      report(error);
+    }
+  }
+
   const { enqueueSnackbar } = useSnackbar();
   const attendants = useFacilityAttendants(facilityOwnerId, facilityId);
   const remove = useRemoveAttendant(facilityOwnerId, facilityId);
@@ -129,6 +151,32 @@ function AttendantsPanel({
                   )}
                 </p>
                 <p className="text-sm text-slate-500">{attendant.email}</p>
+                {/* Set by the owner on their own desk, not here: the admin
+                    sees it so nobody wonders why an attendant can read the
+                    takings. */}
+                {onDesk && attendant.id !== null && (
+                  <label className="mt-1.5 flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={attendant.canSeeMoney}
+                      disabled={money.isPending}
+                      onChange={(event) =>
+                        void handleMoney(attendant.id!, attendant.fullName, event.target.checked)
+                      }
+                      className="h-4 w-4 accent-[#2563EB]"
+                    />
+                    Can see money
+                  </label>
+                )}
+                {!onDesk && !attendant.isOwner && attendant.canSeeMoney && (
+                  <p
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-green-700"
+                    title="The owner has let this attendant read the venue's money reports."
+                  >
+                    <CheckCircleOutlined sx={{ fontSize: 14 }} aria-hidden />
+                    Can see money
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-4">

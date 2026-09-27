@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { OWN_DESK } from "@/services/api";
 import {
   approveDeskUpgrade,
   confirmDeskBooking,
@@ -24,6 +25,7 @@ import {
   getDeskCourts,
   getDeskUpgrades,
   getDeskVenues,
+  setAttendantMoney,
   rejectDeskBooking,
   type CourtBookingQuery,
   type DeskQuery,
@@ -82,6 +84,25 @@ export function useDeskVenues(enabled = true) {
     // A venue list changes when somebody is put on a desk, which is rare and
     // never while they are standing at it.
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Sharing a venue's money with one attendant, or taking it back. Everything
+ * under the desk key is thrown away after: the venue list carries who may see
+ * money, and so does every report that has any.
+ */
+export function useSetAttendantMoney() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ attendantId, canSeeMoney }: { attendantId: string; canSeeMoney: boolean }) =>
+      setAttendantMoney(attendantId, canSeeMoney),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: deskKey });
+      // The attendants panel on the owner's desk reads the roster under this key.
+      void client.invalidateQueries({ queryKey: ["admin", "facility-owner", OWN_DESK] });
+    },
   });
 }
 

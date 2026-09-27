@@ -243,7 +243,7 @@ function DeclineList({ data }: { data: DeclinesReport }) {
                   {decline.courtName}
                   <span className="block text-sm text-slate-500">{whenFor(decline)}</span>
                 </td>
-                <td className="py-2.5 text-right text-base tabular-nums">{peso(decline.amount)}</td>
+                <td className="py-2.5 text-right text-base tabular-nums">{decline.amount === null ? "—" : peso(decline.amount)}</td>
                 <td className="py-2.5 pr-3 pl-4 text-base">
                   <span className="flex items-center gap-1.5 font-semibold text-[#071955]">
                     <i className="h-2 w-2 shrink-0 rounded-sm" style={{ background: inkOf(decline.reason) }} />
