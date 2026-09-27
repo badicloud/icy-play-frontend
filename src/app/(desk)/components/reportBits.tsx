@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import type { HoursGrain, ReportPeriod } from "@auth/deskApi";
 import { useDeskVenues } from "@auth/hooks/useDesk";
+import { useReportOwners } from "@auth/hooks/usePlatformReports";
+import { useReportScope } from "./reportScope";
 
 /*
  * The small pieces every desk report is built from.
@@ -40,6 +42,66 @@ export function Tile({ label, value, hint }: { label: string; value: string; hin
 
 export type DateRange = { from: string; to: string };
 
+const filterField = "rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]";
+const filterLabel = "flex flex-col gap-1 text-sm font-semibold text-slate-600";
+
+/**
+ * The admin console's scope: a facility owner, then one of their venues.
+ *
+ * Kept in the address by the report scope, so it follows the admin from one
+ * report to the next. The venue picker waits for an owner, because venues
+ * belong to one and a list of every venue on the platform is not a choice.
+ */
+export function OwnerVenueFilter() {
+  const scope = useReportScope();
+  const owners = useReportOwners(scope.kind === "admin");
+
+  if (scope.kind !== "admin") {
+    return null;
+  }
+
+  const owner = owners.data?.find((one) => one.id === scope.ownerId) ?? null;
+
+  return (
+    <>
+      <label className={filterLabel}>
+        Facility owner
+        <select
+          value={scope.ownerId}
+          onChange={(event) => scope.setScope(event.target.value, "")}
+          className={filterField}
+        >
+          <option value="">All facility owners</option>
+          {owners.data?.map((one) => (
+            <option key={one.id} value={one.id}>
+              {one.businessName}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={filterLabel}>
+        Venue
+        <select
+          value={scope.facilityId}
+          onChange={(event) => scope.setScope(scope.ownerId, event.target.value)}
+          disabled={!owner || owner.venues.length < 2}
+          className={`${filterField} disabled:bg-slate-50 disabled:text-slate-400`}
+        >
+          <option value="">{owner && owner.venues.length === 1 ? owner.venues[0].name : "All venues"}</option>
+          {owner &&
+            owner.venues.length > 1 &&
+            owner.venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.name}
+              </option>
+            ))}
+        </select>
+      </label>
+    </>
+  );
+}
+
 /**
  * The bar every report is filtered from: which venue, and from when to when.
  *
@@ -62,14 +124,18 @@ export function ReportFilters({
   onFacility: (facilityId: string) => void;
   children?: ReactNode;
 }) {
-  const venues = useDeskVenues();
-  const field = "rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]";
-  const label = "flex flex-col gap-1 text-sm font-semibold text-slate-600";
+  const scope = useReportScope();
+  const venues = useDeskVenues(scope.kind === "desk");
+  const field = filterField;
+  const label = filterLabel;
 
   return (
     <div className="mt-5 flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+      {/* The admin picks an owner and a venue; a desk picks among its own venues. */}
+      <OwnerVenueFilter />
+
       {/* One venue needs no picker; five do. */}
-      {(venues.data?.length ?? 0) > 1 && (
+      {scope.kind === "desk" && (venues.data?.length ?? 0) > 1 && (
         <label className={label}>
           Venue
           <select value={facilityId} onChange={(event) => onFacility(event.target.value)} className={field}>

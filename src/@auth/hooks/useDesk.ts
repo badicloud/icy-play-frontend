@@ -74,10 +74,11 @@ export function useDeskWaiting(enabled: boolean) {
   return { payments: paymentCount, upgrades: upgradeCount, total: paymentCount + upgradeCount };
 }
 
-export function useDeskVenues() {
+export function useDeskVenues(enabled = true) {
   return useQuery({
     queryKey: [...deskKey, "venues"],
     queryFn: getDeskVenues,
+    enabled,
     // A venue list changes when somebody is put on a desk, which is rare and
     // never while they are standing at it.
     staleTime: 5 * 60 * 1000,
@@ -306,10 +307,11 @@ export function useDeskDecision() {
  * already happened, and re-fetching it while somebody reads down the courts
  * would move the numbers under them.
  */
-export function useCourtUtilization(query: UtilizationQuery) {
+export function useCourtUtilization(query: UtilizationQuery, enabled = true) {
   return useQuery({
     queryKey: [...deskKey, "utilization", query],
     queryFn: () => getCourtUtilization(query),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 }

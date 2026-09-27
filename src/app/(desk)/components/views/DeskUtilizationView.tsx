@@ -14,7 +14,9 @@ import {
   type UtilizationReport,
 } from "@auth/deskApi";
 import { useCourtUtilization } from "@auth/hooks/useDesk";
+import { usePlatformUtilization } from "@auth/hooks/usePlatformReports";
 import { ReportFilters, thisMonth, Tile } from "../reportBits";
+import { reportTrail, useReportScope } from "../reportScope";
 
 /** A filled bar, or a dash where there is no percentage to be had. */
 function Meter({ percent }: { percent: number | null }) {
@@ -263,22 +265,29 @@ function Summary({ report }: { report: UtilizationReport }) {
 function DeskUtilizationView() {
   const [range, setRange] = useState(thisMonth);
   const [facilityId, setFacilityId] = useState<string>("");
+  const scope = useReportScope();
+  const admin = scope.kind === "admin";
 
-  const report = useCourtUtilization({
-    from: range.from,
-    to: range.to,
-    facilityId: facilityId || undefined,
-  });
+  // The same page for the desk and the admin console. Only one of the two is
+  // ever asked: the other is switched off, not merely ignored.
+  const desk = useCourtUtilization(
+    { from: range.from, to: range.to, facilityId: facilityId || undefined },
+    !admin,
+  );
+  const platform = usePlatformUtilization(
+    {
+      from: range.from,
+      to: range.to,
+      facilityOwnerId: admin ? scope.ownerId || undefined : undefined,
+      facilityId: admin ? scope.facilityId || undefined : undefined,
+    },
+    admin,
+  );
+  const report = admin ? platform : desk;
 
   return (
     <>
-      <Breadcrumbs
-        trail={[
-          { label: "Venue desk", href: "/desk" },
-          { label: "Reports", href: "/desk/reports" },
-          { label: "Utilisation" },
-        ]}
-      />
+      <Breadcrumbs trail={reportTrail(scope, "Utilisation")} />
 
       <h1 className="mt-4 text-2xl font-black tracking-tight text-[#071955] sm:text-3xl">
         Court utilisation

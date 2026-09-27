@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import { deskReportGroups, type DeskReport } from "./reports";
+import { useReportScope } from "./reportScope";
 
 /**
  * Moving between reports without going back out to the desk.
@@ -24,7 +25,10 @@ import { deskReportGroups, type DeskReport } from "./reports";
  */
 function ReportsNav({ variant = "desk" }: { variant?: "desk" | "admin" }) {
   const pathname = usePathname();
-  const hrefOf = (report: DeskReport) => (variant === "admin" ? report.adminHref : report.href);
+  const scope = useReportScope();
+  const search = scope.kind === "admin" ? scope.search : "";
+  const hrefOf = (report: DeskReport) =>
+    variant === "admin" ? (report.adminHref ? `${report.adminHref}${search}` : undefined) : report.href;
   const back = variant === "admin"
     ? { href: "/admin", label: "← Back to the console" }
     : { href: "/desk", label: "← Back to the desk" };
@@ -44,7 +48,7 @@ function ReportsNav({ variant = "desk" }: { variant?: "desk" | "admin" }) {
           <ul className="space-y-0.5">
             {group.reports.map((report) => {
               const href = hrefOf(report);
-              const active = href ? pathname.startsWith(href) : false;
+              const active = href ? pathname.startsWith(href.split("?")[0]) : false;
 
               if (!href) {
                 return (

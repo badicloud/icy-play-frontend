@@ -54,6 +54,7 @@ export const deskReportGroups: DeskReportGroup[] = [
         blurb:
           "How much of what you had open actually got used, court by court — and the hours lost to maintenance rather than to nobody booking.",
         href: "/desk/reports/utilization",
+        adminHref: "/admin/reports/utilization",
       },
       {
         id: "hours",

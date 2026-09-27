@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
+import { OwnerVenueFilter } from "@/app/(desk)/components/reportBits";
+import { useReportScope } from "@/app/(desk)/components/reportScope";
 import SnapshotTiles from "@/app/(desk)/components/SnapshotTiles";
 import type { OwnerSnapshot } from "@auth/platformReportApi";
 import { usePlatformSnapshot, useReportOwners } from "@auth/hooks/usePlatformReports";
@@ -76,12 +77,9 @@ function OwnerRow({ owner, onOpen }: { owner: OwnerSnapshot; onOpen: () => void 
  * page can carry it.
  */
 function AdminReportsView() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-
-  const ownerId = params.get("owner") ?? "";
-  const facilityId = params.get("venue") ?? "";
+  const reportScope = useReportScope();
+  const ownerId = reportScope.kind === "admin" ? reportScope.ownerId : "";
+  const facilityId = reportScope.kind === "admin" ? reportScope.facilityId : "";
 
   const owners = useReportOwners();
   const snapshot = usePlatformSnapshot({
@@ -92,15 +90,9 @@ function AdminReportsView() {
   const owner = owners.data?.find((one) => one.id === ownerId) ?? null;
 
   function scope(nextOwner: string, nextVenue: string) {
-    const query = new URLSearchParams();
-    if (nextOwner) query.set("owner", nextOwner);
-    if (nextVenue) query.set("venue", nextVenue);
-    const search = query.toString();
-    router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false });
+    if (reportScope.kind === "admin") reportScope.setScope(nextOwner, nextVenue);
   }
 
-  const field = "rounded-xl border border-slate-300 px-3 py-2.5 text-base font-medium text-[#071955]";
-  const label = "flex flex-col gap-1 text-sm font-semibold text-slate-600";
   const data = snapshot.data;
 
   const whose = facilityId
@@ -119,36 +111,7 @@ function AdminReportsView() {
       </p>
 
       <div className="mt-5 flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-        <label className={label}>
-          Facility owner
-          <select value={ownerId} onChange={(event) => scope(event.target.value, "")} className={field}>
-            <option value="">All facility owners</option>
-            {owners.data?.map((one) => (
-              <option key={one.id} value={one.id}>
-                {one.businessName}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Venues belong to an owner, so there is nothing to pick until one is. */}
-        <label className={label}>
-          Venue
-          <select
-            value={facilityId}
-            onChange={(event) => scope(ownerId, event.target.value)}
-            disabled={!owner || owner.venues.length < 2}
-            className={`${field} disabled:bg-slate-50 disabled:text-slate-400`}
-          >
-            <option value="">{owner && owner.venues.length === 1 ? owner.venues[0].name : "All venues"}</option>
-            {owner && owner.venues.length > 1 &&
-              owner.venues.map((venue) => (
-                <option key={venue.id} value={venue.id}>
-                  {venue.name}
-                </option>
-              ))}
-          </select>
-        </label>
+        <OwnerVenueFilter />
 
         {ownerId && (
           <button

@@ -1,5 +1,5 @@
 import { API_ENDPOINTS, apiClient } from "@/services/api";
-import type { DeskVenue, VenueSnapshot } from "./deskApi";
+import type { DeskVenue, UtilizationReport, VenueSnapshot } from "./deskApi";
 
 /*
  * The venue desk's reports, for the platform admin: every venue on the
@@ -34,6 +34,21 @@ export type PlatformScope = {
   facilityOwnerId?: string;
   facilityId?: string;
 };
+
+/** A date range, as every over-time report takes one. */
+export type PlatformRange = PlatformScope & { from: string; to: string };
+
+/** Court utilisation across the scope — the desk's report, with the rental in it. */
+export function getPlatformUtilization(query: PlatformRange) {
+  return apiClient.get<UtilizationReport>(API_ENDPOINTS.ADMIN.REPORT_UTILIZATION, {
+    query: {
+      from: query.from,
+      to: query.to,
+      facilityOwnerId: query.facilityOwnerId,
+      facilityId: query.facilityId,
+    },
+  });
+}
 
 export function getReportOwners() {
   return apiClient.get<ReportOwner[]>(API_ENDPOINTS.ADMIN.REPORT_OWNERS);
