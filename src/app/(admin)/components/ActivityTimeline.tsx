@@ -44,6 +44,7 @@ const fieldLabels: Record<string, string> = {
   gcashAccountName: "GCash account name",
   gcashQrCode: "GCash QR code",
   partialBookingExpiryMinutes: "Hold a court for (minutes)",
+  bookingWindowDays: "Customers can book up to (days ahead)",
   moveLimit: "Moves per booking",
   moveNoticeDays: "Moves close (days before it starts)",
 };

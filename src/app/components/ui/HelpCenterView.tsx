@@ -283,8 +283,9 @@ const topics: Topic[] = [
             You set it yourself, in the desk&apos;s settings: anywhere from five minutes to four
             hours. Five is the default, because paying by GCash takes about a minute and a longer
             hold is your court sitting dark while somebody makes up their mind. The same page sets
-            how many times one booking may be moved, and how many days before it starts moves stop
-            — one to seven, two by default. Every change is kept in the page&apos;s history.
+            how many times one booking may be moved, how many days before it starts moves stop
+            — one to seven, two by default — and how far ahead customers can book, from a week to a
+            month (fifteen days by default). Every change is kept in the page&apos;s history.
           </>
         ),
       },

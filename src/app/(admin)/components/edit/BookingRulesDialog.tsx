@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useSnackbar } from "notistack";
-import { moveRuleLimits, type FacilityOwnerDetail } from "@auth/adminApi";
-import { useUpdateMoveRules } from "@auth/hooks/useFacilityOwnerEdits";
+import { bookingRuleLimits, type FacilityOwnerDetail } from "@auth/adminApi";
+import { useUpdateBookingRules } from "@auth/hooks/useFacilityOwnerEdits";
 import { TextField } from "../onboarding/FormControls";
 import EditDialog from "./EditDialog";
 
-type MoveRulesDialogProps = {
+type BookingRulesDialogProps = {
   owner: FacilityOwnerDetail;
   open: boolean;
   onClose: () => void;
@@ -31,41 +31,49 @@ function problemWith(value: string, smallest: number, largest: number, noun: str
 }
 
 /**
- * How much moving a venue puts up with, set by the platform on its behalf.
+ * How a venue's courts are booked and moved, set by the platform on its behalf.
  *
- * The same two dials the venue has on its own desk. Here for the venue that
- * rings up and asks, and every change lands in the venue's own settings
- * history marked as the platform's.
+ * The same dials the venue has on its own desk. Here for the venue that rings
+ * up and asks, and every change lands in the venue's own settings history
+ * marked as the platform's.
  */
-function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
+function BookingRulesDialog({ owner, open, onClose }: BookingRulesDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const update = useUpdateMoveRules(owner.id);
+  const update = useUpdateBookingRules(owner.id);
 
+  const [windowDays, setWindowDays] = useState(String(owner.bookingWindowDays));
   const [limit, setLimit] = useState(String(owner.moveLimit));
   const [notice, setNotice] = useState(String(owner.moveNoticeDays));
   const [reason, setReason] = useState("");
 
+  const windowError = problemWith(
+    windowDays,
+    bookingRuleLimits.smallestWindowDays,
+    bookingRuleLimits.largestWindowDays,
+    "days",
+  );
   const limitError = problemWith(
     limit,
-    moveRuleLimits.smallestLimit,
-    moveRuleLimits.largestLimit,
+    bookingRuleLimits.smallestLimit,
+    bookingRuleLimits.largestLimit,
     "moves",
   );
   const noticeError = problemWith(
     notice,
-    moveRuleLimits.smallestNoticeDays,
-    moveRuleLimits.largestNoticeDays,
+    bookingRuleLimits.smallestNoticeDays,
+    bookingRuleLimits.largestNoticeDays,
     "days",
   );
 
   async function handleSave() {
     try {
       await update.mutateAsync({
+        bookingWindowDays: Number(windowDays),
         moveLimit: Number(limit),
         moveNoticeDays: Number(notice),
         reason: reason.trim() === "" ? null : reason.trim(),
       });
-      enqueueSnackbar("The move rules are saved.", { variant: "success" });
+      enqueueSnackbar("The booking rules are saved.", { variant: "success" });
       onClose();
     } catch {
       // Shown in the dialog.
@@ -74,8 +82,8 @@ function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
 
   return (
     <EditDialog
-      title="Booking moves"
-      description="How often a customer may move a booking, and how close to its start moves stop. Every move still needs the venue's approval."
+      title="Booking rules"
+      description="How far ahead customers can book, how often a booking may be moved, and how close to its start moves stop. Every move still needs the venue's approval."
       open={open}
       isSaving={update.isPending}
       error={update.error}
@@ -83,9 +91,19 @@ function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
       onReasonChange={setReason}
       onClose={onClose}
       onSave={() => void handleSave()}
-      canSave={!limitError && !noticeError}
+      canSave={!windowError && !limitError && !noticeError}
     >
-      <div className="grid gap-5 sm:grid-cols-2">
+      <TextField
+        id="booking-window"
+        label="Customers can book up to (days ahead)"
+        required
+        value={windowDays}
+        onChange={setWindowDays}
+        error={windowError}
+        hint={`Today included, from 7 (a week) to 30 (a month). At 30 the booking page shows two weeks and a button for the rest. Standard is ${bookingRuleLimits.defaultWindowDays}.`}
+      />
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <TextField
           id="move-limit"
           label="Moves per booking"
@@ -93,7 +111,7 @@ function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
           value={limit}
           onChange={setLimit}
           error={limitError}
-          hint={`Only moves the venue approves are counted. Standard is ${moveRuleLimits.defaultLimit}.`}
+          hint={`Only moves the venue approves are counted. Standard is ${bookingRuleLimits.defaultLimit}.`}
         />
         <TextField
           id="move-notice"
@@ -102,7 +120,11 @@ function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
           value={notice}
           onChange={setNotice}
           error={noticeError}
-          hint={`From 1 day (24 hours) to 7 (a week). Standard is ${moveRuleLimits.defaultNoticeDays}.`}
+          hint={
+            noticeError
+              ? `From 1 day (24 hours) to 7 (a week). Standard is ${bookingRuleLimits.defaultNoticeDays}.`
+              : `That is ${Number(notice) * 24} hours before the booking starts. From 1 day to 7; standard is ${bookingRuleLimits.defaultNoticeDays}.`
+          }
         />
       </div>
 
@@ -114,4 +136,4 @@ function MoveRulesDialog({ owner, open, onClose }: MoveRulesDialogProps) {
   );
 }
 
-export default MoveRulesDialog;
+export default BookingRulesDialog;

@@ -278,7 +278,10 @@ function MoveBookingDialog({
   // today — which is the only clock that counts here. A customer abroad
   // reading their own would drop the wrong day.
   const offered = byTheDay ? calendar.slice(1) : calendar;
-  const shown = wideOpen ? offered : offered.slice(0, 14);
+  // Folded to a fortnight only when the venue opens a whole month, the same
+  // rule as the booking page; a shorter window is shown whole.
+  const foldable = calendar.length >= 30;
+  const shown = foldable && !wideOpen ? offered.slice(0, 14) : offered;
 
 
   return (
@@ -436,7 +439,10 @@ function MoveBookingDialog({
                         })}
                       </ul>
 
-                      {offered.length > 14 && (
+                      {/* Folded only when the venue opens a whole month, as
+                          on the booking page. A day booking's strip starts
+                          tomorrow, so it is one short of the window. */}
+                      {foldable && (
                         <button
                           type="button"
                           onClick={() => setWideOpen((open) => !open)}

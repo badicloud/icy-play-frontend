@@ -89,8 +89,8 @@ export const API_ENDPOINTS = {
       `${attendantsBase(id, facilityId)}/check`,
     FACILITY_OWNER_PAYMENT_DETAILS: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/payment-details`,
-    FACILITY_OWNER_MOVE_RULES: (id: string) =>
-      `${API_V1}/admin/facility-owners/${id}/move-rules`,
+    FACILITY_OWNER_BOOKING_RULES: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/booking-rules`,
     CONTRACT_RATES: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>

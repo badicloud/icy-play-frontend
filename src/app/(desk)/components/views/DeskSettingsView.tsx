@@ -28,6 +28,7 @@ function Dial({
   unit,
   smallest,
   largest,
+  note,
   onChange,
 }: {
   id: string;
@@ -37,6 +38,8 @@ function Dial({
   unit: string;
   smallest: number;
   largest: number;
+  /** What the number comes to in other terms, said under the range. */
+  note?: string | null;
   onChange: (value: string) => void;
 }) {
   return (
@@ -63,12 +66,31 @@ function Dial({
       <p className="mt-2 text-xs font-semibold text-slate-400">
         Between {smallest} and {largest}.
       </p>
+
+      {note && <p className="mt-1 text-sm font-bold text-[#1264f7]">{note}</p>}
     </div>
   );
 }
 
+/**
+ * A notice in days, said in hours — which is how it is measured: two days is
+ * forty-eight hours before the first hour, not two midnights. Nothing when the
+ * box does not hold a whole number.
+ */
+function inHours(days: string) {
+  const number = Number(days);
+
+  return days.trim() !== "" && Number.isInteger(number) && number > 0
+    ? `That is ${number * 24} hours before the booking starts.`
+    : null;
+}
+
 /** What each dial is called in the history, and what its number counts. */
 const settingWords: Record<string, { label: string; unit: (value: number) => string }> = {
+  bookingWindowDays: {
+    label: "Customers can book up to",
+    unit: (value) => (value === 1 ? "day ahead" : "days ahead"),
+  },
   partialBookingExpiryMinutes: {
     label: "Hold a court for",
     unit: (value) => (value === 1 ? "minute" : "minutes"),
@@ -79,7 +101,7 @@ const settingWords: Record<string, { label: string; unit: (value: number) => str
   },
   moveNoticeDays: {
     label: "Moves close",
-    unit: (value) => (value === 1 ? "day before it starts" : "days before it starts"),
+    unit: (value) => `${value === 1 ? "day" : "days"} (${value * 24} hours) before it starts`,
   },
 };
 
@@ -194,6 +216,7 @@ function DeskSettingsView() {
   const [expiry, setExpiry] = useState("");
   const [moves, setMoves] = useState("");
   const [notice, setNotice] = useState("");
+  const [windowDays, setWindowDays] = useState("");
 
   // Seeded once the server has answered, and again if somebody else changes it.
   useEffect(() => {
@@ -201,6 +224,7 @@ function DeskSettingsView() {
       setExpiry(String(settings.data.partialBookingExpiryMinutes));
       setMoves(String(settings.data.moveLimit));
       setNotice(String(settings.data.moveNoticeDays));
+      setWindowDays(String(settings.data.bookingWindowDays));
     }
   }, [settings.data]);
 
@@ -209,6 +233,7 @@ function DeskSettingsView() {
       partialBookingExpiryMinutes: number;
       moveLimit: number;
       moveNoticeDays: number;
+      bookingWindowDays: number;
     }) => updateDeskSettings(payload),
     onSuccess: (saved: DeskSettings) => {
       client.setQueryData(["desk", "settings"], saved);
@@ -227,7 +252,8 @@ function DeskSettingsView() {
     ranges !== undefined &&
     (Number(expiry) !== ranges.partialBookingExpiryMinutes ||
       Number(moves) !== ranges.moveLimit ||
-      Number(notice) !== ranges.moveNoticeDays);
+      Number(notice) !== ranges.moveNoticeDays ||
+      Number(windowDays) !== ranges.bookingWindowDays);
 
   return (
     <main className="min-h-screen bg-[#f5f9ff] pb-16">
@@ -238,8 +264,9 @@ function DeskSettingsView() {
           Settings
         </h1>
         <p className="mt-2 max-w-2xl text-slate-500">
-          How long you hold a court for somebody who has not paid yet, how often a booking may be
-          moved, and how close to its start moves stop. They apply to every court at this venue.
+          How far ahead customers can book, how long you hold a court for somebody who has not paid
+          yet, how often a booking may be moved, and how close to its start moves stop. They apply
+          to every court at this venue.
         </p>
 
         {settings.isPending ? (
@@ -254,6 +281,17 @@ function DeskSettingsView() {
         ) : (
           <>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <Dial
+                id="booking-window"
+                label="Customers can book up to"
+                hint="How many days of your courts customers see on the booking page, today included. At 30 the page shows two weeks and a button for the rest of the month."
+                value={windowDays}
+                unit="days ahead"
+                smallest={ranges.smallestBookingWindowDays}
+                largest={ranges.largestBookingWindowDays}
+                onChange={setWindowDays}
+              />
+
               <Dial
                 id="hold-minutes"
                 label="Hold a court for"
@@ -284,6 +322,7 @@ function DeskSettingsView() {
                 unit="days before it starts"
                 smallest={ranges.smallestMoveNoticeDays}
                 largest={ranges.largestMoveNoticeDays}
+                note={inHours(notice)}
                 onChange={setNotice}
               />
             </div>
@@ -296,6 +335,7 @@ function DeskSettingsView() {
                     setExpiry(String(ranges.partialBookingExpiryMinutes));
                     setMoves(String(ranges.moveLimit));
                     setNotice(String(ranges.moveNoticeDays));
+                    setWindowDays(String(ranges.bookingWindowDays));
                   }}
                   className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
                 >
@@ -311,6 +351,7 @@ function DeskSettingsView() {
                     partialBookingExpiryMinutes: Number(expiry),
                     moveLimit: Number(moves),
                     moveNoticeDays: Number(notice),
+                    bookingWindowDays: Number(windowDays),
                   })
                 }
                 className={`rounded-full px-6 py-3 text-sm font-semibold transition ${

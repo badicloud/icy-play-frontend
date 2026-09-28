@@ -31,7 +31,7 @@ import ActivityTimeline from "../ActivityTimeline";
 import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
 import PaymentDetailsDialog from "../edit/PaymentDetailsDialog";
-import MoveRulesDialog from "../edit/MoveRulesDialog";
+import BookingRulesDialog from "../edit/BookingRulesDialog";
 import AttendantsPanel from "./AttendantsPanel";
 import CancelContractDialog from "../edit/CancelContractDialog";
 import ContractRatesDialog from "../edit/ContractRatesDialog";
@@ -553,7 +553,7 @@ function InvitationPanel({
   );
 }
 
-type OpenDialog = "business" | "payment" | "moves" | "facility" | "hours" | "renew" | null;
+type OpenDialog = "business" | "payment" | "rules" | "facility" | "hours" | "renew" | null;
 
 function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: string }) {
   const owner = useAdminFacilityOwner(facilityOwnerId);
@@ -790,20 +790,24 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
               </Section>
 
               <Section
-                title="Booking moves"
-                action={<EditButton label="booking move rules" onClick={() => setDialog("moves")} />}
+                title="Booking rules"
+                action={<EditButton label="booking rules" onClick={() => setDialog("rules")} />}
               >
+                <Row
+                  label="Customers can book up to"
+                  value={`${detail.bookingWindowDays} days ahead`}
+                />
                 <Row
                   label="Moves per booking"
                   value={`${detail.moveLimit} ${detail.moveLimit === 1 ? "move" : "moves"}`}
                 />
                 <Row
                   label="Moves close"
-                  value={`${detail.moveNoticeDays} ${detail.moveNoticeDays === 1 ? "day" : "days"} before it starts`}
+                  value={`${detail.moveNoticeDays} ${detail.moveNoticeDays === 1 ? "day" : "days"} (${detail.moveNoticeDays * 24} hours) before it starts`}
                 />
                 <p className="mt-3 text-sm text-slate-500">
-                  Every move waits for the venue to approve it. The venue can change both from its
-                  own desk too; each change is in the activity below.
+                  Every move waits for the venue to approve it. The venue can change all three from
+                  its own desk too; each change is in the activity below.
                 </p>
               </Section>
 
@@ -886,9 +890,9 @@ key={facility.id}
               onClose={() => setDialog(null)}
             />
 
-            <MoveRulesDialog
+            <BookingRulesDialog
               owner={detail}
-              open={dialog === "moves"}
+              open={dialog === "rules"}
               onClose={() => setDialog(null)}
             />
 

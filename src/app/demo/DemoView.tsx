@@ -212,7 +212,8 @@ function DemoView() {
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <Card title="A booking page a person can read">
               <p>
-                Thirty days ahead, fourteen on first sight. Every hour carries its own price and the
+                As far ahead as the venue chooses — fifteen days by default, up to a month, which
+                shows two weeks first. Every hour carries its own price and the
                 reason for it. A floating panel adds up the court, the platform fee and the total as
                 the customer picks — the fee named, never buried.
               </p>

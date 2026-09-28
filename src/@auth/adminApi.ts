@@ -237,6 +237,7 @@ export const activityActionLabels: Record<string, string> = {
   FacilityOwnerPaymentDetailsUpdated: "Payment details changed",
   FacilityOwnerDeskSettingsUpdated: "Desk settings changed at the venue",
   FacilityOwnerMoveRulesUpdated: "Booking move rules changed",
+  FacilityOwnerBookingRulesUpdated: "Booking rules changed",
 };
 
 export const roleLabels: Record<string, string> = {
@@ -445,16 +446,21 @@ export type PaymentDetailsPayload = {
   reason: string | null;
 };
 
-/** How often a booking may move, and how many days before it starts moves close. */
-export type MoveRulesPayload = {
+/**
+ * How a venue's courts are booked and moved: how many days ahead they can be
+ * booked, how often a booking may move, and how many days before it starts
+ * moves close.
+ */
+export type BookingRulesPayload = {
+  bookingWindowDays: number;
   moveLimit: number;
   moveNoticeDays: number;
   reason: string | null;
 };
 
-export function updateMoveRules(id: string, payload: MoveRulesPayload) {
-  return apiClient.put<void, MoveRulesPayload>(
-    API_ENDPOINTS.ADMIN.FACILITY_OWNER_MOVE_RULES(id),
+export function updateBookingRules(id: string, payload: BookingRulesPayload) {
+  return apiClient.put<void, BookingRulesPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_BOOKING_RULES(id),
     payload,
   );
 }
@@ -569,8 +575,11 @@ export const paymentHoldLimits = {
   maximumMinutes: 240,
 } as const;
 
-/** What the server accepts for the move rules, and what it uses when nobody says. */
-export const moveRuleLimits = {
+/** What the server accepts for the booking rules, and what it uses when nobody says. */
+export const bookingRuleLimits = {
+  defaultWindowDays: 15,
+  smallestWindowDays: 7,
+  largestWindowDays: 30,
   defaultLimit: 3,
   smallestLimit: 1,
   largestLimit: 20,
@@ -604,6 +613,8 @@ export type FacilityOwnerDetail = {
   moveLimit: number;
   /** How many days before a booking starts moves close. */
   moveNoticeDays: number;
+  /** How many days ahead customers can book, today included. */
+  bookingWindowDays: number;
   /** False while the venue has given neither a number nor a QR code. */
   canTakePayment: boolean;
   isActive: boolean;

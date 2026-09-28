@@ -430,6 +430,10 @@ export type DeskSettings = {
   moveNoticeDays: number;
   smallestMoveNoticeDays: number;
   largestMoveNoticeDays: number;
+  /** How many days ahead customers can book, today included. */
+  bookingWindowDays: number;
+  smallestBookingWindowDays: number;
+  largestBookingWindowDays: number;
 };
 
 export function getDeskSettings() {
@@ -440,13 +444,19 @@ export function updateDeskSettings(payload: {
   partialBookingExpiryMinutes: number;
   moveLimit: number;
   moveNoticeDays: number;
+  bookingWindowDays: number;
 }) {
   return apiClient.put<DeskSettings, typeof payload>(API_ENDPOINTS.DESK.SETTINGS, payload);
 }
 
 /** One dial, before and after, by the name the server stores it under. */
 export type DeskSettingChange = {
-  setting: "partialBookingExpiryMinutes" | "moveLimit" | "moveNoticeDays" | string;
+  setting:
+    | "bookingWindowDays"
+    | "partialBookingExpiryMinutes"
+    | "moveLimit"
+    | "moveNoticeDays"
+    | string;
   from: string | null;
   to: string | null;
 };

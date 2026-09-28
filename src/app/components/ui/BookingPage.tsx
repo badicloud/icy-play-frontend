@@ -30,11 +30,12 @@ import PublicHeader from "./PublicHeader";
 const ShortView = 14;
 
 /**
- * The furthest ahead anyone can book, and the whole strip when it is opened up.
- * The server refuses a date past this too — a ceiling only the browser keeps is
- * not a ceiling.
+ * The furthest ahead any venue can open its courts: a month. Each venue sets
+ * its own window up to this, and the server says which by how many days the
+ * outlook carries — and refuses a date past it, because a ceiling only the
+ * browser keeps is not a ceiling.
  */
-const DaysAhead = 30;
+const LongestWindow = 30;
 
 /** Enough for a tournament week, and short enough that the price stays readable. */
 const LongestRun = 7;
@@ -50,7 +51,7 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const search = useSearchParams();
   const { isAuthenticated } = useIcyPlayAuth();
 
-  const allDays = useMemo(() => upcomingDays(DaysAhead), []);
+  const allDays = useMemo(() => upcomingDays(LongestWindow), []);
 
   // What the address bar says, read once. From then on the state leads and the
   // URL follows it — a refresh, a shared link, or coming back from the checkout
@@ -90,9 +91,28 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [showing, setShowing] = useState<string | null>(null);
 
+  const outlook = useQuery({
+    queryKey: ["day-outlook", bookableCourtId],
+    queryFn: () => getDayOutlook(bookableCourtId),
+    // The same fifteen seconds the grid uses: a strip a minute stale offers a
+    // day somebody else has just taken.
+    staleTime: 15 * 1000,
+    enabled: bookableCourtId !== "",
+  });
+
+  // How far ahead this venue sells, which is how many days the outlook
+  // carries. A fortnight until it has answered, so the strip does not open at
+  // a month and then shrink.
+  const windowDays = Math.min(outlook.data?.length ?? ShortView, LongestWindow);
+
+  // Folded to a fortnight only when the venue opens a whole month. A shorter
+  // window is shown whole: a "show all" that adds one day is a button for
+  // nothing.
+  const foldable = windowDays >= LongestWindow;
+
   const days = useMemo(
-    () => allDays.slice(0, wideOpen ? DaysAhead : ShortView),
-    [allDays, wideOpen],
+    () => allDays.slice(0, foldable && !wideOpen ? ShortView : windowDays),
+    [allDays, foldable, wideOpen, windowDays],
   );
 
   // A run of whole days needs every day in it priced, so each is its own query.
@@ -110,15 +130,6 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
       staleTime: 15 * 1000,
       enabled: bookableCourtId !== "",
     })),
-  });
-
-  const outlook = useQuery({
-    queryKey: ["day-outlook", bookableCourtId],
-    queryFn: () => getDayOutlook(bookableCourtId),
-    // The same fifteen seconds the grid uses: a strip a minute stale offers a
-    // day somebody else has just taken.
-    staleTime: 15 * 1000,
-    enabled: bookableCourtId !== "",
   });
 
   const byDate = useMemo(() => {
@@ -575,28 +586,30 @@ function BookingPage({ bookableCourtId }: { bookableCourtId: string }) {
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3.5">
                 <p className="text-sm font-medium text-slate-600">
-                  You can book up to {DaysAhead} days ahead.
+                  You can book up to {windowDays} days ahead.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Collapsing the strip can strand a day that no longer
-                    // exists on it, so a choice outside the short view goes back
-                    // to the first day rather than silently becoming another.
-                    if (wideOpen && firstDay >= ShortView) {
-                      setCleared(false);
-                      setFirstDay(firstSellable);
-                      setLastDay(firstSellable);
-                      setPicked([]);
-                    }
+                {foldable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Collapsing the strip can strand a day that no longer
+                      // exists on it, so a choice outside the short view goes back
+                      // to the first day rather than silently becoming another.
+                      if (wideOpen && firstDay >= ShortView) {
+                        setCleared(false);
+                        setFirstDay(firstSellable);
+                        setLastDay(firstSellable);
+                        setPicked([]);
+                      }
 
-                    setProblem(null);
-                    setWideOpen(!wideOpen);
-                  }}
-                  className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
-                >
-                  {wideOpen ? `Show ${ShortView} days` : `Show all ${DaysAhead} days`}
-                </button>
+                      setProblem(null);
+                      setWideOpen(!wideOpen);
+                    }}
+                    className="text-sm font-bold text-[#2563EB] underline-offset-4 hover:underline"
+                  >
+                    {wideOpen ? `Show ${ShortView} days` : `Show all ${windowDays} days`}
+                  </button>
+                )}
               </div>
 
               {/* A pill rather than a line of underlined text. Underneath the

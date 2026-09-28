@@ -55,7 +55,7 @@ const sections: DeskSection[] = [
   {
     title: "Settings",
     description:
-      "How long you hold a court for somebody who has not paid yet, how often a booking may be moved, and how close to its start moves stop — with a history of every change.",
+      "How far ahead customers can book, how long you hold an unpaid court, and how bookings may be moved — with a history of every change.",
     href: "/desk/settings",
     icon: <TuneOutlined />,
   },

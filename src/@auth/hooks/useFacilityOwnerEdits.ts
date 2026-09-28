@@ -15,9 +15,9 @@ import {
   resendAttendantInvitation,
   updateFacilityOwnerBusiness,
   updatePaymentDetails,
-  updateMoveRules,
+  updateBookingRules,
+  type BookingRulesPayload,
   type InviteAttendantPayload,
-  type MoveRulesPayload,
   type PaymentDetailsPayload,
   type RenewContractPayload,
   type UpdateBusinessPayload,
@@ -179,8 +179,8 @@ export function useUpdatePaymentDetails(id: string) {
   return useEdit<PaymentDetailsPayload>(id, (payload) => updatePaymentDetails(id, payload));
 }
 
-export function useUpdateMoveRules(id: string) {
-  return useEdit<MoveRulesPayload>(id, (payload) => updateMoveRules(id, payload));
+export function useUpdateBookingRules(id: string) {
+  return useEdit<BookingRulesPayload>(id, (payload) => updateBookingRules(id, payload));
 }
 
 export function useCancelContract(id: string) {

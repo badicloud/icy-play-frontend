@@ -69,6 +69,11 @@ const sections = [
           Uploading your receipt stops the clock. From that point the booking waits on the venue
           rather than on you, and the hold will not lapse while they check it.
         </p>
+        <p>
+          <strong>Each venue also sets how far ahead its courts can be booked</strong> — between a
+          week and a month, today included, and fifteen days unless the venue says otherwise. The
+          booking page shows only those days, and a date beyond them cannot be booked.
+        </p>
       </>
     ),
   },
