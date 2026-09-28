@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import { ApiError } from "@/services/api";
-import { getDeskSettings, updateDeskSettings, type DeskSettings } from "@auth/deskApi";
+import {
+  getDeskSettings,
+  getDeskSettingsHistory,
+  updateDeskSettings,
+  type DeskSettingChange,
+  type DeskSettings,
+} from "@auth/deskApi";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 
 /**
@@ -61,6 +67,113 @@ function Dial({
   );
 }
 
+/** What each dial is called in the history, and what its number counts. */
+const settingWords: Record<string, { label: string; unit: (value: number) => string }> = {
+  partialBookingExpiryMinutes: {
+    label: "Hold a court for",
+    unit: (value) => (value === 1 ? "minute" : "minutes"),
+  },
+  moveLimit: {
+    label: "Moves per booking",
+    unit: (value) => (value === 1 ? "move" : "moves"),
+  },
+  moveNoticeDays: {
+    label: "Moves close",
+    unit: (value) => (value === 1 ? "day before it starts" : "days before it starts"),
+  },
+};
+
+function said(change: DeskSettingChange, value: string | null) {
+  if (value === null || value === "") {
+    return "—";
+  }
+
+  const words = settingWords[change.setting];
+  const number = Number(value);
+
+  return words && Number.isFinite(number) ? `${value} ${words.unit(number)}` : value;
+}
+
+/**
+ * Every change to the dials, newest first.
+ *
+ * Kept on the same page as the dials because that is where somebody stands when
+ * they wonder why the hold is fifteen minutes now — and the answer may be that
+ * the platform set it for the venue, which is marked as such.
+ */
+function SettingsHistory() {
+  const history = useQuery({
+    queryKey: ["desk", "settings", "history"],
+    queryFn: getDeskSettingsHistory,
+  });
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-lg font-bold text-[#071955]">Change history</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Who changed these, when, and what each one was before.
+      </p>
+
+      {history.isPending ? (
+        <div className="mt-4 h-24 animate-pulse rounded-3xl border border-slate-200 bg-white" />
+      ) : history.isError ? (
+        <p className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+          The history could not be loaded just now.
+        </p>
+      ) : history.data.length === 0 ? (
+        <p className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+          Nothing has been changed yet — these are the platform&apos;s starting values.
+        </p>
+      ) : (
+        <ol className="mt-4 divide-y divide-slate-100 rounded-3xl border border-slate-200 bg-white">
+          {history.data.map((entry) => (
+            <li key={entry.id} className="px-5 py-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p className="text-sm font-bold text-[#071955]">
+                  {entry.changedBy ?? "An account that no longer exists"}
+                  {entry.byPlatform && (
+                    <span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-bold text-violet-700">
+                      IcyPlay admin
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs font-semibold text-slate-400">
+                  {new Date(entry.changedAt).toLocaleString("en-PH", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+
+              <ul className="mt-2 space-y-1">
+                {entry.changes.map((change) => (
+                  <li key={change.setting} className="text-sm">
+                    <span className="text-slate-500">
+                      {settingWords[change.setting]?.label ?? change.setting}:{" "}
+                    </span>
+                    <span className="text-slate-400 line-through">{said(change, change.from)}</span>
+                    <span className="mx-1.5 text-slate-400">&rarr;</span>
+                    <span className="font-semibold text-[#071955]">{said(change, change.to)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {entry.reason && (
+                <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  &ldquo;{entry.reason}&rdquo;
+                </p>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 /**
  * The dials this venue sets for itself.
  *
@@ -80,20 +193,26 @@ function DeskSettingsView() {
 
   const [expiry, setExpiry] = useState("");
   const [moves, setMoves] = useState("");
+  const [notice, setNotice] = useState("");
 
   // Seeded once the server has answered, and again if somebody else changes it.
   useEffect(() => {
     if (settings.data) {
       setExpiry(String(settings.data.partialBookingExpiryMinutes));
       setMoves(String(settings.data.moveLimit));
+      setNotice(String(settings.data.moveNoticeDays));
     }
   }, [settings.data]);
 
   const save = useMutation({
-    mutationFn: (payload: { partialBookingExpiryMinutes: number; moveLimit: number }) =>
-      updateDeskSettings(payload),
+    mutationFn: (payload: {
+      partialBookingExpiryMinutes: number;
+      moveLimit: number;
+      moveNoticeDays: number;
+    }) => updateDeskSettings(payload),
     onSuccess: (saved: DeskSettings) => {
       client.setQueryData(["desk", "settings"], saved);
+      void client.invalidateQueries({ queryKey: ["desk", "settings", "history"] });
       enqueueSnackbar("Saved.", { variant: "success" });
     },
     onError: (error) =>
@@ -107,7 +226,8 @@ function DeskSettingsView() {
   const changed =
     ranges !== undefined &&
     (Number(expiry) !== ranges.partialBookingExpiryMinutes ||
-      Number(moves) !== ranges.moveLimit);
+      Number(moves) !== ranges.moveLimit ||
+      Number(notice) !== ranges.moveNoticeDays);
 
   return (
     <main className="min-h-screen bg-[#f5f9ff] pb-16">
@@ -118,8 +238,8 @@ function DeskSettingsView() {
           Settings
         </h1>
         <p className="mt-2 max-w-2xl text-slate-500">
-          How long you hold a court for somebody who has not paid yet, and how often a booking may
-          be moved. Both apply to every court at this venue.
+          How long you hold a court for somebody who has not paid yet, how often a booking may be
+          moved, and how close to its start moves stop. They apply to every court at this venue.
         </p>
 
         {settings.isPending ? (
@@ -148,12 +268,23 @@ function DeskSettingsView() {
               <Dial
                 id="move-limit"
                 label="A booking may be moved"
-                hint="How many times a customer may move one booking to another court. A move you make yourself — because a court has a problem — is not counted against them."
+                hint="How many times a customer may move one booking to another court or time. Every move comes to you to approve, and only the ones you approve are counted."
                 value={moves}
                 unit="times"
                 smallest={ranges.smallestMoveLimit}
                 largest={ranges.largestMoveLimit}
                 onChange={setMoves}
+              />
+
+              <Dial
+                id="move-notice"
+                label="Stop taking moves"
+                hint="A booking closer than this to its start can no longer be moved, so the hours it would give back still have time to sell. Once a booking has started, what is left of it can still change court — with your approval."
+                value={notice}
+                unit="days before it starts"
+                smallest={ranges.smallestMoveNoticeDays}
+                largest={ranges.largestMoveNoticeDays}
+                onChange={setNotice}
               />
             </div>
 
@@ -164,6 +295,7 @@ function DeskSettingsView() {
                   onClick={() => {
                     setExpiry(String(ranges.partialBookingExpiryMinutes));
                     setMoves(String(ranges.moveLimit));
+                    setNotice(String(ranges.moveNoticeDays));
                   }}
                   className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
                 >
@@ -178,6 +310,7 @@ function DeskSettingsView() {
                   save.mutate({
                     partialBookingExpiryMinutes: Number(expiry),
                     moveLimit: Number(moves),
+                    moveNoticeDays: Number(notice),
                   })
                 }
                 className={`rounded-full px-6 py-3 text-sm font-semibold transition ${
@@ -194,6 +327,8 @@ function DeskSettingsView() {
               A figure outside the range is brought to the nearest end of it rather than refused —
               typing the largest number you can think of means &ldquo;the longest you allow&rdquo;.
             </p>
+
+            <SettingsHistory />
           </>
         )}
       </div>

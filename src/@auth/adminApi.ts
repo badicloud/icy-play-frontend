@@ -234,6 +234,9 @@ export const activityActionLabels: Record<string, string> = {
   ContractDocumentReplaced: "Signed agreement replaced",
   ContractRatesUpdated: "Platform rates changed",
   ContractTermUpdated: "Contract dates changed",
+  FacilityOwnerPaymentDetailsUpdated: "Payment details changed",
+  FacilityOwnerDeskSettingsUpdated: "Desk settings changed at the venue",
+  FacilityOwnerMoveRulesUpdated: "Booking move rules changed",
 };
 
 export const roleLabels: Record<string, string> = {
@@ -442,6 +445,20 @@ export type PaymentDetailsPayload = {
   reason: string | null;
 };
 
+/** How often a booking may move, and how many days before it starts moves close. */
+export type MoveRulesPayload = {
+  moveLimit: number;
+  moveNoticeDays: number;
+  reason: string | null;
+};
+
+export function updateMoveRules(id: string, payload: MoveRulesPayload) {
+  return apiClient.put<void, MoveRulesPayload>(
+    API_ENDPOINTS.ADMIN.FACILITY_OWNER_MOVE_RULES(id),
+    payload,
+  );
+}
+
 export function updatePaymentDetails(id: string, payload: PaymentDetailsPayload) {
   return apiClient.put<void, PaymentDetailsPayload>(
     API_ENDPOINTS.ADMIN.FACILITY_OWNER_PAYMENT_DETAILS(id),
@@ -552,6 +569,16 @@ export const paymentHoldLimits = {
   maximumMinutes: 240,
 } as const;
 
+/** What the server accepts for the move rules, and what it uses when nobody says. */
+export const moveRuleLimits = {
+  defaultLimit: 3,
+  smallestLimit: 1,
+  largestLimit: 20,
+  defaultNoticeDays: 2,
+  smallestNoticeDays: 1,
+  largestNoticeDays: 7,
+} as const;
+
 /** Where the owner sits between "encoded by an admin" and "signed in". */
 export type InvitationStatus = {
   isAccepted: boolean;
@@ -573,6 +600,10 @@ export type FacilityOwnerDetail = {
   gcashQrCodeUrl: string | null;
   /** How long a booking holds a court while it waits to be paid for. */
   partialBookingExpiryMinutes: number;
+  /** How many times a customer may move one booking. */
+  moveLimit: number;
+  /** How many days before a booking starts moves close. */
+  moveNoticeDays: number;
   /** False while the venue has given neither a number nor a QR code. */
   canTakePayment: boolean;
   isActive: boolean;

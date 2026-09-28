@@ -12,7 +12,7 @@ import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import Pager, { perPageOptions } from "@/app/components/ui/Pager";
 import { day, hour, peso } from "../BookingDetails";
 import { activityIcon } from "@auth/catalogApi";
-import { waitingFor, type DeskUpgrade, type DeskUpgradeTab } from "@auth/deskApi";
+import { isUpgrade, waitingFor, type DeskUpgrade, type DeskUpgradeTab } from "@auth/deskApi";
 import { useDeskUpgradeDecision, useDeskUpgrades, useDeskVenues } from "@auth/hooks/useDesk";
 import DeclineUpgradeDialog from "../DeclineUpgradeDialog";
 
@@ -64,11 +64,12 @@ function Side({
 }
 
 /**
- * One upgrade, shut until somebody opens it.
+ * One move request, shut until somebody opens it.
  *
- * Shut, it says who and which court and how much — enough to work down the
- * queue. Open, it shows both sides of the swap and the receipt itself, because
- * the job is looking at that picture and at whether that court is free.
+ * Shut, it says who and which court, and for an upgrade how much — enough to
+ * work down the queue. Open, it shows both sides of the swap and, for an
+ * upgrade, the receipt itself, because then the job is that picture as well as
+ * whether that court is free.
  */
 function UpgradeCard({
   upgrade,
@@ -83,6 +84,7 @@ function UpgradeCard({
 }) {
   const [open, setOpen] = useState(false);
   const waiting = upgrade.status === "AwaitingApproval";
+  const paid = isUpgrade(upgrade);
   const icon = activityIcon(upgrade.sportKey);
 
   return (
@@ -110,7 +112,16 @@ function UpgradeCard({
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold text-[#071955]">{upgrade.customerName}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-bold text-[#071955]">{upgrade.customerName}</span>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                paid ? "bg-violet-50 text-violet-700" : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {paid ? "Upgrade" : "Move"}
+            </span>
+          </span>
           <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-slate-500">
             <span className="truncate">{upgrade.fromCourtName}</span>
             <ArrowForwardOutlined sx={{ fontSize: 14 }} className="shrink-0" aria-hidden />
@@ -119,10 +130,13 @@ function UpgradeCard({
         </span>
 
         <span className="hidden text-right sm:block">
-          <span className="block font-bold text-[#071955]">{peso(upgrade.balanceDue)}</span>
+          <span className="block font-bold text-[#071955]">
+            {paid ? peso(upgrade.balanceDue) : "Nothing to pay"}
+          </span>
           <span className="mt-0.5 block text-xs font-semibold text-slate-400">
             {waiting
-              ? waitingFor(upgrade.receiptUploadedAt, new Date())
+              ? // An upgrade has waited since it was paid, a move since it was asked for.
+                waitingFor(upgrade.receiptUploadedAt ?? upgrade.requestedAt, new Date())
               : upgrade.settledAt && day(upgrade.settledAt)}
           </span>
         </span>
@@ -171,10 +185,17 @@ function UpgradeCard({
           <dl className="mt-5 space-y-1 text-sm">
             <Row label="Court rental they have paid" value={peso(upgrade.rentalNow)} />
             <Row label="Court rental for the new hours" value={peso(upgrade.rentalNew)} />
-            <div className="flex justify-between gap-4 border-t border-slate-100 pt-2">
-              <dt className="font-bold text-[#071955]">They sent you</dt>
-              <dd className="text-lg font-extrabold text-[#071955]">{peso(upgrade.balanceDue)}</dd>
-            </div>
+            {paid ? (
+              <div className="flex justify-between gap-4 border-t border-slate-100 pt-2">
+                <dt className="font-bold text-[#071955]">They sent you</dt>
+                <dd className="text-lg font-extrabold text-[#071955]">{peso(upgrade.balanceDue)}</dd>
+              </div>
+            ) : (
+              <p className="border-t border-slate-100 pt-2 text-slate-500">
+                The new hours cost the same or less, so there is nothing to pay and nothing to
+                refund.
+              </p>
+            )}
           </dl>
 
           <dl className="mt-5 space-y-1 border-t border-slate-100 pt-4 text-sm">
@@ -253,12 +274,12 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The queue of upgrades waiting to be checked.
+ * The queue of moves waiting on the desk: free ones, and upgrades once paid.
  *
  * Its own page rather than a row in the booking queue, because it is a
  * different decision. Confirming a booking asks whether a payment is real;
- * this asks that and whether a particular court is free, and the two need
- * different things on screen.
+ * this asks whether a particular court is free, and for an upgrade whether
+ * the difference arrived too.
  */
 function DeskUpgradesView() {
   const { enqueueSnackbar } = useSnackbar();
@@ -304,7 +325,7 @@ function DeskUpgradesView() {
     try {
       await decline.mutateAsync({ upgradeId: declining.id, reason });
       enqueueSnackbar(
-        `${declining.customerName}'s upgrade was declined. Their booking has not moved.`,
+        `${declining.customerName}'s ${isUpgrade(declining) ? "upgrade" : "move"} was declined. Their booking has not moved.`,
         { variant: "success" },
       );
       setDeclining(null);
@@ -326,14 +347,16 @@ function DeskUpgradesView() {
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
-        <Breadcrumbs trail={[{ label: "Venue desk", href: "/desk" }, { label: "Upgrades" }]} />
+        <Breadcrumbs trail={[{ label: "Venue desk", href: "/desk" }, { label: "Move requests" }]} />
 
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-          Upgrades
+          Move requests
         </h1>
         <p className="mt-2 max-w-2xl text-slate-500">
-          Customers who have paid to move onto a court that costs more. Check the receipt and that
-          the court is free, then approve it — the booking moves the moment you do.
+          Customers asking to move their booking to another court or time. Check the court is free
+          — and for an <b>upgrade</b>, that their payment for the difference arrived — then approve
+          it, and the booking moves the moment you do. A move you decline is not counted against
+          them.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
@@ -382,8 +405,8 @@ function DeskUpgradesView() {
         {upgrades.data && rows.length === 0 && (
           <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center text-slate-500">
             {tab === "Waiting"
-              ? "No upgrades are waiting on you."
-              : "No upgrade has been settled here yet."}
+              ? "No move requests are waiting on you."
+              : "No move request has been settled here yet."}
           </p>
         )}
 
@@ -406,8 +429,8 @@ function DeskUpgradesView() {
           pageSize={perPage}
           totalItems={pagination?.totalItems ?? 0}
           totalPages={pagination?.totalPages ?? 1}
-          noun={{ one: "upgrade", many: "upgrades" }}
-          label="Upgrade pages"
+          noun={{ one: "request", many: "requests" }}
+          label="Move request pages"
           onPageChange={setPage}
           onPageSizeChange={(size) => look(() => setPerPage(size))}
         />

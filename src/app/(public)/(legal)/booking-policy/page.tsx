@@ -26,9 +26,9 @@ const sections = [
           moves: it never passes through us, so there is nothing for us to give back.
         </p>
         <p>
-          What you can do instead is move it — to another court, other hours, or another date. Each
-          venue sets how many times one booking may be moved. See &ldquo;Moving a booking&rdquo;
-          below.
+          What you can do instead is ask to move it — to another court, other hours, or another
+          date — which the venue approves. Each venue sets how many times one booking may be moved
+          and how close to its start moves stop. See &ldquo;Moving a booking&rdquo; below.
         </p>
       </>
     ),
@@ -113,6 +113,12 @@ const sections = [
           to another date. This is the answer to something coming up, and it is what to reach for
           instead of asking to cancel.
         </p>
+        <p>
+          <strong>Every move is a request the venue approves.</strong> Until they do, your booking
+          stays exactly where it is and the hours you asked for are held for you. If they decline
+          it, nothing about your booking changes, you are told why, and the request is not counted
+          against your moves.
+        </p>
         <ul>
           <li>
             <strong>Only within the same venue, and the same sport.</strong> A move changes where
@@ -124,6 +130,13 @@ const sections = [
             number of hours it has, and a booking sold by the day moves the same number of days.
             Where those hours or days land is yours to choose. A move changes when and where a
             booking is, never how much of it there is.
+          </li>
+          <li>
+            <strong>Not inside the venue&apos;s notice.</strong> Each venue sets how close to its
+            start a booking can still be moved — between one day (24 hours) and a week, and two
+            days unless the venue says otherwise. Once your booking is closer to its start than
+            that, it can no longer be moved until it is under way. Your booking shows the notice
+            its venue uses.
           </li>
           <li>
             <strong>An hourly booking can move before it starts, or while it is being played.</strong>{" "}
@@ -139,9 +152,10 @@ const sections = [
             on one court and an afternoon on another, which is not what you booked.
           </li>
           <li>
-            <strong>A limited number of times</strong>, set by each venue. A booking that can be
-            carried forward for ever is an option on the venue&apos;s calendar rather than a
-            booking, and the venue is the one turning other people away to keep holding it.
+            <strong>A limited number of times</strong>, set by each venue. Only moves the venue
+            approves are counted. A booking that can be carried forward for ever is an option on the
+            venue&apos;s calendar rather than a booking, and the venue is the one turning other
+            people away to keep holding it.
           </li>
         </ul>
         <p>
@@ -149,8 +163,9 @@ const sections = [
           nothing else — you are buying no extra hours, so the platform fee does not change either.
           You are told what it comes to before you commit to anything, and the hours are held for
           you while you pay. <strong>The booking moves only once the venue has seen the
-          payment</strong>, and the venue can decline it, in which case your booking stays exactly
-          where it was and you are told why.
+          payment</strong> and approved the move, and the venue can decline it, in which case your
+          booking stays exactly where it was and you are told why. Any money you sent for the
+          difference is with the venue, so ask them for it back.
         </p>
         <p>
           <strong>If they cost less</strong>, nothing is charged and nothing is returned. There are
@@ -169,7 +184,8 @@ const sections = [
       <>
         <p>
           Not turning up does not entitle you to a refund or a replacement booking. If you know you
-          cannot make it, move the booking while you still can.
+          cannot make it, ask to move the booking while you still can — before the venue&apos;s
+          notice closes.
         </p>
         <p>
           If the venue cancels or closes — maintenance, weather, or anything else on their side —
@@ -177,7 +193,7 @@ const sections = [
         </p>
         <p>
           A venue cannot move your booking for you. If a court develops a problem they will ask you
-          to move it yourself, and the move is then yours to make and yours to refuse.
+          to request a move yourself, and the move is then yours to ask for and yours to refuse.
         </p>
       </>
     ),

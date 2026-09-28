@@ -40,6 +40,12 @@ const fieldLabels: Record<string, string> = {
   endDate: "End date",
   notes: "Notes",
   facilityOwnerId: "Facility owner",
+  gcashNumber: "GCash number",
+  gcashAccountName: "GCash account name",
+  gcashQrCode: "GCash QR code",
+  partialBookingExpiryMinutes: "Hold a court for (minutes)",
+  moveLimit: "Moves per booking",
+  moveNoticeDays: "Moves close (days before it starts)",
 };
 
 function parse(json: string | null): Record<string, string | null> {

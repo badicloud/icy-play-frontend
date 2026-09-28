@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DeskUpgrade } from "@auth/deskApi";
+import { isUpgrade, type DeskUpgrade } from "@auth/deskApi";
 
 type DeclineUpgradeDialogProps = {
   /** Null when nothing is being turned down. */
@@ -38,16 +38,19 @@ function DeclineUpgradeDialog({
   }
 
   const tooShort = reason.trim().length < 5;
+  const paid = isUpgrade(upgrade);
+  const kind = paid ? "upgrade" : "move";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-6">
       <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
         <h2 className="text-lg font-extrabold text-[#071955]">
-          Decline {upgrade.customerName}&rsquo;s upgrade
+          Decline {upgrade.customerName}&rsquo;s {kind}
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Their booking stays exactly where it is, on {upgrade.fromCourtName}. They have sent you
-          money for this, so say what was wrong — they are shown what you write.
+          {paid
+            ? `Their booking stays exactly where it is, on ${upgrade.fromCourtName}. They have sent you money for this, so say what was wrong — they are shown what you write.`
+            : `Their booking stays exactly where it is, on ${upgrade.fromCourtName}, and it does not count against their moves. Say why — they are emailed what you write.`}
         </p>
 
         <label className="mt-4 block text-sm font-bold text-[#071955]">
@@ -56,7 +59,11 @@ function DeclineUpgradeDialog({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             rows={3}
-            placeholder="We could not find that payment in our GCash account."
+            placeholder={
+              paid
+                ? "We could not find that payment in our GCash account."
+                : "That court is booked for a league that night."
+            }
             className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 focus:border-[#2563EB] focus:outline-none"
           />
         </label>
@@ -76,7 +83,7 @@ function DeclineUpgradeDialog({
             onClick={() => onDecline(reason.trim())}
             className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSaving ? "Declining…" : "Decline the upgrade"}
+            {isSaving ? "Declining…" : `Decline the ${kind}`}
           </button>
         </div>
       </div>

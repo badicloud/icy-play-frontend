@@ -514,6 +514,14 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
             {/* The limit is the venue's own dial, set from its desk, so the
                 number has to come from the booking rather than be written in
                 here. A venue that allows one move would have been told three. */}
+            {/* Closed by the venue's notice rather than by the count. Said, so
+                a button that was there last week is not simply gone. */}
+            {booking.movesLeft > 0 && booking.isInsideMoveNotice && booking.upgradeStatus === null && (
+              <span className="text-sm font-semibold text-slate-400">
+                {`Moves close ${booking.moveNoticeDays === 1 ? "a day" : `${booking.moveNoticeDays} days`} before a booking starts — contact the venue if you need to change it.`}
+              </span>
+            )}
+
             {booking.movesLeft === 0 && (
               <span className="text-sm font-semibold text-slate-400">
                 {Number.isFinite(booking.moveLimit)

@@ -143,7 +143,7 @@ function badge(count: number) {
  *
  * Only there while something is waiting — a bell that is always on the header
  * is one people stop seeing. It shakes, rests and shakes again, and carries
- * the count: payments to check and upgrades to approve together, because both
+ * the count: payments to check and moves to approve together, because both
  * are a customer waiting on this desk for an answer.
  */
 function WaitingBell({ count }: { count: number }) {
@@ -382,7 +382,7 @@ function HeaderAccountMenu() {
               {waiting.upgrades > 0 && (
                 <WaitingItem
                   href="/desk/upgrades"
-                  label={waiting.upgrades === 1 ? "Upgrade to approve" : "Upgrades to approve"}
+                  label={waiting.upgrades === 1 ? "Move request to answer" : "Move requests to answer"}
                   count={waiting.upgrades}
                   onSelect={close}
                 />

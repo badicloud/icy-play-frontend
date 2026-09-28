@@ -1,5 +1,6 @@
 "use client";
 
+import { useSnackbar } from "notistack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,6 +64,7 @@ function MoveBookingDialog({
   onClose: () => void;
 }) {
   const client = useQueryClient();
+  const { enqueueSnackbar } = useSnackbar();
 
   // The dates chosen, in the order the picker keeps them: sorted, so a run
   // reads as a run however it was clicked together.
@@ -237,6 +239,13 @@ function MoveBookingDialog({
     onSuccess: (updated) => {
       client.setQueryData(["booking", updated.id], updated);
       void client.invalidateQueries({ queryKey: ["my-bookings"] });
+      // Asked, not done — said so, because the card behind this dialog still
+      // shows the old court and somebody who thought it had moved would read
+      // that as a failure.
+      enqueueSnackbar(
+        "Sent to the venue. Your booking stays where it is until they approve the move — we will email you their answer.",
+        { variant: "success" },
+      );
       onClose();
     },
     onError: (error) =>
@@ -309,7 +318,11 @@ function MoveBookingDialog({
             </dl>
           </div>
 
-          <MovesLeft left={booking.movesLeft} limit={booking.moveLimit} />
+          <MovesLeft
+            left={booking.movesLeft}
+            limit={booking.moveLimit}
+            noticeDays={booking.moveNoticeDays}
+          />
 
           {/* A booking sold by the day, once that day has started, does not
               move — and the button that opens this dialog is not shown for it.
@@ -617,10 +630,11 @@ function MoveBookingDialog({
               {/* -------------------------------------------- what it comes to */}
               {picked !== null && <Settlement booking={booking} court={picked} />}
 
-              {/* Asked here only for a free move, which happens the moment the
-                  button is pressed. An upgrade is asked on the checkout, before
-                  it is sent — the note is the customer's own words and does not
-                  belong in the address the button below carries. */}
+              {/* Asked here only for a free move, which goes to the venue the
+                  moment the button is pressed. An upgrade is asked on the
+                  checkout, before it is sent — the note is the customer's own
+                  words and does not belong in the address the button below
+                  carries. */}
               {picked !== null && !picked.isUpgrade && (
                 <MoveReasonPicker value={why} onChange={setWhy} disabled={move.isPending} />
               )}
@@ -634,6 +648,8 @@ function MoveBookingDialog({
           )}
 
           <p className="mt-4 text-[12.5px] leading-6 font-medium text-slate-600">
+            Every move is approved by the venue first. Until they do, your booking stays where it
+            is and the hours you asked for are held for you; a move they decline is not counted.
             Once your booking moves, the hours you leave go back on sale. If the new court costs
             less, the difference is not refunded — see the{" "}
             <Link
@@ -658,11 +674,11 @@ function MoveBookingDialog({
             Keep it where it is
           </button>
 
-          {/* A court that costs more cannot simply be moved onto — nothing
+          {/* A court that costs more cannot simply be asked for — nothing
               collects money on the way — so it goes to the checkout instead,
               and the button says which of the two is about to happen. The
               choice travels in the address so a refresh on the next page does
-              not lose it. */}
+              not lose it. Either way the venue approves before anything moves. */}
           {picked !== null && picked.isUpgrade ? (
             <Link
               href={upgradeHref(booking.id, picked, underWay)}
@@ -683,7 +699,7 @@ function MoveBookingDialog({
                   : "cursor-not-allowed bg-slate-200 text-slate-400"
               }`}
             >
-              {move.isPending ? "Moving…" : "Move it"}
+              {move.isPending ? "Sending…" : "Send to the venue"}
             </button>
           )}
         </div>
@@ -785,7 +801,8 @@ function Settlement({ booking, court }: { booking: BookingDetail; court: MoveOpt
               ? `That comes to ${peso(court.movingRentalNew)} instead of ${peso(
                   court.movingRentalNow,
                 )}. The difference is not refunded, so your bill stays the same.`
-              : `${court.courtName} charges the same, so the move is free.`}
+              : `${court.courtName} charges the same, so the move is free.`}{" "}
+            The venue is asked to approve it, and your booking moves once they do.
           </p>
         </div>
       )}
@@ -806,7 +823,15 @@ function Settlement({ booking, court }: { booking: BookingDetail; court: MoveOpt
  * and an older API that does not send it must not turn the panel into "NaN of
  * undefined" — better to say only what is actually known.
  */
-function MovesLeft({ left, limit }: { left: number; limit: number | undefined }) {
+function MovesLeft({
+  left,
+  limit,
+  noticeDays,
+}: {
+  left: number;
+  limit: number | undefined;
+  noticeDays: number | undefined;
+}) {
   const known = Number.isFinite(limit) && (limit as number) > 0;
   const used = known ? (limit as number) - left : null;
 
@@ -840,7 +865,11 @@ function MovesLeft({ left, limit }: { left: number; limit: number | undefined })
               `This venue allows ${limit} ${limit === 1 ? "move" : "moves"} per booking${
                 used ? `, and you have used ${used}` : ""
               }. `}
-            Once they run out, the booking stays where it is.
+            Only moves the venue approves are counted, and once they run out the booking stays
+            where it is.
+            {Number.isFinite(noticeDays) &&
+              (noticeDays as number) > 0 &&
+              ` Moves close ${noticeDays === 1 ? "a day" : `${noticeDays} days`} before the booking starts.`}
           </>
         )}
       </div>

@@ -11,6 +11,7 @@ import TrendingUpOutlined from "@mui/icons-material/TrendingUpOutlined";
 import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import { useDeskBookings, useDeskUpgrades, useDeskVenues } from "@auth/hooks/useDesk";
+import { isUpgrade } from "@auth/deskApi";
 
 type DeskSection = {
   title: string;
@@ -39,9 +40,9 @@ const sections: DeskSection[] = [
     icon: <ReceiptLongOutlined />,
   },
   {
-    title: "Upgrades",
+    title: "Move requests",
     description:
-      "Customers who have paid to move onto a court that costs more. Check the receipt, then approve it and the booking moves.",
+      "Customers asking to move a booking to another court or time. Approve it and the booking moves — an upgrade has a payment to check first.",
     href: "/desk/upgrades",
     icon: <TrendingUpOutlined />,
   },
@@ -54,7 +55,7 @@ const sections: DeskSection[] = [
   {
     title: "Settings",
     description:
-      "How long you hold a court for somebody who has not paid yet, and how often a booking may be moved.",
+      "How long you hold a court for somebody who has not paid yet, how often a booking may be moved, and how close to its start moves stop — with a history of every change.",
     href: "/desk/settings",
     icon: <TuneOutlined />,
   },
@@ -133,10 +134,13 @@ function DeskOverviewView() {
   const venues = useDeskVenues();
   const seesMoney = venues.data?.every((venue) => venue.canSeeMoney) ?? false;
   const waiting = useDeskBookings({ tab: "Waiting", page: 1, pageSize: 1 });
-  const upgrades = useDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 1 });
+  // A page of them rather than just the count, so the banner can say whether
+  // any have money to check. The queue is short; fifty covers it.
+  const upgrades = useDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 50 });
 
   const count = waiting.data?.pagination.totalItems ?? 0;
   const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
+  const paidCount = upgrades.data?.data.filter(isUpgrade).length ?? 0;
   const firstName = user?.fullName?.split(" ")[0] ?? "there";
 
   return (
@@ -188,11 +192,15 @@ function DeskOverviewView() {
           </span>
         </Link>
 
-        {/* Its own banner rather than folded into the count above. An upgrade
-            is a different job — check a receipt AND check a court is free —
-            and a single number covering both would send somebody to the wrong
-            queue. Shown only when there is one: an empty second banner is a
-            line of furniture on a page whose whole point is what needs doing. */}
+        {/* Its own banner rather than folded into the count above. A move is a
+            different job — check a court is free, and for an upgrade a receipt
+            too — and a single number covering both would send somebody to the
+            wrong queue. Shown only when there is one: an empty second banner is
+            a line of furniture on a page whose whole point is what needs doing.
+
+            "Upgrade" only when every one of them has money to check. A free
+            move called an upgrade sends somebody looking for a payment that
+            was never made. */}
         {upgradeCount > 0 && (
           <Link
             href="/desk/upgrades"
@@ -200,17 +208,27 @@ function DeskOverviewView() {
           >
             <span>
               <span className="block text-lg font-extrabold text-[#071955]">
-                {upgradeCount === 1
-                  ? "One upgrade is waiting to be checked"
-                  : `${upgradeCount} upgrades are waiting to be checked`}
+                {paidCount === upgradeCount
+                  ? upgradeCount === 1
+                    ? "One upgrade is waiting to be checked"
+                    : `${upgradeCount} upgrades are waiting to be checked`
+                  : upgradeCount === 1
+                    ? "One move request is waiting on you"
+                    : `${upgradeCount} move requests are waiting on you`}
               </span>
               <span className="mt-1 block text-sm text-slate-600">
-                Somebody has paid to move onto a better court and is waiting to hear they can.
+                {paidCount === upgradeCount
+                  ? "Somebody has paid to move onto a better court and is waiting to hear they can."
+                  : paidCount === 0
+                    ? upgradeCount === 1
+                      ? "A customer wants to move their booking and is waiting for your answer."
+                      : "Customers want to move their bookings and are waiting for your answer."
+                    : `${paidCount} of them paid to upgrade — check the payment before you approve those.`}
               </span>
             </span>
 
             <span className="rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20">
-              Open upgrades
+              Open move requests
             </span>
           </Link>
         )}

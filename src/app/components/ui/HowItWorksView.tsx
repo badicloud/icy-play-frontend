@@ -62,7 +62,7 @@ const questions = [
   },
   {
     q: "Can I cancel?",
-    a: "No, and there are no refunds through IcyPlay — you pay the venue directly, so we never hold your money and have nothing to give back. What you can do instead is move it: to another court, to other hours, or to another date.",
+    a: "No, and there are no refunds through IcyPlay — you pay the venue directly, so we never hold your money and have nothing to give back. What you can do instead is ask the venue to move it: to another court, to other hours, or to another date.",
     policy: "Bookings are final",
   },
   {
@@ -76,7 +76,8 @@ const questions = [
         <ul className="ml-5 list-disc space-y-2">
           <li>
             <strong>It has not started yet.</strong> Pick a new date, new hours if it is an hourly
-            booking, and a new court — any one of those, or all of them.
+            booking, and a new court — any one of those, or all of them — up to the venue&apos;s
+            notice before it starts (two days unless the venue sets its own).
           </li>
           <li>
             <strong>An hourly booking already being played.</strong> You pick a court, and only a
@@ -94,13 +95,14 @@ const questions = [
           days.
         </p>
         <p>
-          <strong>If the move costs nothing extra</strong>, it happens straight away — as long as
-          you are still inside the number of moves your venue allows.
+          <strong>Every move is approved by the venue.</strong> Until they do, your booking stays
+          where it is and the hours you asked for are held for you. A move they decline does not
+          count against the number of moves your venue allows.
         </p>
         <p>
           <strong>If it costs more</strong>, you are told the difference before you commit and you
           pay that and nothing else. The booking only moves once somebody at the venue has seen that
-          payment, and they can decline it — in which case your booking stays exactly where it was.
+          payment — and if they decline it, your booking stays exactly where it was.
         </p>
         <p>
           If it costs less, nothing is charged and nothing is returned. The hours you leave go

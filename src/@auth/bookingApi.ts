@@ -261,13 +261,29 @@ export type BookingDetail = {
     | "Expired"
     | null;
   upgradeToCourtName: string | null;
+  /**
+   * What the open move asks the customer to pay: nought on a plain move, which
+   * goes straight to the venue, and the difference on an upgrade. Null when
+   * nothing is open.
+   */
+  upgradeBalanceDue: number | null;
   slots: BookedSlot[];
   /** How many moves this booking has left. Zero and it stays where it is. */
   movesLeft: number;
   /** How many it was allowed in all — the venue's own dial. */
   moveLimit: number;
-  /** Whether it can be moved right now: moves left, and an hour still to play. */
+  /** How many days before it starts this venue stops taking moves. */
+  moveNoticeDays: number;
+  /**
+   * Whether it can be moved right now: moves left, not inside the venue's
+   * notice, no move already waiting, and an hour still to play.
+   */
   canBeMoved: boolean;
+  /**
+   * Whether it has not started and is already inside the venue's notice, so
+   * moves are closed. Said by the server, on the venue's clock.
+   */
+  isInsideMoveNotice: boolean;
   /**
    * Whether the booking has started, on the venue's clock.
    *

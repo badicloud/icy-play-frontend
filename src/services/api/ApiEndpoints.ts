@@ -89,6 +89,8 @@ export const API_ENDPOINTS = {
       `${attendantsBase(id, facilityId)}/check`,
     FACILITY_OWNER_PAYMENT_DETAILS: (id: string) =>
       `${API_V1}/admin/facility-owners/${id}/payment-details`,
+    FACILITY_OWNER_MOVE_RULES: (id: string) =>
+      `${API_V1}/admin/facility-owners/${id}/move-rules`,
     CONTRACT_RATES: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
@@ -137,6 +139,7 @@ export const API_ENDPOINTS = {
   /** The venue's desk: what an owner or attendant confirms. */
   DESK: {
     SETTINGS: `${API_V1}/desk/settings`,
+    SETTINGS_HISTORY: `${API_V1}/desk/settings/history`,
     ATTENDANT_MONEY: (attendantId: string) => `${API_V1}/desk/attendants/${attendantId}/money`,
     VENUES: `${API_V1}/desk/venues`,
     BOOKINGS: `${API_V1}/desk/bookings`,

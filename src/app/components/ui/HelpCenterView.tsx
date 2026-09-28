@@ -146,8 +146,8 @@ const topics: Topic[] = [
         a: (
           <>
             No. There are no refunds through IcyPlay, because we never hold your money — there is
-            nothing for us to give back. What you can do instead is move the booking to another
-            date. <Policy section="Bookings are final" />
+            nothing for us to give back. What you can do instead is ask the venue to move the
+            booking to another date, time or court. <Policy section="Bookings are final" />
           </>
         ),
       },
@@ -168,7 +168,9 @@ const topics: Topic[] = [
             <ul className="ml-5 list-disc space-y-2">
               <li>
                 <strong>Not started yet.</strong> Pick a new date, new hours if it is an hourly
-                booking, and a new court — any one of those, or all of them.
+                booking, and a new court — any one of those, or all of them. You can ask up to the
+                venue&apos;s notice before it starts — two days unless the venue has set its own,
+                and shown on your booking.
               </li>
               <li>
                 <strong>An hourly booking already being played.</strong> You pick a court, and only
@@ -185,10 +187,10 @@ const topics: Topic[] = [
               hours — or for a day booking, the same number of days.
             </p>
             <p>
-              If the move costs nothing extra it happens straight away, as long as you are inside
-              the number of moves your venue allows. If it costs more you pay the difference, and
-              the booking moves only once somebody at the venue has seen that payment — they can
-              decline it, and then nothing about your booking changes.{" "}
+              Every move goes to the venue to approve. Until they do, your booking stays where it
+              is and the hours you asked for are held for you; we email you their answer. If it
+              costs more you pay the difference first. If they decline, nothing about your booking
+              changes and it does not count against the moves your venue allows.{" "}
               <Policy section="Moving a booking" />
             </p>
           </>
@@ -281,7 +283,8 @@ const topics: Topic[] = [
             You set it yourself, in the desk&apos;s settings: anywhere from five minutes to four
             hours. Five is the default, because paying by GCash takes about a minute and a longer
             hold is your court sitting dark while somebody makes up their mind. The same page sets
-            how many times one booking may be moved.
+            how many times one booking may be moved, and how many days before it starts moves stop
+            — one to seven, two by default. Every change is kept in the page&apos;s history.
           </>
         ),
       },

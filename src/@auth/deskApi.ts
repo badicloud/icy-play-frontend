@@ -377,6 +377,15 @@ export function declineDeskUpgrade(upgradeId: string, reason: string | null) {
 }
 
 /** How long a booking has been sitting there, said the way a person would. */
+/**
+ * Whether a move request is an upgrade: the customer has paid the difference
+ * for dearer hours. Everything else is a plain move with nothing to pay, and is
+ * never called an upgrade — there is no payment to check.
+ */
+export function isUpgrade(request: Pick<DeskUpgrade, "balanceDue">) {
+  return request.balanceDue > 0;
+}
+
 export function waitingFor(submittedAt: string | null, now: Date) {
   if (submittedAt === null) {
     return null;
@@ -404,8 +413,8 @@ export function waitingFor(submittedAt: string | null, now: Date) {
 }
 
 /**
- * The two dials a venue sets for itself, both about how long it is prepared to
- * hold a court for somebody who has not paid yet.
+ * The dials a venue sets for itself: how long it holds a court for somebody who
+ * has not paid yet, and how much moving it puts up with.
  *
  * The range travels with the values so the panel can say what is possible
  * rather than refusing after the fact.
@@ -417,6 +426,10 @@ export type DeskSettings = {
   largestExpiry: number;
   smallestMoveLimit: number;
   largestMoveLimit: number;
+  /** How many days before a booking starts moves close. */
+  moveNoticeDays: number;
+  smallestMoveNoticeDays: number;
+  largestMoveNoticeDays: number;
 };
 
 export function getDeskSettings() {
@@ -426,8 +439,34 @@ export function getDeskSettings() {
 export function updateDeskSettings(payload: {
   partialBookingExpiryMinutes: number;
   moveLimit: number;
+  moveNoticeDays: number;
 }) {
   return apiClient.put<DeskSettings, typeof payload>(API_ENDPOINTS.DESK.SETTINGS, payload);
+}
+
+/** One dial, before and after, by the name the server stores it under. */
+export type DeskSettingChange = {
+  setting: "partialBookingExpiryMinutes" | "moveLimit" | "moveNoticeDays" | string;
+  from: string | null;
+  to: string | null;
+};
+
+/**
+ * One time the dials were changed: who, when, and what each went from and to.
+ * A change the platform made for the venue is marked, so nobody at the desk
+ * wonders which of them did it.
+ */
+export type DeskSettingsChange = {
+  id: string;
+  changedAt: string;
+  changedBy: string | null;
+  byPlatform: boolean;
+  changes: DeskSettingChange[];
+  reason: string | null;
+};
+
+export function getDeskSettingsHistory() {
+  return apiClient.get<DeskSettingsChange[]>(API_ENDPOINTS.DESK.SETTINGS_HISTORY);
 }
 
 /*

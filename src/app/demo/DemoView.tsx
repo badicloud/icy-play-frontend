@@ -344,9 +344,11 @@ function DemoView() {
             <Card title="No refunds, and no need for them">
               <p>
                 Because the money never passes through the platform, there is nothing for it to
-                refund. Instead of cancelling, a customer can <strong>move</strong> a booking to
-                another date — up to three times, more than a day ahead, same hours, same court, and
-                the same kind of day so the price cannot change.
+                refund. Instead of cancelling, a customer can ask to <strong>move</strong> a
+                booking to another court, time or date at the same venue. The venue approves every
+                move, and sets how many a booking gets (three by default) and how close to its start
+                they stop (two days by default). A dearer court is paid for before the venue is
+                asked.
               </p>
               <p>
                 The venue keeps the money and keeps a booked hour. The customer keeps their court.
