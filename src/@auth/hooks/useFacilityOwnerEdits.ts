@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cancelContract,
   getFacilityOwnerActivity,
@@ -32,10 +32,18 @@ export function facilityOwnerActivityQueryKey(id: string) {
   return [...adminFacilityOwnersQueryKey, "activity", id] as const;
 }
 
+/**
+ * The trail a page at a time: the first on arrival, each next one when asked
+ * for with "Load more". Same key as before, so an edit that invalidates it
+ * still refreshes what is on screen.
+ */
 export function useFacilityOwnerActivity(id: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: facilityOwnerActivityQueryKey(id),
-    queryFn: () => getFacilityOwnerActivity(id),
+    queryFn: ({ pageParam }) => getFacilityOwnerActivity(id, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.pagination.page < last.pagination.totalPages ? last.pagination.page + 1 : undefined,
     enabled: id !== "",
   });
 }

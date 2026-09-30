@@ -42,6 +42,9 @@ export const API_ENDPOINTS = {
     DAY_OUTLOOK: (bookableCourtId: string) =>
       `${API_V1}/catalog/bookable-courts/${bookableCourtId}/day-outlook`,
   },
+  OPEN_PLAYS: {
+    ROOT: `${API_V1}/open-plays`,
+  },
   BOOKINGS: {
     ROOT: `${API_V1}/bookings`,
     ONE: (bookingId: string) => `${API_V1}/bookings/${bookingId}`,
@@ -98,6 +101,10 @@ export const API_ENDPOINTS = {
     SEED_VENUE: `${API_V1}/admin/seed/venue`,
     SEED_VENUES: `${API_V1}/admin/seed/venues`,
     SEED_ALLOWED: `${API_V1}/admin/seed/allowed`,
+    SEED_OPEN_PLAYS: `${API_V1}/admin/seed/open-plays`,
+    OWNER_OPEN_PLAYS: (ownerId: string) => `${API_V1}/admin/facility-owners/${ownerId}/open-plays`,
+    OWNER_OPEN_PLAY: (ownerId: string, openPlayId: string) =>
+      `${API_V1}/admin/facility-owners/${ownerId}/open-plays/${openPlayId}`,
     SPORTS: `${API_V1}/admin/sports`,
     SPORT: (id: string) => `${API_V1}/admin/sports/${id}`,
     SPORT_RETIRE: (id: string) => `${API_V1}/admin/sports/${id}/retire`,
@@ -167,5 +174,12 @@ export const API_ENDPOINTS = {
     MISSED: `${API_V1}/desk/reports/missed`,
     COURT_CHANGES: `${API_V1}/desk/reports/court-changes`,
     COURT_MIX: `${API_V1}/desk/reports/court-mix`,
+    OPEN_PLAYS: `${API_V1}/desk/open-plays`,
+    OPEN_PLAY: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}`,
+    OPEN_PLAY_PUBLISH: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/publish`,
+    OPEN_PLAY_UNPUBLISH: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/unpublish`,
+    OPEN_PLAY_END: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/end`,
+    OPEN_PLAY_PHOTO: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/photo`,
+    OPEN_PLAY_PHOTO_SIGNATURE: `${API_V1}/desk/open-plays/photo-signature`,
   },
 } as const;

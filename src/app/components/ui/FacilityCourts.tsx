@@ -16,6 +16,7 @@ import {
   type CatalogFacility,
 } from "@auth/catalogApi";
 import CourtResults from "./CourtResults";
+import OpenPlayHighlights from "./OpenPlayHighlights";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -171,6 +172,24 @@ function FacilityCourts({ slug }: { slug: string }) {
   return (
     <Shell>
       <Header facility={facility} />
+
+      {/* This venue's open plays, above the courts: somebody without a group
+          should find them before scrolling through courts they cannot fill. */}
+      <section id="open-play" className="pt-10">
+        <OpenPlayHighlights
+          facilityId={facility.id}
+          heading={
+            <div>
+              <p className="text-sm font-semibold tracking-[0.16em] text-[#2563EB] uppercase">
+                Open Play
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">
+                Join a game here
+              </h2>
+            </div>
+          }
+        />
+      </section>
 
       <section id="courts" className="pt-10">
         <p className="text-sm font-semibold tracking-[0.16em] text-[#2563EB] uppercase">

@@ -72,3 +72,55 @@ export function seededVenues() {
 export function removeSeededVenues() {
   return apiClient.delete<SeedRemoval>(API_ENDPOINTS.ADMIN.SEED_VENUES);
 }
+
+/** One sample open play standing now. */
+export type SeededOpenPlay = {
+  openPlayId: string;
+  title: string;
+  facilityName: string;
+  courtName: string;
+  sportName: string;
+  level: string;
+  /** "Monday, Wednesday", as the server names the flags. */
+  days: string;
+  startsAt: string;
+  endsAt: string;
+  registrationFee: number;
+  maxPlayers: number;
+  /** Made by somebody trying the product. They go with the open play. */
+  registrations: number;
+};
+
+/** What a seeding run put where, and which samples it skipped and why. */
+export type OpenPlaySeedResult = {
+  venues: number;
+  openPlays: SeededOpenPlay[];
+  skipped: string[];
+};
+
+export type OpenPlaySeedRemoval = {
+  openPlays: number;
+  sessions: number;
+  registrations: number;
+};
+
+/**
+ * Puts sample open plays on every demo venue. Demo venues only: an open play
+ * blocks its court hours, so a sample one on a real venue would turn real
+ * customers away.
+ */
+export function buildSampleOpenPlays() {
+  return apiClient.post<OpenPlaySeedResult, Record<string, never>>(
+    API_ENDPOINTS.ADMIN.SEED_OPEN_PLAYS,
+    {},
+  );
+}
+
+export function seededOpenPlays() {
+  return apiClient.get<SeededOpenPlay[]>(API_ENDPOINTS.ADMIN.SEED_OPEN_PLAYS);
+}
+
+/** Removes every sample open play with its sessions and registrations. The venues stay. */
+export function removeSampleOpenPlays() {
+  return apiClient.delete<OpenPlaySeedRemoval>(API_ENDPOINTS.ADMIN.SEED_OPEN_PLAYS);
+}

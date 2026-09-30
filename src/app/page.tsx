@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import PublicHeader from './components/ui/PublicHeader';
 import FacilityCatalog from './components/ui/FacilityCatalog';
+import OpenPlayHighlights from './components/ui/OpenPlayHighlights';
 import PublicFooter from './components/ui/PublicFooter';
 import generateMetadata from '@/utils/generateMetadata';
 
@@ -260,6 +261,32 @@ export default function LandingPage() {
 					</div>
 
 					<FacilityCatalog />
+				</section>
+
+				{/*
+					After the venues, for the reader who has no group to book a
+					whole court with. Each card opens the open play page on that
+					session. Renders nothing at all when no venue runs one.
+				*/}
+				<section
+					id="open-play"
+					className="pt-16"
+				>
+					<OpenPlayHighlights
+						heading={
+							<div>
+								<p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#2563EB]">
+									Open Play
+								</p>
+								<h2 className="mt-3 text-3xl font-bold tracking-normal text-slate-950">
+									No team? Join a game
+								</h2>
+								<p className="mt-2 max-w-2xl text-slate-600">
+									Pay per player and play with whoever turns up at your level.
+								</p>
+							</div>
+						}
+					/>
 				</section>
 
 				<section

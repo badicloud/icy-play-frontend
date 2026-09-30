@@ -6,7 +6,7 @@
  * is rendered on the server, need these. A constant shared between the two
  * cannot live in either.
  */
-export const publicNavItems = ["Courts and Events", "How It Works", "Help Center"];
+export const publicNavItems = ["Courts and Events", "Open Play", "How It Works", "Help Center"];
 
 /**
  * The items that are pages of their own rather than places on the landing page.
@@ -16,6 +16,7 @@ export const publicNavItems = ["Courts and Events", "How It Works", "Help Center
  * highlighting all follow from it.
  */
 const pages: Record<string, string> = {
+  "Open Play": "/open-play",
   "How It Works": "/how-it-works",
   "Help Center": "/help-center",
 };

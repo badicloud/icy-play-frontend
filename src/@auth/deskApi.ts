@@ -48,6 +48,8 @@ export type DeskVenue = {
   name: string;
   /** Whether its money reports are this person's to read: always the owner's; an attendant's once the owner shares them. */
   canSeeMoney: boolean;
+  /** yyyy-MM-dd at the venue, from the server's clock. What a date picker starts from. */
+  today?: string | null;
 };
 
 /** One attendant as their owner sees them on the desk. */

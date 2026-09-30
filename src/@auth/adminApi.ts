@@ -216,8 +216,20 @@ export type ActivityEntry = {
   createdAt: string;
 };
 
-export function getFacilityOwnerActivity(id: string) {
-  return apiClient.get<ActivityEntry[]>(API_ENDPOINTS.ADMIN.FACILITY_OWNER_ACTIVITY(id));
+export type ActivityPage = {
+  data: ActivityEntry[];
+  pagination: Pagination;
+};
+
+/** A screenful of the trail. The server caps a page at fifty whatever is asked. */
+export const activityPageSize = 20;
+
+/** One page of an owner's trail, newest first. */
+export function getFacilityOwnerActivity(id: string, page: number) {
+  return apiClient.get<ActivityPage>(API_ENDPOINTS.ADMIN.FACILITY_OWNER_ACTIVITY(id), {
+    query: { page, pageSize: activityPageSize },
+    unwrapData: false,
+  });
 }
 
 /** Plain English for what the trail records, so a reader is not left with a constant. */
@@ -238,6 +250,16 @@ export const activityActionLabels: Record<string, string> = {
   FacilityOwnerDeskSettingsUpdated: "Desk settings changed at the venue",
   FacilityOwnerMoveRulesUpdated: "Booking move rules changed",
   FacilityOwnerBookingRulesUpdated: "Booking rules changed",
+  FacilityAttendantAdded: "Attendant added",
+  FacilityAttendantRemoved: "Attendant removed",
+  FacilityAttendantInvitationSent: "Attendant invitation sent",
+  OpenPlayCreated: "Open play drafted",
+  OpenPlayUpdated: "Open play draft changed",
+  OpenPlayPublished: "Open play published",
+  OpenPlayUnpublished: "Open play taken back to a draft",
+  OpenPlayEnded: "Open play ended",
+  OpenPlayDraftDeleted: "Open play draft deleted",
+  OpenPlayPhotoChanged: "Open play photo changed",
 };
 
 export const roleLabels: Record<string, string> = {

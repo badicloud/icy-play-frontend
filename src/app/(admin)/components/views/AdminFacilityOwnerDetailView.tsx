@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -27,6 +27,8 @@ import {
 import { useAdminFacilityOwner } from "@auth/hooks/useAdminFacilityOwner";
 import { useResendInvitation } from "@auth/hooks/useResendInvitation";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
+import { OpenPlayList } from "@/app/(desk)/components/views/DeskOpenPlaysView";
+import { adminOpenPlaySource } from "@auth/deskOpenPlayApi";
 import ActivityTimeline from "../ActivityTimeline";
 import CourtsPanel from "../courts/CourtsPanel";
 import BusinessEditDialog from "../edit/BusinessEditDialog";
@@ -74,6 +76,86 @@ function formatSize(bytes: number) {
 
 function documentLabel(documentType: string) {
   return documentTypes.find((type) => type.value === documentType)?.label ?? documentType;
+}
+
+/**
+ * The page's sections, grouped. It used to be nine sections one under the
+ * other, and what an admin came for was a long scroll away from where they
+ * landed.
+ */
+const tabs = [
+  { id: "overview", label: "Overview" },
+  { id: "facilities", label: "Facilities" },
+  { id: "open-play", label: "Open play" },
+  { id: "contracts", label: "Contracts & documents" },
+  { id: "payments", label: "Payments & rules" },
+  { id: "activity", label: "Activity" },
+] as const;
+
+type TabId = (typeof tabs)[number]["id"];
+
+const isTab = (value: string | null): value is TabId =>
+  tabs.some((entry) => entry.id === value);
+
+function TabBar({
+  current,
+  onChange,
+  counts,
+  warnings,
+}: {
+  current: TabId;
+  onChange: (tab: TabId) => void;
+  counts: Partial<Record<TabId, number>>;
+  /** A tab hiding something that needs doing gets a dot, so tabs never bury it. */
+  warnings: Partial<Record<TabId, string>>;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Facility owner sections"
+      // Scrolls sideways on a phone rather than wrapping into a second row
+      // that reads like a second menu.
+      className="-mx-1 flex gap-1 overflow-x-auto border-b border-slate-200 px-1"
+    >
+      {tabs.map((entry) => {
+        const selected = current === entry.id;
+        const warning = warnings[entry.id];
+        const count = counts[entry.id];
+
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            id={`owner-tab-${entry.id}`}
+            aria-selected={selected}
+            aria-controls={`owner-panel-${entry.id}`}
+            title={warning}
+            onClick={() => onChange(entry.id)}
+            className={`relative -mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold whitespace-nowrap transition ${
+              selected
+                ? "border-[#2563EB] text-[#2563EB]"
+                : "border-transparent text-slate-500 hover:text-[#071955]"
+            }`}
+          >
+            {entry.label}
+            {count !== undefined && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  selected ? "bg-blue-50 text-[#2563EB]" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {count}
+              </span>
+            )}
+            {warning && (
+              <span className="h-2 w-2 rounded-full bg-amber-500" aria-label={warning} role="img" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function Section({
@@ -567,19 +649,62 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
   const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
   const [editingRates, setEditingRates] = useState<ContractDetail | null>(null);
   const [editingTerm, setEditingTerm] = useState<ContractDetail | null>(null);
+  const [tab, setTab] = useState<TabId>("overview");
+  const businessName = detail?.businessName;
+  const openPlaySource = useMemo(
+    () => adminOpenPlaySource(facilityOwnerId, businessName),
+    [facilityOwnerId, businessName],
+  );
+
+  // Which tab, read from the address once on arrival: ?tab= when a link or a
+  // refresh carries one, and Facilities when the facility inventory links to
+  // one venue with #facility-…. Read after mounting rather than during render,
+  // because the server has no address bar to read it from.
+  useEffect(() => {
+    const asked = new URLSearchParams(window.location.search).get("tab");
+
+    if (window.location.hash.startsWith("#facility-")) {
+      setTab("facilities");
+    } else if (isTab(asked)) {
+      setTab(asked);
+    }
+  }, []);
+
+  function showTab(next: TabId) {
+    setTab(next);
+
+    // replaceState rather than a push: switching tabs is not a place in
+    // anybody's history. The hash goes with it, or coming back to Facilities
+    // later would jump to a venue nobody asked for.
+    const url = new URL(window.location.href);
+
+    if (next === "overview") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", next);
+    }
+
+    url.hash = "";
+    window.history.replaceState(null, "", url.toString());
+  }
 
   // The facilities arrive with the query, not with the markup, so the browser
-  // has nothing to scroll to when it first reads the hash. Doing it here is
-  // what makes a link from the facility inventory land on its own venue.
+  // has nothing to scroll to when it first reads the hash. Doing it here, once
+  // the Facilities tab is the one drawn, is what makes a link from the
+  // facility inventory land on its own venue.
   useEffect(() => {
-    if (facilityCount === 0 || !window.location.hash.startsWith("#facility-")) {
+    if (
+      tab !== "facilities" ||
+      facilityCount === 0 ||
+      !window.location.hash.startsWith("#facility-")
+    ) {
       return;
     }
 
     document
       .getElementById(window.location.hash.slice(1))
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [facilityCount]);
+  }, [facilityCount, tab]);
 
   // Read from the term in force, falling back to the newest one when none is
   // live: the badge should describe the contract the status came from.
@@ -688,7 +813,35 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
               </Link>
             </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="mt-8">
+              <TabBar
+                current={tab}
+                onChange={showTab}
+                counts={{
+                  facilities: detail.facilities.length,
+                  contracts: detail.contracts.length + detail.documents.length,
+                }}
+                warnings={{
+                  contracts:
+                    detail.contracts.length === 0
+                      ? "No contract yet, so this owner is not bookable."
+                      : agreementOnFile
+                        ? undefined
+                        : "No signed agreement is attached to the term in force.",
+                  payments: detail.canTakePayment
+                    ? undefined
+                    : "No GCash number or QR code: customers cannot pay.",
+                }}
+              />
+            </div>
+
+            {tab === "overview" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-overview"
+              aria-labelledby="owner-tab-overview"
+              className="mt-6 grid gap-4"
+            >
               <Section title="Owner">
                 <Row label="Name" value={detail.owner.fullName} />
                 <Row label="Email" value={detail.owner.email} />
@@ -746,7 +899,16 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 <Row label="Billing phone" value={detail.billingPhone ?? <Blank />} />
                 <Row label="Onboarded" value={formatDate(detail.createdAt)} />
               </Section>
+            </div>
+            )}
 
+            {tab === "payments" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-payments"
+              aria-labelledby="owner-tab-payments"
+              className="mt-6 grid gap-4"
+            >
               <Section
                 title="Payment details"
                 action={<EditButton label="payment details" onClick={() => setDialog("payment")} />}
@@ -807,10 +969,19 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                 />
                 <p className="mt-3 text-sm text-slate-500">
                   Every move waits for the venue to approve it. The venue can change all three from
-                  its own desk too; each change is in the activity below.
+                  its own desk too; each change is in the Activity tab.
                 </p>
               </Section>
+            </div>
+            )}
 
+            {tab === "contracts" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-contracts"
+              aria-labelledby="owner-tab-contracts"
+              className="mt-6 grid gap-4"
+            >
               <Section title={`Documents (${detail.documents.length})`}>
                 {detail.documents.length === 0 ? (
                   <p className="text-sm text-slate-400">None attached.</p>
@@ -855,7 +1026,16 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                   </ul>
                 )}
               </Section>
+            </div>
+            )}
 
+            {tab === "facilities" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-facilities"
+              aria-labelledby="owner-tab-facilities"
+              className="mt-6 grid gap-4"
+            >
               <Section title={`Facilities (${detail.facilities.length})`}>
                 {detail.facilities.length === 0 ? (
                   <p className="text-sm text-slate-400">No facility recorded.</p>
@@ -873,10 +1053,36 @@ key={facility.id}
                   </div>
                 )}
               </Section>
+            </div>
+            )}
+
+            {tab === "open-play" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-open-play"
+              aria-labelledby="owner-tab-open-play"
+              className="mt-6 grid gap-4"
+            >
+              {/* The desk's own list, through the admin's door: the same
+                  actions under the same rules, recorded as the platform. */}
+              <Section title="Open play">
+                <OpenPlayList source={openPlaySource} />
+              </Section>
+            </div>
+            )}
+
+            {tab === "activity" && (
+            <div
+              role="tabpanel"
+              id="owner-panel-activity"
+              aria-labelledby="owner-tab-activity"
+              className="mt-6 grid gap-4"
+            >
               <Section title="Activity">
                 <ActivityTimeline facilityOwnerId={facilityOwnerId} />
               </Section>
             </div>
+            )}
 
             <PaymentDetailsDialog
               owner={detail}

@@ -10,6 +10,7 @@ import ChevronLeftOutlined from "@mui/icons-material/ChevronLeftOutlined";
 import ChevronRightOutlined from "@mui/icons-material/ChevronRightOutlined";
 import type { DatesSetArg, EventClickArg } from "@fullcalendar/core";
 import { bookingState, type DeskCourt, type ScheduleEntry } from "@auth/deskApi";
+import { openPlayHref } from "@auth/openPlayApi";
 import { useBookingFor, useCourtScheduleFor } from "@auth/hooks/useDesk";
 import { useBookingSource } from "./BookingSource";
 import BookingDetails from "./BookingDetails";
@@ -25,7 +26,11 @@ const tones: Record<string, { fill: string; border: string; text: string }> = {
   Confirmed: { fill: "#dcfce7", border: "#16a34a", text: "#14532d" },
   PendingVerification: { fill: "#fef3c7", border: "#d97706", text: "#78350f" },
   PendingPayment: { fill: "#e2e8f0", border: "#94a3b8", text: "#334155" },
+  // Not a booking: hours a published open play holds, off sale while it runs.
+  OpenPlay: { fill: "#dbeafe", border: "#2563eb", text: "#1e3a8a" },
 };
+
+const OpenPlay = "OpenPlay";
 
 const views = [
   { id: "timeGridDay", label: "Day" },
@@ -44,7 +49,8 @@ type CalendarEvent = {
   backgroundColor: string;
   borderColor: string;
   textColor: string;
-  extendedProps: { bookingId: string };
+  /** The booking's id, or the open play's when isOpenPlay is set. */
+  extendedProps: { bookingId: string; isOpenPlay: boolean };
 };
 
 /**
@@ -77,16 +83,20 @@ function runs(entries: ScheduleEntry[]): CalendarEvent[] {
     }
 
     const tone = tones[entry.status] ?? tones.PendingPayment;
+    const isOpenPlay = entry.status === OpenPlay;
 
     events.push({
       id: `${entry.bookingId}-${entry.date}-${entry.startsAt}`,
-      title: `${entry.unitLabel} · ${entry.customerName}`,
+      // An open play carries its title where a booking carries the customer.
+      title: isOpenPlay
+        ? `${entry.unitLabel} · Open play: ${entry.customerName}`
+        : `${entry.unitLabel} · ${entry.customerName}`,
       start: `${entry.date}T${entry.startsAt}`,
       end: `${entry.date}T${entry.endsAt}`,
       backgroundColor: tone.fill,
       borderColor: tone.border,
       textColor: tone.text,
-      extendedProps: { bookingId: entry.bookingId },
+      extendedProps: { bookingId: entry.bookingId, isOpenPlay },
     });
   }
 
@@ -184,7 +194,7 @@ function CourtCalendar({ court }: { court: DeskCourt }) {
 
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         <ul className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500">
-          {(["Confirmed", "PendingVerification", "PendingPayment"] as const).map((status) => (
+          {(["Confirmed", "PendingVerification", "PendingPayment", OpenPlay] as const).map((status) => (
             <li key={status} className="flex items-center gap-1.5">
               <span
                 className="inline-block h-3 w-3 rounded-sm border"
@@ -194,7 +204,7 @@ function CourtCalendar({ court }: { court: DeskCourt }) {
                 }}
                 aria-hidden
               />
-              {bookingState(status).label}
+              {status === OpenPlay ? "Open play" : bookingState(status).label}
             </li>
           ))}
         </ul>
@@ -218,9 +228,16 @@ function CourtCalendar({ court }: { court: DeskCourt }) {
             dayMaxEvents
             events={events}
             datesSet={handleDates}
-            eventClick={(arg: EventClickArg) =>
-              setSelected(arg.event.extendedProps.bookingId as string)
-            }
+            eventClick={(arg: EventClickArg) => {
+              // An open play is not a booking and has no booking to show.
+              // Its own page, the one customers see, says what it is.
+              if (arg.event.extendedProps.isOpenPlay) {
+                window.open(openPlayHref(arg.event.extendedProps.bookingId as string), "_blank");
+                return;
+              }
+
+              setSelected(arg.event.extendedProps.bookingId as string);
+            }}
           />
 
           {schedule.isError && (

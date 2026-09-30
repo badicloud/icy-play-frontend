@@ -47,6 +47,22 @@ const fieldLabels: Record<string, string> = {
   bookingWindowDays: "Customers can book up to (days ahead)",
   moveLimit: "Moves per booking",
   moveNoticeDays: "Moves close (days before it starts)",
+  // An open play's fields.
+  title: "Title",
+  bookableCourtId: "Court",
+  level: "Level",
+  maxPlayers: "Most players",
+  registrationFee: "Fee per player",
+  hours: "Hours",
+  days: "Days",
+  dates: "Dates",
+  cutoffMinutes: "Registration closes (minutes before)",
+  earlyBird: "Early bird",
+  status: "Status",
+  coverPhoto: "Cover photo",
+  lastDate: "Last date",
+  sessionsCancelled: "Sessions cancelled",
+  attendant: "Attendant",
 };
 
 function parse(json: string | null): Record<string, string | null> {
@@ -109,7 +125,15 @@ function EntryBody({ entry }: { entry: ActivityEntry }) {
 
 function ActivityTimeline({ facilityOwnerId }: { facilityOwnerId: string }) {
   const activity = useFacilityOwnerActivity(facilityOwnerId);
-  const entries = activity.data ?? [];
+  const pages = activity.data?.pages ?? [];
+  const total = pages[0]?.pagination.totalItems ?? 0;
+
+  // Pages are counted from the newest entry, so an edit made while somebody
+  // is reading pushes one entry onto the next page as well. Shown once.
+  const seen = new Set<string>();
+  const entries = pages
+    .flatMap((page) => page.data)
+    .filter((entry) => (seen.has(entry.id) ? false : (seen.add(entry.id), true)));
 
   if (activity.isError) {
     return (
@@ -128,6 +152,7 @@ function ActivityTimeline({ facilityOwnerId }: { facilityOwnerId: string }) {
   }
 
   return (
+    <>
     <ol className="relative space-y-5 border-l border-slate-200 pl-6">
       {entries.map((entry) => (
         <li key={entry.id} className="relative">
@@ -158,6 +183,30 @@ function ActivityTimeline({ facilityOwnerId }: { facilityOwnerId: string }) {
         </li>
       ))}
     </ol>
+
+    <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+      <p className="text-sm text-slate-500">
+        Showing {entries.length} of {total}
+      </p>
+
+      {activity.hasNextPage && (
+        <button
+          type="button"
+          disabled={activity.isFetchingNextPage}
+          onClick={() => void activity.fetchNextPage()}
+          className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-bold text-[#164eaa] transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
+        >
+          {activity.isFetchingNextPage ? "Loading…" : "Load more"}
+        </button>
+      )}
+
+      {activity.isFetchNextPageError && (
+        <p className="text-sm font-semibold text-red-700">
+          The next page could not be loaded. Try again.
+        </p>
+      )}
+    </div>
+    </>
   );
 }
 

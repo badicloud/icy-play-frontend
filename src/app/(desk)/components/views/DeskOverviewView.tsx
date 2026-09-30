@@ -4,6 +4,7 @@ import Link from "next/link";
 import BadgeOutlined from "@mui/icons-material/BadgeOutlined";
 import AssessmentOutlined from "@mui/icons-material/AssessmentOutlined";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
+import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import PaymentsOutlined from "@mui/icons-material/PaymentsOutlined";
 import ReceiptLongOutlined from "@mui/icons-material/ReceiptLongOutlined";
@@ -45,6 +46,13 @@ const sections: DeskSection[] = [
       "Customers asking to move a booking to another court or time. Approve it and the booking moves — an upgrade has a payment to check first.",
     href: "/desk/upgrades",
     icon: <TrendingUpOutlined />,
+  },
+  {
+    title: "Open play",
+    description:
+      "Group sessions players join per head. Save a draft, then publish it to open registration and hold the court.",
+    href: "/desk/open-play",
+    icon: <GroupsOutlined />,
   },
   {
     title: "Court bookings",
