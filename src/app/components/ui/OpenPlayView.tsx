@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import { getOpenPlays, openPlayLevel, openPlayLevelLabels } from "@auth/openPlayApi";
+import { getMyOpenPlayRegistrations, standingRegistrations } from "@auth/openPlayRegistrationApi";
 import { OpenPlayDetail } from "./OpenPlayCard";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -76,7 +78,31 @@ function OpenPlayView() {
     queryKey: ["catalog", "open-plays"],
     queryFn: () => getOpenPlays(),
     staleTime: 60 * 1000,
+    // Spots left move as other players join: read them again on opening,
+    // while the cached copy shows in the meantime.
+    refetchOnMount: "always",
   });
+
+  // A signed-in player's own registrations, so a date they are already on,
+  // or paying for, shows where it stands instead of offering Join again.
+  // Customers only: the endpoint is theirs, and an owner or admin browsing
+  // the page has none.
+  const { user } = useIcyPlayAuth();
+  const isCustomer = Boolean(user?.roles.includes("Customer"));
+
+  const mine = useQuery({
+    queryKey: ["my-open-plays"],
+    queryFn: getMyOpenPlayRegistrations,
+    enabled: isCustomer,
+    retry: false,
+    // Read again every time the page opens. The app holds queries for five
+    // minutes, and these change on other pages (a hold taken at checkout, a
+    // receipt sent, the venue confirming), so a cached copy is a stale tile.
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const standing = useMemo(() => standingRegistrations(mine.data ?? []), [mine.data]);
 
   const rows = useMemo(() => openPlays.data ?? [], [openPlays.data]);
 
@@ -194,6 +220,12 @@ function OpenPlayView() {
               key={openPlay.openPlayId}
               openPlay={openPlay}
               highlighted={openPlay.openPlayId === focusId}
+              mine={standing}
+              onHoldExpired={() => {
+                void mine.refetch();
+                // A released spot is one more spot left for everybody.
+                void openPlays.refetch();
+              }}
             />
           ))}
         </div>

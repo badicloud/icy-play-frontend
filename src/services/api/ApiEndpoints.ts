@@ -45,6 +45,12 @@ export const API_ENDPOINTS = {
   OPEN_PLAYS: {
     ROOT: `${API_V1}/open-plays`,
   },
+  OPEN_PLAY_REGISTRATIONS: {
+    REGISTER: (openPlayId: string) => `${API_V1}/open-plays/${openPlayId}/registrations`,
+    MINE: `${API_V1}/open-play-registrations`,
+    ONE: (registrationId: string) => `${API_V1}/open-play-registrations/${registrationId}`,
+    RECEIPT: (registrationId: string) => `${API_V1}/open-play-registrations/${registrationId}/receipt`,
+  },
   BOOKINGS: {
     ROOT: `${API_V1}/bookings`,
     ONE: (bookingId: string) => `${API_V1}/bookings/${bookingId}`,
@@ -181,5 +187,10 @@ export const API_ENDPOINTS = {
     OPEN_PLAY_END: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/end`,
     OPEN_PLAY_PHOTO: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/photo`,
     OPEN_PLAY_PHOTO_SIGNATURE: `${API_V1}/desk/open-plays/photo-signature`,
+    OPEN_PLAY_REQUESTS: `${API_V1}/desk/open-play-requests`,
+    OPEN_PLAY_REQUEST_CONFIRM: (registrationId: string) =>
+      `${API_V1}/desk/open-play-requests/${registrationId}/confirm`,
+    OPEN_PLAY_REQUEST_REJECT: (registrationId: string) =>
+      `${API_V1}/desk/open-play-requests/${registrationId}/reject`,
   },
 } as const;

@@ -387,6 +387,16 @@ function HeaderAccountMenu() {
                   onSelect={close}
                 />
               )}
+              {waiting.openPlays > 0 && (
+                <WaitingItem
+                  href="/desk/open-play-requests"
+                  label={
+                    waiting.openPlays === 1 ? "Open play payment to check" : "Open play payments to check"
+                  }
+                  count={waiting.openPlays}
+                  onSelect={close}
+                />
+              )}
             </MenuGroup>
           )}
 
@@ -395,6 +405,12 @@ function HeaderAccountMenu() {
               href="/bookings"
               icon={<BookingsIcon />}
               label="My bookings"
+              onSelect={close}
+            />
+            <MenuItem
+              href="/my-open-plays"
+              icon={<BookingsIcon />}
+              label="My open plays"
               onSelect={close}
             />
             <MenuItem

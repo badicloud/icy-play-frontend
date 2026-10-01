@@ -13,6 +13,8 @@ import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
 import { useDeskBookings, useDeskUpgrades, useDeskVenues } from "@auth/hooks/useDesk";
 import { isUpgrade } from "@auth/deskApi";
+import { useQuery } from "@tanstack/react-query";
+import { getDeskOpenPlayRequests } from "@auth/openPlayRegistrationApi";
 
 type DeskSection = {
   title: string;
@@ -53,6 +55,13 @@ const sections: DeskSection[] = [
       "Group sessions players join per head. Save a draft, then publish it to open registration and hold the court.",
     href: "/desk/open-play",
     icon: <GroupsOutlined />,
+  },
+  {
+    title: "Open play requests",
+    description:
+      "Players who have paid to join an open play. Check the receipt, then confirm it and they are registered.",
+    href: "/desk/open-play-requests",
+    icon: <ReceiptLongOutlined />,
   },
   {
     title: "Court bookings",
@@ -146,7 +155,13 @@ function DeskOverviewView() {
   // any have money to check. The queue is short; fifty covers it.
   const upgrades = useDeskUpgrades({ tab: "Waiting", page: 1, pageSize: 50 });
 
+  const openPlayWaiting = useQuery({
+    queryKey: ["desk", "open-play-requests", { tab: "Waiting", facilityId: null, page: 1, pageSize: 1 }],
+    queryFn: () => getDeskOpenPlayRequests({ tab: "Waiting", page: 1, pageSize: 1 }),
+  });
+
   const count = waiting.data?.pagination.totalItems ?? 0;
+  const openPlayCount = openPlayWaiting.data?.pagination.totalItems ?? 0;
   const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
   const paidCount = upgrades.data?.data.filter(isUpgrade).length ?? 0;
   const firstName = user?.fullName?.split(" ")[0] ?? "there";
@@ -237,6 +252,30 @@ function DeskOverviewView() {
 
             <span className="rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20">
               Open move requests
+            </span>
+          </Link>
+        )}
+
+        {/* Open play payments are their own queue, so their own banner: a
+            player who has paid to join is waiting to hear they are in. */}
+        {openPlayCount > 0 && (
+          <Link
+            href="/desk/open-play-requests"
+            className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-6 transition hover:border-amber-300"
+          >
+            <span>
+              <span className="block text-lg font-extrabold text-[#071955]">
+                {openPlayCount === 1
+                  ? "One open play payment is waiting to be checked"
+                  : `${openPlayCount} open play payments are waiting to be checked`}
+              </span>
+              <span className="mt-1 block text-sm text-slate-600">
+                A player is not registered until you confirm their payment.
+              </span>
+            </span>
+
+            <span className="rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20">
+              Open requests
             </span>
           </Link>
         )}

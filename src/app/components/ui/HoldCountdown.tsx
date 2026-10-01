@@ -25,10 +25,13 @@ function HoldCountdown({
   holdsUntil,
   compact = false,
   onExpired,
+  what = "court",
 }: {
   holdsUntil: string;
   compact?: boolean;
   onExpired?: () => void;
+  /** What is being held: a court for a booking, a spot for an open play. */
+  what?: string;
 }) {
   const [left, setLeft] = useState(() => Date.parse(holdsUntil) - Date.now());
   const told = useRef(false);
@@ -82,7 +85,7 @@ function HoldCountdown({
           : "border-blue-200 bg-blue-50 text-[#071955]"
       }`}
     >
-      Your court is held for <span className="font-extrabold">{shown}</span>. Upload your receipt
+      Your {what} is held for <span className="font-extrabold">{shown}</span>. Upload your receipt
       before then and the clock stops.
     </p>
   );

@@ -108,12 +108,14 @@ function Clashes({ clashes }: { clashes: OpenPlayClash[] }) {
 function OpenPlayRow({
   openPlay,
   editHref,
+  requestsHref,
   clashes,
   onAction,
 }: {
   openPlay: DeskOpenPlay;
   /** Where Edit goes: the desk's form or the admin's, for this open play. */
   editHref: string;
+  requestsHref: string | null;
   clashes: OpenPlayClash[];
   onAction: (action: Action) => void;
 }) {
@@ -153,8 +155,26 @@ function OpenPlayRow({
           <p className="mt-0.5 text-sm text-slate-500">
             From {formatSessionDate(openPlay.startDate)}
             {openPlay.endDate ? ` to ${formatSessionDate(openPlay.endDate)}` : ", until you end it"} · up to{" "}
-            {openPlay.maxPlayers} players · {openPlay.registrations}{" "}
-            {openPlay.registrations === 1 ? "registration" : "registrations"}
+            {openPlay.maxPlayers} players a session
+          </p>
+          {/* Across every date. Registered means confirmed by the desk; a
+              receipt nobody has checked yet is waiting, not registered. */}
+          <p className="mt-0.5 text-sm text-slate-500">
+            <span className="font-semibold text-green-700">{openPlay.registrations} registered</span>
+            {openPlay.waiting > 0 && (
+              <>
+                {" · "}
+                {requestsHref ? (
+                  <Link href={requestsHref} className="font-semibold text-amber-700 hover:underline">
+                    {openPlay.waiting} waiting for you to check
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-amber-700">
+                    {openPlay.waiting} waiting for the venue to check
+                  </span>
+                )}
+              </>
+            )}
           </p>
         </div>
 
@@ -394,6 +414,7 @@ export function OpenPlayList({ source }: { source: OpenPlaySource }) {
             key={openPlay.openPlayId}
             openPlay={openPlay}
             editHref={source.editHref(openPlay.openPlayId)}
+            requestsHref={source.requestsHref}
             clashes={clashes[openPlay.openPlayId] ?? []}
             onAction={(action) => {
               act.reset();

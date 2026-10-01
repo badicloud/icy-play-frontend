@@ -63,9 +63,12 @@ export type DeskOpenPlay = {
   createdAt: string;
   publishedAt: string | null;
   endedAt: string | null;
+  /** Registered players: the ones the venue has confirmed. */
   registrations: number;
   /** The open play's own cover photo; null when it has none. */
   coverPhotoUrl: string | null;
+  /** Receipts sent and waiting on the desk: not registered yet. */
+  waiting: number;
 };
 
 /** Something already holding hours the open play wants. */
@@ -109,6 +112,8 @@ export type OpenPlaySource = {
   /** Other caches a change makes stale, such as the owner's activity. */
   alsoInvalidates: (readonly unknown[])[];
   listHref: string;
+  /** Where waiting payments are checked, or null where this door has no queue to go to. */
+  requestsHref: string | null;
   /** The form: a new open play with no id, an existing one with it. */
   editHref: (openPlayId?: string) => string;
   /** The first crumbs of the form page's trail, before its own. */
@@ -161,6 +166,7 @@ export const deskOpenPlaySource: OpenPlaySource = {
   key: ["desk", "open-plays"],
   alsoInvalidates: [["desk"]],
   listHref: "/desk/open-play",
+  requestsHref: "/desk/open-play-requests",
   editHref: (openPlayId) => (openPlayId ? `/desk/open-play/edit?id=${openPlayId}` : "/desk/open-play/edit"),
   trail: [
     { label: "Venue desk", href: "/desk" },
@@ -183,6 +189,8 @@ export function adminOpenPlaySource(facilityOwnerId: string, businessName?: stri
     // The owner's page shows the changes in its Activity tab.
     alsoInvalidates: [["admin", "facility-owners"]],
     listHref: `${ownerHref}?tab=open-play`,
+    // Checking payments is the venue's; the platform does not work its queue.
+    requestsHref: null,
     editHref: (openPlayId) =>
       openPlayId
         ? `${ownerHref}/open-plays/edit?id=${openPlayId}`

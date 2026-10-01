@@ -37,6 +37,7 @@ import {
   type UtilizationQuery,
 } from "@auth/deskApi";
 import type { BookingSource } from "@/app/(desk)/components/BookingSource";
+import { getDeskOpenPlayRequests } from "@auth/openPlayRegistrationApi";
 
 const deskKey = ["desk"] as const;
 
@@ -70,10 +71,26 @@ export function useDeskWaiting(enabled: boolean) {
     refetchInterval: 60 * 1000,
   });
 
+  // Open play payments are their own queue. The same key the desk overview
+  // reads, so confirming one there clears the bell too.
+  const openPlays = useQuery({
+    queryKey: [...deskKey, "open-play-requests", { tab: "Waiting", facilityId: null, page: 1, pageSize: 1 }],
+    queryFn: () => getDeskOpenPlayRequests({ tab: "Waiting", page: 1, pageSize: 1 }),
+    enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
   const paymentCount = payments.data?.pagination.totalItems ?? 0;
   const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
+  const openPlayCount = openPlays.data?.pagination.totalItems ?? 0;
 
-  return { payments: paymentCount, upgrades: upgradeCount, total: paymentCount + upgradeCount };
+  return {
+    payments: paymentCount,
+    upgrades: upgradeCount,
+    openPlays: openPlayCount,
+    total: paymentCount + upgradeCount + openPlayCount,
+  };
 }
 
 export function useDeskVenues(enabled = true) {

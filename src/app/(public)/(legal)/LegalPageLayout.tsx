@@ -22,10 +22,13 @@ function LegalPageLayout({
   sections,
   backHref = "/sign-up",
   backLabel = "Back to registration",
+  effectiveDate = "August 15, 2026",
 }: {
   title: string;
   summary: string;
   sections: Section[];
+  /** When this policy took effect. A policy added later has its own date. */
+  effectiveDate?: string;
   /** Where the reader came from. Registration, unless the page says otherwise. */
   backHref?: string;
   backLabel?: string;
@@ -57,7 +60,7 @@ function LegalPageLayout({
             {title}
           </h1>
           <p className="mt-3 text-sm text-slate-500">
-            Effective date: August 15, 2026
+            Effective date: {effectiveDate}
           </p>
           <p className="mt-6 text-base leading-7">{summary}</p>
 

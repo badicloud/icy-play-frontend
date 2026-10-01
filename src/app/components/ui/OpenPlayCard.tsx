@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoldCountdown from "./HoldCountdown";
 import { activityIcon } from "@auth/catalogApi";
 import {
   formatClock,
@@ -10,6 +11,11 @@ import {
   openPlayLevel,
   type CatalogOpenPlay,
 } from "@auth/openPlayApi";
+import {
+  registrationKey,
+  registrationState,
+  type OpenPlayRegistration,
+} from "@auth/openPlayRegistrationApi";
 
 function SportBadge({ openPlay }: { openPlay: CatalogOpenPlay }) {
   const icon = activityIcon(openPlay.sportKey);
@@ -131,15 +137,112 @@ export function OpenPlayTeaser({ openPlay }: { openPlay: CatalogOpenPlay }) {
 }
 
 /**
+ * Where the player's own registration for a date stands, at the top of its
+ * tile beside the date: the time left to pay while the hold runs, or the
+ * status after that. Nothing when they have none.
+ *
+ * Up there rather than above the button, so every tile keeps the same shape
+ * and the buttons stay in one line across the row.
+ */
+function SessionStatus({
+  mine,
+  onHoldExpired,
+}: {
+  mine: OpenPlayRegistration | undefined;
+  onHoldExpired?: () => void;
+}) {
+  if (!mine) {
+    return null;
+  }
+
+  if (mine.status === "PendingPayment") {
+    // The time left to pay, ticking. When it runs out the player's
+    // registrations are read again, and the server says the hold has gone:
+    // the tile goes back to Join.
+    return <HoldCountdown holdsUntil={mine.holdsUntil} compact onExpired={onHoldExpired} />;
+  }
+
+  const state = registrationState(mine);
+
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${state.tone}`}>{state.label}</span>
+  );
+}
+
+/**
+ * What a session's tile offers.
+ *
+ * A player who already has a registration for that date is taken to it,
+ * never offered Join again: a second registration for a session they are
+ * already in, or paying for, is a mistake waiting to happen. One still being
+ * paid for goes to its checkout while the hold lasts. A lapsed, refused or
+ * cancelled one is not in their way, and Join is back.
+ *
+ * Pinned to the bottom of the tile, so the buttons line up across the row
+ * whatever the tiles above them say.
+ */
+function SessionAction({
+  openPlayId,
+  date,
+  joinable,
+  full,
+  mine,
+}: {
+  openPlayId: string;
+  date: string;
+  joinable: boolean;
+  full: boolean;
+  mine: OpenPlayRegistration | undefined;
+}) {
+  const button = "mt-auto rounded-full px-4 py-2 text-center text-xs font-semibold transition";
+
+  if (mine) {
+    const paying = mine.status === "PendingPayment";
+
+    return (
+      <Link
+        href={`/open-play/registrations/${mine.registrationId}`}
+        className={`${button} ${
+          paying
+            ? "bg-[#2563EB] text-white hover:bg-blue-700"
+            : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+        }`}
+      >
+        {paying ? "Continue to payment" : "View registration"}
+      </Link>
+    );
+  }
+
+  // Step one of joining: the review and the policy. Nothing is held until the
+  // player proceeds from there.
+  return joinable ? (
+    <Link
+      href={`/open-play/join?openPlay=${openPlayId}&date=${date}`}
+      className={`${button} bg-[#2563EB] text-white hover:bg-blue-700`}
+    >
+      Join
+    </Link>
+  ) : (
+    <span className={`${button} bg-slate-200 text-slate-500`}>{full ? "Full" : "Closed"}</span>
+  );
+}
+
+/**
  * The full card on the open play page: every upcoming date with its spots,
  * the price broken down, and the rules a player needs before joining.
  */
 export function OpenPlayDetail({
   openPlay,
   highlighted,
+  mine,
+  onHoldExpired,
 }: {
   openPlay: CatalogOpenPlay;
   highlighted: boolean;
+  /** The signed-in player's registrations that still stand, by open play and date. */
+  mine?: Map<string, OpenPlayRegistration>;
+  /** A hold on one of them ran out on screen: read them again. */
+  onHoldExpired?: () => void;
 }) {
   return (
     <article
@@ -184,12 +287,18 @@ export function OpenPlayDetail({
       </div>
 
       <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {openPlay.upcomingSessions.map((session) => (
+        {openPlay.upcomingSessions.map((session) => {
+          const yours = mine?.get(registrationKey(openPlay.openPlayId, session.date));
+
+          return (
           <li
             key={session.date}
             className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
           >
-            <span className="text-sm font-bold text-slate-950">{formatSessionDate(session.date)}</span>
+            <span className="flex items-start justify-between gap-2">
+              <span className="text-sm font-bold text-slate-950">{formatSessionDate(session.date)}</span>
+              <SessionStatus mine={yours} onHoldExpired={onHoldExpired} />
+            </span>
             <span className="mt-0.5 text-sm">
               <SpotsLeft left={session.spotsLeft} max={openPlay.maxPlayers} />
             </span>
@@ -208,18 +317,20 @@ export function OpenPlayDetail({
                   }`
                 : "Registration closed"}
             </span>
-            {/* Registering and paying come in the next step of the feature.
-                Until then the button says so rather than leading nowhere. */}
-            <button
-              type="button"
-              disabled
-              title="Joining an open play is coming soon"
-              className="mt-3 rounded-full bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-500"
-            >
-              {session.spotsLeft === 0 ? "Full" : "Joining opens soon"}
-            </button>
+            {/* The space above the button grows, so the button sits on the
+                tile's bottom edge and lines up with its neighbours'. */}
+            <span className="mt-auto flex flex-col pt-3">
+              <SessionAction
+                openPlayId={openPlay.openPlayId}
+                date={session.date}
+                joinable={session.isOpenForRegistration && session.spotsLeft > 0}
+                full={session.spotsLeft === 0}
+                mine={yours}
+              />
+            </span>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </article>
   );
