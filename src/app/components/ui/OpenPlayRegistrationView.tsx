@@ -16,6 +16,8 @@ import {
 } from "@auth/openPlayRegistrationApi";
 import CheckoutSteps from "./CheckoutSteps";
 import HoldCountdown from "./HoldCountdown";
+import CheckInPassCard from "./CheckInPassCard";
+import VenueContactCard from "./VenueContactCard";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -243,16 +245,23 @@ function Outcome({
 
   if (registration.status === "Confirmed") {
     return (
-      <div className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-6">
-        <h2 className="text-lg font-bold text-green-900">You are registered</h2>
-        <p className="mt-1.5 text-green-800">
-          {registration.facilityName} has checked your payment. See you on {formatSessionDate(registration.date)} at{" "}
-          {formatClock(registration.startsAt)}.
-        </p>
-        <p className="mt-2 text-sm text-green-800">
-          Cannot make it? Speak to the venue: {registration.venueContact}.
-        </p>
-      </div>
+      <>
+        <div className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-6">
+          <h2 className="text-lg font-bold text-green-900">You are registered</h2>
+          <p className="mt-1.5 text-green-800">
+            {registration.facilityName} has checked your payment. See you on {formatSessionDate(registration.date)}{" "}
+            at {formatClock(registration.startsAt)}.
+            {registration.checkInPassState === "Active" && " Show the QR below at the desk when you arrive."}
+          </p>
+          <p className="mt-2 text-sm text-green-800">
+            Cannot make it? Speak to the venue: their details are below.
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <CheckInPassCard registration={registration} />
+        </div>
+      </>
     );
   }
 
@@ -304,8 +313,8 @@ function Outcome({
         )}
         <p className="mt-1.5 text-red-800">
           {registration.facilityName} checked your payment and could not accept it, so you are not registered and
-          the spot has been released. If you sent money, speak to the venue — you paid them directly:{" "}
-          {registration.venueContact}.
+          the spot has been released. If you sent money, speak to the venue — you paid them directly. Their
+          details are below.
         </p>
       </div>
     );
@@ -317,7 +326,7 @@ function Outcome({
       {registration.cancellationReason && (
         <p className="mt-1.5 font-medium text-slate-600">{registration.cancellationReason}</p>
       )}
-      <p className="mt-1.5 text-slate-600">For anything about a payment, speak to the venue: {registration.venueContact}.</p>
+      <p className="mt-1.5 text-slate-600">For anything about a payment, speak to the venue: their details are below.</p>
     </div>
   );
 }
@@ -336,6 +345,11 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
     queryKey: ["open-play-registration", registrationId],
     queryFn: () => getOpenPlayRegistration(registrationId),
     enabled: registrationId !== "",
+    staleTime: 0,
+    refetchOnMount: "always",
+    // Held up at the desk: once scanned, the QR turns to "Used" on the
+    // player's own screen without them reloading.
+    refetchInterval: (query) => (query.state.data?.checkInPassState === "Active" ? 10_000 : false),
   });
 
   function changed(updated: OpenPlayRegistration) {
@@ -399,7 +413,14 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
       ) : step === 2 ? (
         <Pay registration={detail} onExpired={() => void registration.refetch()} onSent={changed} />
       ) : (
-        <Outcome registration={detail} onSent={changed} />
+        <>
+          <Outcome registration={detail} onSent={changed} />
+          <VenueContactCard
+            venueName={detail.facilityName}
+            phone={detail.contactPhone}
+            email={detail.contactEmail}
+          />
+        </>
       )}
 
       {step === 3 && (

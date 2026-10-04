@@ -436,7 +436,22 @@ export type DeskSettings = {
   bookingWindowDays: number;
   smallestBookingWindowDays: number;
   largestBookingWindowDays: number;
+  /** Whether the venue has set its code for checking open play players in by hand. */
+  hasOpenPlayCheckInCode: boolean;
+  /** Only the owner generates it; an attendant is told it. */
+  canSetOpenPlayCheckInCode: boolean;
 };
+
+/** A freshly generated code: the only time it is ever sent, since only its hash is kept. */
+export type GeneratedCheckInCode = {
+  code: string;
+  settings: DeskSettings;
+};
+
+/** A new six-digit code for checking open play players in by hand, replacing any old one. The owner only. */
+export function generateOpenPlayCheckInCode() {
+  return apiClient.post<GeneratedCheckInCode>(API_ENDPOINTS.DESK.OPEN_PLAY_CHECK_IN_CODE);
+}
 
 export function getDeskSettings() {
   return apiClient.get<DeskSettings>(API_ENDPOINTS.DESK.SETTINGS);

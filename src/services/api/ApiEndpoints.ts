@@ -153,6 +153,7 @@ export const API_ENDPOINTS = {
   DESK: {
     SETTINGS: `${API_V1}/desk/settings`,
     SETTINGS_HISTORY: `${API_V1}/desk/settings/history`,
+    OPEN_PLAY_CHECK_IN_CODE: `${API_V1}/desk/settings/open-play-check-in-code`,
     ATTENDANT_MONEY: (attendantId: string) => `${API_V1}/desk/attendants/${attendantId}/money`,
     VENUES: `${API_V1}/desk/venues`,
     BOOKINGS: `${API_V1}/desk/bookings`,
@@ -188,6 +189,12 @@ export const API_ENDPOINTS = {
     OPEN_PLAY_PHOTO: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/photo`,
     OPEN_PLAY_PHOTO_SIGNATURE: `${API_V1}/desk/open-plays/photo-signature`,
     OPEN_PLAY_REQUESTS: `${API_V1}/desk/open-play-requests`,
+    CHECK_IN: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/check-in`,
+    CHECK_IN_SCAN: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/check-in/scan`,
+    CHECK_IN_PLAYER: (registrationId: string) => `${API_V1}/desk/open-play-check-ins/${registrationId}`,
+    CHECK_IN_UNDO: (registrationId: string) => `${API_V1}/desk/open-play-check-ins/${registrationId}/undo`,
     OPEN_PLAY_REQUEST_CONFIRM: (registrationId: string) =>
       `${API_V1}/desk/open-play-requests/${registrationId}/confirm`,
     OPEN_PLAY_REQUEST_REJECT: (registrationId: string) =>

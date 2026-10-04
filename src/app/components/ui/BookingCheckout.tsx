@@ -19,6 +19,7 @@ import CheckoutSteps from "./CheckoutSteps";
 import HoldCountdown from "./HoldCountdown";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
+import VenueContactCard from "./VenueContactCard";
 
 /** A receipt is a screenshot. Anything this size is something else. */
 const maximumSizeInBytes = 10 * 1024 * 1024;
@@ -111,10 +112,17 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
             )}
 
             {step === 4 && (
-              <Waiting
-                detail={detail}
-                onReplace={changed}
-              />
+              <>
+                <Waiting
+                  detail={detail}
+                  onReplace={changed}
+                />
+                <VenueContactCard
+                  venueName={detail.facilityName}
+                  phone={detail.contactPhone}
+                  email={detail.contactEmail}
+                />
+              </>
             )}
           </>
         )}

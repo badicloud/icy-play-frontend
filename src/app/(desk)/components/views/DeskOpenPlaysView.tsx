@@ -109,6 +109,7 @@ function OpenPlayRow({
   openPlay,
   editHref,
   requestsHref,
+  checkInHref,
   clashes,
   onAction,
 }: {
@@ -116,6 +117,7 @@ function OpenPlayRow({
   /** Where Edit goes: the desk's form or the admin's, for this open play. */
   editHref: string;
   requestsHref: string | null;
+  checkInHref: ((openPlayId: string, date: string) => string) | null;
   clashes: OpenPlayClash[];
   onAction: (action: Action) => void;
 }) {
@@ -215,6 +217,25 @@ function OpenPlayRow({
               Delete
             </button>
           </>
+        )}
+
+        {/* Today's session's door. Open while the check-in window is, on the
+            server's clock; before then it says when it opens. */}
+        {openPlay.status === "Published" && checkInHref && openPlay.sessionToday && (
+          openPlay.checkInOpen ? (
+            <Link
+              href={checkInHref(openPlay.openPlayId, openPlay.sessionToday)}
+              className={`${button} border-green-600 bg-green-600 text-white hover:bg-green-700`}
+            >
+              Check in players
+            </Link>
+          ) : (
+            <span className={`${button} border-slate-200 bg-slate-50 text-slate-500`}>
+              {openPlay.checkInOpensAt
+                ? `Check-in opens ${formatClock(openPlay.checkInOpensAt.slice(11))}`
+                : "Check-in is closed"}
+            </span>
+          )
         )}
 
         {openPlay.status === "Published" && (
@@ -415,6 +436,7 @@ export function OpenPlayList({ source }: { source: OpenPlaySource }) {
             openPlay={openPlay}
             editHref={source.editHref(openPlay.openPlayId)}
             requestsHref={source.requestsHref}
+            checkInHref={source.checkInHref}
             clashes={clashes[openPlay.openPlayId] ?? []}
             onAction={(action) => {
               act.reset();

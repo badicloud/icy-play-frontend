@@ -1,5 +1,6 @@
 import { apiClient, API_ENDPOINTS, ApiError } from "@/services/api";
 import { uploadToCloudinary, type UploadedAsset, type UploadSignature } from "./cloudinaryUpload";
+import { checkInHref } from "./checkInApi";
 import { getDeskCourts, getDeskVenues, type DeskCourt, type DeskVenue } from "./deskApi";
 
 /** "Draft", "Published" or "Ended". */
@@ -30,6 +31,8 @@ export type OpenPlayInput = {
   endDate: string | null;
   registrationCutoffMinutes: number;
   earlyBird: OpenPlayEarlyBirdInput | null;
+  /** How long before each session check-in opens. Left out, an hour. */
+  checkInOpensMinutes?: number;
 };
 
 /** One open play as the desk sees it, drafts included. */
@@ -69,6 +72,14 @@ export type DeskOpenPlay = {
   coverPhotoUrl: string | null;
   /** Receipts sent and waiting on the desk: not registered yet. */
   waiting: number;
+  /** How long before each session check-in opens. */
+  checkInOpensMinutes: number;
+  /** The venue's today when there is a session today, else null: what Check in opens. */
+  sessionToday: string | null;
+  /** When check-in for today's session opens, venue wall clock. */
+  checkInOpensAt: string | null;
+  /** Whether check-in for today's session is open right now, by the server's clock. */
+  checkInOpen: boolean;
 };
 
 /** Something already holding hours the open play wants. */
@@ -134,6 +145,10 @@ export type OpenPlaySource = {
   uploadPhoto: (file: File) => Promise<UploadedAsset>;
   setPhoto: (openPlayId: string, photo: { publicId: string; secureUrl: string }) => Promise<DeskOpenPlay>;
   removePhoto: (openPlayId: string) => Promise<DeskOpenPlay>;
+  /** Moves when check-in opens. Allowed after publishing. */
+  setCheckInWindow: (openPlayId: string, minutesBeforeStart: number) => Promise<DeskOpenPlay>;
+  /** Where Check in goes for a session, or null where this door does not run the door. */
+  checkInHref: ((openPlayId: string, date: string) => string) | null;
 };
 
 /** The calls every door shares, under its own base address. */
@@ -158,6 +173,10 @@ function calls(base: string) {
         secureUrl: photo.secureUrl,
       }),
     removePhoto: (openPlayId: string) => apiClient.delete<DeskOpenPlay>(`${one(openPlayId)}/photo`),
+    setCheckInWindow: (openPlayId: string, minutesBeforeStart: number) =>
+      apiClient.put<DeskOpenPlay, { minutesBeforeStart: number }>(`${one(openPlayId)}/check-in-window`, {
+        minutesBeforeStart,
+      }),
   };
 }
 
@@ -167,6 +186,7 @@ export const deskOpenPlaySource: OpenPlaySource = {
   alsoInvalidates: [["desk"]],
   listHref: "/desk/open-play",
   requestsHref: "/desk/open-play-requests",
+  checkInHref,
   editHref: (openPlayId) => (openPlayId ? `/desk/open-play/edit?id=${openPlayId}` : "/desk/open-play/edit"),
   trail: [
     { label: "Venue desk", href: "/desk" },
@@ -189,8 +209,10 @@ export function adminOpenPlaySource(facilityOwnerId: string, businessName?: stri
     // The owner's page shows the changes in its Activity tab.
     alsoInvalidates: [["admin", "facility-owners"]],
     listHref: `${ownerHref}?tab=open-play`,
-    // Checking payments is the venue's; the platform does not work its queue.
+    // Checking payments and checking players in are the venue's; the
+    // platform does not work its queue or its door.
     requestsHref: null,
+    checkInHref: null,
     editHref: (openPlayId) =>
       openPlayId
         ? `${ownerHref}/open-plays/edit?id=${openPlayId}`

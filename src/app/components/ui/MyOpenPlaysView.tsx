@@ -10,6 +10,7 @@ import {
   registrationState,
   type OpenPlayRegistration,
 } from "@auth/openPlayRegistrationApi";
+import CheckInPassCard from "./CheckInPassCard";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -17,26 +18,43 @@ type Filter = "upcoming" | "past";
 
 /**
  * What a row asks the player to do next, if anything: pay while the hold runs,
- * or nothing but wait.
+ * show their QR at the door, or nothing but wait.
  */
 function nextStep(registration: OpenPlayRegistration) {
   if (registration.hasLapsed) {
     return null;
   }
 
+  if (registration.checkInPassState === "Active") {
+    return "Show QR";
+  }
+
   return registration.status === "PendingPayment" ? "Finish paying" : null;
 }
 
-function Row({ registration }: { registration: OpenPlayRegistration }) {
+/**
+ * One registration. A registered one opens in place to show its check-in QR,
+ * so the player has it at the desk in one tap; the rest go straight to the
+ * registration's page.
+ */
+function Row({
+  registration,
+  open,
+  onToggle,
+}: {
+  registration: OpenPlayRegistration;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const state = registrationState(registration);
   const icon = activityIcon(registration.sportKey);
   const next = nextStep(registration);
+  const href = `/open-play/registrations/${registration.registrationId}`;
+  const opens = registration.checkInPassState !== null;
+  const headerClass = "flex w-full flex-wrap items-center gap-4 p-5 text-left";
 
-  return (
-    <Link
-      href={`/open-play/registrations/${registration.registrationId}`}
-      className="flex flex-wrap items-center gap-4 rounded-[24px] border border-slate-200 bg-white p-5 transition hover:border-blue-200 hover:shadow-md"
-    >
+  const header = (
+    <>
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50">
         {icon ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -50,6 +68,9 @@ function Row({ registration }: { registration: OpenPlayRegistration }) {
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-bold text-[#071955]">{registration.title}</span>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${state.tone}`}>{state.label}</span>
+          {registration.checkInPassState === "Used" && (
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">Checked in</span>
+          )}
         </span>
         <span className="mt-0.5 block text-sm text-slate-500">
           {formatSessionDate(registration.date)} · {formatClock(registration.startsAt)}–
@@ -59,9 +80,49 @@ function Row({ registration }: { registration: OpenPlayRegistration }) {
 
       <span className="text-right">
         <span className="block font-bold text-[#071955]">{formatPeso(registration.total)}</span>
-        {next && <span className="block text-xs font-bold text-[#2563EB]">{next} ›</span>}
+        {opens ? (
+          <span className="block text-xs font-bold text-[#2563EB]">
+            {open ? "Hide QR ▴" : registration.checkInPassState === "Active" ? "Show QR ▾" : "Details ▾"}
+          </span>
+        ) : (
+          next && <span className="block text-xs font-bold text-[#2563EB]">{next} ›</span>
+        )}
       </span>
-    </Link>
+    </>
+  );
+
+  const card = `overflow-hidden rounded-[24px] border bg-white transition ${
+    open ? "border-blue-200 shadow-md" : "border-slate-200 hover:border-blue-200 hover:shadow-md"
+  }`;
+
+  if (!opens) {
+    return (
+      <Link href={href} className={`${card} ${headerClass}`}>
+        {header}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={card}>
+      <button type="button" onClick={onToggle} aria-expanded={open} className={headerClass}>
+        {header}
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-100 px-5 pb-5 pt-4">
+          <CheckInPassCard registration={registration} bare />
+          <div className="mt-4 flex justify-end">
+            <Link
+              href={href}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+            >
+              More details ›
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -72,6 +133,7 @@ function Row({ registration }: { registration: OpenPlayRegistration }) {
  */
 function MyOpenPlaysView() {
   const [filter, setFilter] = useState<Filter>("upcoming");
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const mine = useQuery({
     queryKey: ["my-open-plays"],
@@ -79,6 +141,11 @@ function MyOpenPlaysView() {
     // Always read fresh on opening: the venue may have confirmed one since.
     staleTime: 0,
     refetchOnMount: "always",
+    // A QR held up at the desk turns to "Used" here once scanned, without a reload.
+    refetchInterval: (query) =>
+      query.state.data?.some((row) => row.registrationId === openId && row.checkInPassState === "Active")
+        ? 10_000
+        : false,
   });
 
   // Past is the server's word, on the venue's clock: a session is past once it
@@ -134,7 +201,14 @@ function MyOpenPlaysView() {
           )}
 
           {shown.map((registration) => (
-            <Row key={registration.registrationId} registration={registration} />
+            <Row
+              key={registration.registrationId}
+              registration={registration}
+              open={openId === registration.registrationId}
+              onToggle={() =>
+                setOpenId((current) => (current === registration.registrationId ? null : registration.registrationId))
+              }
+            />
           ))}
         </div>
       </div>

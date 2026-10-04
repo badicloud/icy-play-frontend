@@ -62,6 +62,8 @@ type Form = {
   discountValue: string;
   leadAmount: string;
   leadUnit: Unit;
+  /** Minutes before each session that check-in opens. */
+  checkInMinutes: string;
 };
 
 const blank: Form = {
@@ -84,6 +86,7 @@ const blank: Form = {
   discountValue: "",
   leadAmount: "3",
   leadUnit: "days",
+  checkInMinutes: "60",
 };
 
 function fromOpenPlay(openPlay: DeskOpenPlay): Form {
@@ -110,6 +113,7 @@ function fromOpenPlay(openPlay: DeskOpenPlay): Form {
     discountValue: openPlay.earlyBird ? String(openPlay.earlyBird.discountValue) : "",
     leadAmount: lead.amount,
     leadUnit: lead.unit,
+    checkInMinutes: String(openPlay.checkInOpensMinutes),
   };
 }
 
@@ -175,6 +179,7 @@ function toInput(form: Form): { input: OpenPlayInput | null; problem: string | n
             leadMinutes: Math.round(values.lead * unitMinutes[form.leadUnit]),
           }
         : null,
+      checkInOpensMinutes: Number.isNaN(Number(form.checkInMinutes)) ? undefined : Number(form.checkInMinutes),
     },
   };
 }
@@ -304,6 +309,16 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
       refresh();
       // The public cards show it too.
       void client.invalidateQueries({ queryKey: ["catalog"] });
+    },
+  });
+
+  // The check-in time on a published open play, saved on its own: the rest
+  // of the form is locked.
+  const checkInWindow = useMutation({
+    mutationFn: (minutes: number) => source.setCheckInWindow(openPlayId!, minutes),
+    onSuccess: (updated) => {
+      client.setQueryData([...source.key, updated.openPlayId], updated);
+      refresh();
     },
   });
 
@@ -753,6 +768,55 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
                 {photo.error instanceof ApiError ? photo.error.message : "The photo could not be saved."}
               </p>
             )}
+          </section>
+
+          {/* Outside the fieldset too: how the venue runs its door, not part
+              of what a player paid for, so it can move after publishing. */}
+          <section className="space-y-3 rounded-3xl border border-slate-200 bg-white px-6 py-5">
+            <h2 className="text-lg font-bold text-[#071955]">Check-in</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="op-check-in" className="text-sm text-slate-600">
+                Check-in opens
+              </label>
+              <input
+                id="op-check-in"
+                type="number"
+                min={0}
+                max={1440}
+                step={5}
+                value={form.checkInMinutes}
+                disabled={existing.data?.status === "Ended"}
+                onChange={(event) => set("checkInMinutes", event.target.value)}
+                className={`${input} w-28`}
+              />
+              <span className="text-sm text-slate-600">minutes before each session, until it ends</span>
+              {locked && existing.data?.status === "Published" && (
+                <button
+                  type="button"
+                  disabled={
+                    checkInWindow.isPending ||
+                    form.checkInMinutes === String(existing.data.checkInOpensMinutes)
+                  }
+                  onClick={() => checkInWindow.mutate(Number(form.checkInMinutes))}
+                  className="rounded-full bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {checkInWindow.isPending ? "Saving…" : "Save"}
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-slate-500">
+              {locked
+                ? "This can still change after publishing."
+                : "Saved with the draft. It can still change after publishing."}
+            </p>
+            {checkInWindow.isError && (
+              <p className="text-sm font-semibold text-red-700">
+                {checkInWindow.error instanceof ApiError
+                  ? checkInWindow.error.message
+                  : "The check-in time could not be saved."}
+              </p>
+            )}
+            {checkInWindow.isSuccess && <p className="text-sm font-semibold text-green-700">Check-in time saved.</p>}
           </section>
 
           {problem && (

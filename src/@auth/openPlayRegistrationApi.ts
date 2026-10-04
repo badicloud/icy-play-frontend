@@ -50,10 +50,21 @@ export type OpenPlayRegistration = {
   gcashQrCodeUrl: string | null;
   /** How to reach the venue: its published phone and email, or the owner's. */
   venueContact: string;
+  /** The same, apart, for the contact card: tap to ring, tap to mail. */
+  contactPhone: string | null;
+  contactEmail: string | null;
   coverPhotoUrl: string | null;
   /** The session is over on the venue's clock, decided by the server. */
   sessionHasEnded: boolean;
+  /** The check-in QR: null until the venue confirms the payment. */
+  checkInPassState: CheckInPassState | null;
+  /** What the QR holds, only while it is Active: a used or expired one is not handed out. */
+  checkInQr: string | null;
+  checkedInAt: string | null;
 };
+
+/** Active: it gets them in. Used: they are checked in. Expired: the session ended without them. */
+export type CheckInPassState = "Active" | "Used" | "Expired";
 
 /**
  * Registers for one date and holds the spot. Only after the player has agreed

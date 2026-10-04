@@ -4,7 +4,7 @@ import generateMetadata from "@/utils/generateMetadata";
 export const metadata = generateMetadata({
   title: "Open Play Policy",
   description:
-    "What you agree to when you join an open play on IcyPlay: you pay the venue directly, you are registered once the venue confirms your payment, and there are no refunds through IcyPlay.",
+    "What you agree to when you join an open play on IcyPlay: you pay the venue directly, you are registered once the venue confirms your payment, your QR code checks you in once, and there are no refunds through IcyPlay.",
   path: "/open-play-policy",
 });
 
@@ -92,6 +92,42 @@ const sections = [
     ),
   },
   {
+    title: "Checking in with your QR code",
+    content: (
+      <>
+        <p>
+          Once the venue confirms your payment, your registration gets its own check-in QR code. You will find
+          it under My open plays and on your registration. Show it at the venue&apos;s desk when you arrive;
+          the desk scans it and checks you in.
+        </p>
+        <p>
+          <strong>
+            Each QR code is for one session only, and works once.
+          </strong>{" "}
+          It will not check you in at another session, another open play or another venue, and once you are
+          checked in it is marked as used. Do not share it: whoever shows it first is the one checked in.
+        </p>
+        <p>
+          Check-in opens a set time before the session starts, as the venue decides, and closes when the
+          session ends, on the venue&apos;s own clock. If you cannot show your QR, the desk can check you in
+          by hand.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "If you do not turn up",
+    content: (
+      <>
+        <p>
+          If a session ends and you have not been checked in, your QR code expires and can no longer be used.
+          Your registration is not moved to another date, and there is no refund through IcyPlay. Whether the
+          venue offers anything is up to them.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "If the venue turns your payment down",
     content: (
       <>
@@ -163,8 +199,8 @@ function Page() {
       backHref="/open-play"
       backLabel="Back to open play"
       title="Open Play Policy"
-      effectiveDate="September 30, 2026"
-      summary="You pay the venue directly, so IcyPlay holds none of your money and cannot refund it. Your spot is held while you pay, and you are registered only once the venue confirms your payment. Please read this before you join an open play."
+      effectiveDate="October 4, 2026"
+      summary="You pay the venue directly, so IcyPlay holds none of your money and cannot refund it. Your spot is held while you pay, and you are registered only once the venue confirms your payment. Your QR code checks you in once, at that session only. Please read this before you join an open play."
       sections={sections}
     />
   );
