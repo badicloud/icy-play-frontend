@@ -41,6 +41,11 @@ export type DeskBooking = {
   decisionReason: string | null;
   slots: BookedSlot[];
   createdAt: string;
+  /**
+   * `Manual`: paid by a receipt the desk checks. `Direct`: paid through the
+   * payment gateway, which confirmed it — there is no receipt to look for.
+   */
+  paymentChannel: "Manual" | "Direct";
 };
 
 export type DeskVenue = {
@@ -50,6 +55,12 @@ export type DeskVenue = {
   canSeeMoney: boolean;
   /** yyyy-MM-dd at the venue, from the server's clock. What a date picker starts from. */
   today?: string | null;
+  /**
+   * How customers pay this venue under the term in force today: `Manual`,
+   * receipts the desk checks, or `Direct`, through the payment gateway —
+   * which has online transactions in place of confirmation queues.
+   */
+  paymentMode: "Manual" | "Direct";
 };
 
 /** One attendant as their owner sees them on the desk. */
@@ -440,6 +451,13 @@ export type DeskSettings = {
   hasOpenPlayCheckInCode: boolean;
   /** Only the owner generates it; an attendant is told it. */
   canSetOpenPlayCheckInCode: boolean;
+  /**
+   * How customers pay under the contract term in force. Read-only here: it is
+   * part of the agreement, and only the platform admin changes it.
+   */
+  paymentMode: "Manual" | "Direct";
+  /** How long a booking paid online holds its court, under that term. */
+  onlineHoldMinutes: number;
 };
 
 /** A freshly generated code: the only time it is ever sent, since only its hash is kept. */
@@ -1101,4 +1119,104 @@ export function getHoursOverTime(query: HoursQuery) {
       facilityId: query.facilityId,
     },
   });
+}
+
+/**
+ * One payment made online at a venue, as its desk reads it. Money throughout,
+ * so the server only sends it to people who may see the venue's money.
+ */
+export type DeskTransaction = {
+  id: string;
+  facilityId: string;
+  facilityName: string;
+  purpose: "Booking" | "BookingUpgrade" | "OpenPlayRegistration";
+  /** What was paid for, as the customer saw it at the gateway. */
+  description: string | null;
+  customerName: string;
+  customerEmail: string;
+  /** gcash, qrph, card, paymaya — in the gateway's words. */
+  paymentMethod: string | null;
+  /** What the customer was charged, the gateway's fee included. */
+  amountCharged: number | null;
+  processingFee: number | null;
+  /** What arrived after the fee: the venue's share and the platform fee. */
+  netAmount: number | null;
+  venueAmount: number;
+  platformFee: number;
+  /** The gateway's payment id, to find it on the gateway's own dashboard. */
+  reference: string | null;
+  /** NeedsAttention: paid, but it could not settle anything by itself. */
+  status: "Paid" | "NeedsAttention";
+  attentionReason: string | null;
+  paidAt: string | null;
+  /** The booking it belongs to, for a link. Null on an open play. */
+  bookingId: string | null;
+  /** Arrived since this person last opened the list. */
+  isNew: boolean;
+};
+
+export type DeskTransactionSummary = {
+  /** Arrived since this person last opened the list. */
+  unseen: number;
+  /** Paid but waiting on a person. Not cleared by looking. */
+  needsAttention: number;
+};
+
+type DeskTransactionListResponse = {
+  data: DeskTransaction[];
+  pagination: Pagination;
+};
+
+export function getDeskTransactions(query: { facilityId?: string | null; page: number; pageSize: number }) {
+  return apiClient.get<DeskTransactionListResponse>(API_ENDPOINTS.DESK.TRANSACTIONS, {
+    query: {
+      facilityId: query.facilityId ?? undefined,
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    unwrapData: false,
+  });
+}
+
+export function getDeskTransactionSummary() {
+  return apiClient.get<DeskTransactionSummary>(API_ENDPOINTS.DESK.TRANSACTIONS_SUMMARY);
+}
+
+/** Opening the list clears this person's badge, and only theirs. */
+export function markDeskTransactionsSeen() {
+  return apiClient.post<void>(API_ENDPOINTS.DESK.TRANSACTIONS_SEEN);
+}
+
+/** Why a paid payment is waiting on a person, said plainly. */
+export function attentionReasonText(reason: string | null) {
+  switch (reason) {
+    case "PaidAfterHoldLapsed":
+      return "Paid after the hold ran out — the hours may be someone else's now.";
+    case "UpgradeHoursTaken":
+      return "Paid for an upgrade, but the hours were taken or the booking had moved on.";
+    case "AmountShort":
+      return "Less arrived than was owed.";
+    case "NotAwaitingPayment":
+      return "Paid for something that was no longer waiting to be paid.";
+    default:
+      return "Paid, but it could not settle by itself.";
+  }
+}
+
+/** How it was paid, in the words a customer uses. */
+export function paymentMethodText(method: string | null) {
+  switch (method) {
+    case "qrph":
+      return "QR Ph";
+    case "gcash":
+      return "GCash";
+    case "paymaya":
+      return "Maya";
+    case "card":
+      return "Card";
+    case "grab_pay":
+      return "GrabPay";
+    default:
+      return method ?? "Online";
+  }
 }

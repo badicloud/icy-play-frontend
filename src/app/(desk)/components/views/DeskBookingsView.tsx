@@ -102,7 +102,9 @@ function BookingCard({
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
             <CheckCircleOutlined sx={{ fontSize: 13 }} aria-hidden />
-            Confirmed
+            {/* Confirmed by the gateway rather than by somebody here: said so,
+                so nobody goes looking for a receipt that was never sent. */}
+            {booking.paymentChannel === "Direct" ? "Paid online" : "Confirmed"}
           </span>
         )}
 

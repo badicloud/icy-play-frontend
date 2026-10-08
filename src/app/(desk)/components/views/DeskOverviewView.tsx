@@ -11,7 +11,13 @@ import ReceiptLongOutlined from "@mui/icons-material/ReceiptLongOutlined";
 import TrendingUpOutlined from "@mui/icons-material/TrendingUpOutlined";
 import TuneOutlined from "@mui/icons-material/TuneOutlined";
 import { useIcyPlayAuth } from "@auth/contexts/IcyPlayAuthContext/useIcyPlayAuth";
-import { useDeskBookings, useDeskUpgrades, useDeskVenues } from "@auth/hooks/useDesk";
+import {
+  useDeskBookings,
+  useDeskPaysOnline,
+  useDeskTransactionSummary,
+  useDeskUpgrades,
+  useDeskVenues,
+} from "@auth/hooks/useDesk";
 import { isUpgrade } from "@auth/deskApi";
 import { useQuery } from "@tanstack/react-query";
 import { getDeskOpenPlayRequests } from "@auth/openPlayRegistrationApi";
@@ -25,6 +31,8 @@ type DeskSection = {
   ownerOnly?: boolean;
   /** Money: left out for an attendant whose owner has not shared the money. */
   money?: boolean;
+  /** A count on the card: what has arrived or is waiting there. */
+  badge?: number;
 };
 
 /**
@@ -112,6 +120,11 @@ function SectionCard({ section }: { section: DeskSection }) {
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-2 text-base font-bold text-[#071955]">
           {section.title}
+          {section.badge !== undefined && section.badge > 0 && (
+            <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+              {section.badge > 9 ? "9+" : section.badge}
+            </span>
+          )}
           {!section.href && (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-500">
               <LockOutlined sx={{ fontSize: 13 }} />
@@ -166,6 +179,43 @@ function DeskOverviewView() {
   const paidCount = upgrades.data?.data.filter(isUpgrade).length ?? 0;
   const firstName = user?.fullName?.split(" ")[0] ?? "there";
 
+  // A venue paid online has no receipts to check: its payments confirm
+  // themselves, and what the desk wants is to know they came in. The receipt
+  // queues stay only while something paid the old way is still in them — a
+  // venue switched over mid-week still has those to finish.
+  const online = useDeskPaysOnline();
+  const showTransactions = online.paysOnline && online.seesMoney;
+  const summary = useDeskTransactionSummary(showTransactions);
+  const unseen = summary.data?.unseen ?? 0;
+  const needsAttention = summary.data?.needsAttention ?? 0;
+  const showReceiptQueue = !online.paysOnline || count > 0;
+  const showOpenPlayQueue = !online.paysOnline || openPlayCount > 0;
+
+  const shown = sections
+    .filter((section) => (!section.ownerOnly || isOwner) && (!section.money || seesMoney))
+    .filter((section) => section.href !== "/desk/bookings" || showReceiptQueue)
+    .filter((section) => section.href !== "/desk/open-play-requests" || showOpenPlayQueue)
+    .map((section) =>
+      section.href === "/desk/upgrades" && online.paysOnline
+        ? {
+            ...section,
+            description:
+              "Customers asking to move a booking for free. Approve it and the booking moves. Paid upgrades go through by themselves once paid online.",
+          }
+        : section,
+    );
+
+  if (showTransactions) {
+    shown.unshift({
+      title: "Online transactions",
+      description:
+        "Everything paid online at your venues — bookings, upgrades and open play. Each one confirmed itself; this is the record.",
+      href: "/desk/transactions",
+      icon: <PaymentsOutlined />,
+      badge: unseen + needsAttention,
+    });
+  }
+
   return (
     <main className="text-slate-950">
       <div className="mx-auto max-w-5xl px-6 py-12 lg:px-8">
@@ -185,6 +235,32 @@ function DeskOverviewView() {
               : venues.data.map((venue) => venue.name).join(" · ")}
         </p>
 
+        {/* The online transactions card below already counts what came in.
+            Only a payment that could not settle itself earns a banner: it is
+            the one thing here somebody has to act on. */}
+        {showTransactions && needsAttention > 0 && (
+          <Link
+            href="/desk/transactions"
+            className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-6 transition hover:border-amber-300"
+          >
+            <span>
+              <span className="block text-lg font-extrabold text-[#071955]">
+                {needsAttention === 1
+                  ? "One online payment needs you"
+                  : `${needsAttention} online payments need you`}
+              </span>
+              <span className="mt-1 block text-sm text-slate-600">
+                Paid, but it could not confirm by itself — the hold ran out, or the hours were
+                taken. Nothing has been refunded.
+              </span>
+            </span>
+            <span className="rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20">
+              Open transactions
+            </span>
+          </Link>
+        )}
+
+        {showReceiptQueue && (
         <Link
           href="/desk/bookings"
           className={`mt-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border p-6 transition ${
@@ -214,6 +290,7 @@ function DeskOverviewView() {
             Open the queue
           </span>
         </Link>
+        )}
 
         {/* Its own banner rather than folded into the count above. A move is a
             different job — check a court is free, and for an upgrade a receipt
@@ -281,9 +358,7 @@ function DeskOverviewView() {
         )}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {sections
-            .filter((section) => (!section.ownerOnly || isOwner) && (!section.money || seesMoney))
-            .map((section) => (
+          {shown.map((section) => (
             <SectionCard key={section.title} section={section} />
           ))}
         </div>

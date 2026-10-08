@@ -206,6 +206,39 @@ function SettingsHistory() {
  * and a forgotten one is replaced rather than looked up. Only the owner makes
  * it; attendants see whether there is one and are told it by the owner.
  */
+/**
+ * How this venue is paid. Shown and never set here: it is part of the signed
+ * agreement, and a desk that could flip it would be rewriting the contract.
+ */
+function PaymentTermsSection({ settings }: { settings: DeskSettings }) {
+  const direct = settings.paymentMode === "Direct";
+
+  return (
+    <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-[#071955]">How customers pay</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Set in your agreement with IcyPlay. To change it, contact the IcyPlay team.
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-bold ${
+            direct ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-[#164eaa]"
+          }`}
+        >
+          {direct ? "Online payment" : "GCash receipt"}
+        </span>
+      </div>
+      <p className="mt-4 text-sm text-slate-600">
+        {direct
+          ? `Customers pay by QR Ph, GCash, Maya or card through the payment gateway. A booking paid in time confirms itself, so there is nothing for you to check. The court is held for ${settings.onlineHoldMinutes} minutes while they pay.`
+          : "Customers pay your GCash and upload proof. You check each receipt against your account and confirm the booking."}
+      </p>
+    </section>
+  );
+}
+
 function CheckInCodeSection({ settings }: { settings: DeskSettings }) {
   const { enqueueSnackbar } = useSnackbar();
   const client = useQueryClient();
@@ -406,6 +439,8 @@ function DeskSettingsView() {
           </p>
         ) : (
           <>
+            <PaymentTermsSection settings={ranges} />
+
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <Dial
                 id="booking-window"
@@ -421,7 +456,11 @@ function DeskSettingsView() {
               <Dial
                 id="hold-minutes"
                 label="Hold a court for"
-                hint="After this, an unpaid booking lets the court go and the hours are back on sale. Long enough to open GCash and pay; short enough that a court is not sitting dark because somebody wandered off."
+                hint={
+                  ranges.paymentMode === "Direct"
+                    ? `Applies to bookings paid by GCash receipt. Bookings paid online are held for ${ranges.onlineHoldMinutes} minutes, as your agreement says.`
+                    : "After this, an unpaid booking lets the court go and the hours are back on sale. Long enough to open GCash and pay; short enough that a court is not sitting dark because somebody wandered off."
+                }
                 value={expiry}
                 unit="minutes"
                 smallest={ranges.smallestExpiry}

@@ -371,6 +371,14 @@ function HeaderAccountMenu() {
                   onSelect={close}
                 />
               )}
+              {waiting.transactions > 0 && (
+                <WaitingItem
+                  href="/desk/transactions"
+                  label={waiting.transactions === 1 ? "New online payment" : "New online payments"}
+                  count={waiting.transactions}
+                  onSelect={close}
+                />
+              )}
               {waiting.payments > 0 && (
                 <WaitingItem
                   href="/desk/bookings"

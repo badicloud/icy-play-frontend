@@ -179,10 +179,23 @@ function BookingDetails({
 
         <div>
           <h4 className="text-xs font-bold tracking-wide text-slate-400 uppercase">
-            What they sent
+            {booking.paymentChannel === "Direct" ? "How they paid" : "What they sent"}
           </h4>
 
-          {booking.receiptUrl ? (
+          {booking.paymentChannel === "Direct" ? (
+            <div className="mt-2">
+              <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                Paid online
+              </span>
+              <p className="mt-2 text-sm text-slate-500">
+                {booking.status === "Confirmed"
+                  ? "Paid through the payment gateway, which confirmed it. There is no receipt to check."
+                  : booking.status === "PendingPayment"
+                    ? "They are paying online. It confirms itself once the payment goes through."
+                    : "This booking was to be paid online."}
+              </p>
+            </div>
+          ) : booking.receiptUrl ? (
             <div className="mt-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

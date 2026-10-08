@@ -35,6 +35,9 @@ import {
   type CourtMixQuery,
   type RejectAnswer,
   type UtilizationQuery,
+  getDeskTransactions,
+  getDeskTransactionSummary,
+  markDeskTransactionsSeen,
 } from "@auth/deskApi";
 import type { BookingSource } from "@/app/(desk)/components/BookingSource";
 import { getDeskOpenPlayRequests } from "@auth/openPlayRegistrationApi";
@@ -81,15 +84,32 @@ export function useDeskWaiting(enabled: boolean) {
     refetchInterval: 60 * 1000,
   });
 
+  // Online payments, at venues paid that way and for people who may see the
+  // money: new since they last looked, and any waiting on a person.
+  const venues = useDeskVenues(enabled);
+  const online =
+    venues.data?.some((venue) => venue.paymentMode === "Direct" && venue.canSeeMoney) ?? false;
+  const transactions = useQuery({
+    queryKey: [...deskTransactionsKey, "summary"],
+    queryFn: getDeskTransactionSummary,
+    enabled: enabled && online,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
   const paymentCount = payments.data?.pagination.totalItems ?? 0;
   const upgradeCount = upgrades.data?.pagination.totalItems ?? 0;
   const openPlayCount = openPlays.data?.pagination.totalItems ?? 0;
+  const transactionCount = online
+    ? (transactions.data?.unseen ?? 0) + (transactions.data?.needsAttention ?? 0)
+    : 0;
 
   return {
     payments: paymentCount,
     upgrades: upgradeCount,
     openPlays: openPlayCount,
-    total: paymentCount + upgradeCount + openPlayCount,
+    transactions: transactionCount,
+    total: paymentCount + upgradeCount + openPlayCount + transactionCount,
   };
 }
 
@@ -438,5 +458,60 @@ export function useHoursOverTime(query: HoursQuery, enabled = true) {
     queryFn: () => getHoursOverTime(query),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Whether this person's venues are paid online, by the term in force. One
+ * owner's venues share one agreement, so in practice it is all or none; any
+ * venue paid online is enough to show online transactions.
+ */
+export function useDeskPaysOnline(enabled = true) {
+  const venues = useDeskVenues(enabled);
+
+  return {
+    isLoading: venues.isPending,
+    paysOnline: venues.data?.some((venue) => venue.paymentMode === "Direct") ?? false,
+    allOnline:
+      (venues.data?.length ?? 0) > 0 && (venues.data?.every((venue) => venue.paymentMode === "Direct") ?? false),
+    seesMoney: venues.data?.some((venue) => venue.canSeeMoney) ?? false,
+  };
+}
+
+export const deskTransactionsKey = [...deskKey, "transactions"] as const;
+
+/**
+ * The badge on online transactions: what arrived since this person last
+ * looked, and what is waiting on a person. Polls, like the receipt queue,
+ * because nobody at a desk refreshes to find out somebody has paid.
+ */
+export function useDeskTransactionSummary(enabled: boolean) {
+  return useQuery({
+    queryKey: [...deskTransactionsKey, "summary"],
+    queryFn: getDeskTransactionSummary,
+    enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+export function useDeskTransactions(query: { facilityId?: string | null; page: number; pageSize: number }, enabled = true) {
+  return useQuery({
+    queryKey: [...deskTransactionsKey, "list", query],
+    queryFn: () => getDeskTransactions(query),
+    enabled,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+/** Clears this person's badge. The summary is asked again straight after. */
+export function useMarkDeskTransactionsSeen() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: markDeskTransactionsSeen,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: [...deskTransactionsKey, "summary"] });
+    },
   });
 }
