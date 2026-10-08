@@ -1,6 +1,7 @@
 import { apiClient, API_ENDPOINTS } from "@/services/api";
 import type { Pagination } from "./adminApi";
 import type { RejectAnswer } from "./deskApi";
+import type { CheckoutStarted } from "./bookingApi";
 
 /** "PendingPayment", "PendingVerification", "Confirmed", "Rejected", "Cancelled". */
 export type RegistrationStatus =
@@ -61,6 +62,11 @@ export type OpenPlayRegistration = {
   /** What the QR holds, only while it is Active: a used or expired one is not handed out. */
   checkInQr: string | null;
   checkedInAt: string | null;
+  /**
+   * `Manual`, a receipt the venue checks, or `Direct`, through the payment
+   * gateway, which registers the player by itself once paid in time.
+   */
+  paymentChannel: "Manual" | "Direct";
 };
 
 /** Active: it gets them in. Used: they are checked in. Expired: the session ended without them. */
@@ -91,6 +97,14 @@ export function sendOpenPlayReceipt(registrationId: string, receiptUrl: string) 
   return apiClient.post<OpenPlayRegistration, { receiptUrl: string }>(
     API_ENDPOINTS.OPEN_PLAY_REGISTRATIONS.RECEIPT(registrationId),
     { receiptUrl },
+  );
+}
+
+/** Opens the payment gateway's checkout for a registration paid online. */
+export function startOpenPlayCheckout(registrationId: string) {
+  return apiClient.post<CheckoutStarted, Record<string, never>>(
+    API_ENDPOINTS.OPEN_PLAY_REGISTRATIONS.CHECKOUT(registrationId),
+    {},
   );
 }
 

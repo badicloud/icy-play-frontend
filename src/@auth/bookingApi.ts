@@ -307,7 +307,31 @@ export type BookingDetail = {
    */
   isInProgress: boolean;
   createdAt: string;
+  /**
+   * How this booking is paid, set by the venue's agreement when it was made:
+   * `Manual`, a GCash receipt the venue checks, or `Direct`, through the
+   * payment gateway. The customer does not choose; it decides step two.
+   */
+  paymentChannel: "Manual" | "Direct";
 };
+
+/** A checkout opened on the payment gateway. The browser is sent to the URL. */
+export type CheckoutStarted = {
+  paymentId: string;
+  checkoutUrl: string;
+};
+
+/**
+ * Opens the payment gateway's checkout for a booking paid online, or hands
+ * back the one already open. The booking is confirmed by the gateway telling
+ * the server, never by the customer coming back to this site.
+ */
+export function startBookingCheckout(bookingId: string) {
+  return apiClient.post<CheckoutStarted, Record<string, never>>(
+    API_ENDPOINTS.BOOKINGS.CHECKOUT(bookingId),
+    {},
+  );
+}
 
 /**
  * Which step of the checkout a booking is at.
@@ -474,6 +498,11 @@ export type MoveQuote = {
    * the booking, because it turns over while the screen is open.
    */
   isInPlay: boolean;
+  /**
+   * How the difference would be paid, by the venue's term now: a receipt the
+   * desk checks and approves, or online, which moves the booking by itself.
+   */
+  paymentChannel: "Manual" | "Direct";
 };
 
 /**
@@ -749,6 +778,11 @@ export type UpgradeRequest = {
   /** Why the venue said no, when it did. */
   declineReason: string | null;
   slots: UpgradeSlot[];
+  /**
+   * `Manual`, a receipt the venue checks, or `Direct`, through the payment
+   * gateway, which, paid in time, moves the booking by itself.
+   */
+  paymentChannel: "Manual" | "Direct";
 };
 
 /**
@@ -770,6 +804,14 @@ export function requestUpgrade(
     reason: why.reason,
     reasonNote: why.note.trim() || null,
   });
+}
+
+/** Opens the payment gateway's checkout for the difference on an upgrade paid online. */
+export function startUpgradeCheckout(bookingId: string, upgradeId: string) {
+  return apiClient.post<CheckoutStarted, Record<string, never>>(
+    API_ENDPOINTS.BOOKINGS.UPGRADE_CHECKOUT(bookingId, upgradeId),
+    {},
+  );
 }
 
 /** The upgrade still open on this booking, or null when there is none. */
@@ -908,4 +950,48 @@ export function upcomingDays(count: number) {
 
     return day;
   });
+}
+
+/**
+ * What was paid for a confirmed booking, line by line, with the payment
+ * gateway's fee broken out. IcyPlay's record of the payment, not an official
+ * receipt — that is the venue's to issue.
+ */
+export type BookingReceipt = {
+  /** The same reference the payment gateway shows, so the two can be matched. */
+  receiptNumber: string;
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  courtName: string;
+  facilityName: string;
+  sportName: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  slots: BookedSlot[];
+  rentalTotal: number;
+  platformFeeTotal: number;
+  /** Court rental and platform fee: what the booking itself costs. */
+  bookingTotal: number;
+  paymentChannel: "Manual" | "Direct";
+  /** Each online payment: the booking's own, and any upgrade since. */
+  payments: ReceiptPayment[];
+  /** The gateway's fees across those payments, paid on top by the customer. */
+  processingFeeTotal: number;
+  /** Everything handed over: the booking, upgrades, and the gateway's fees. */
+  amountPaid: number;
+  confirmedAt: string | null;
+};
+
+export type ReceiptPayment = {
+  description: string;
+  paymentMethod: string | null;
+  amountCharged: number;
+  processingFee: number;
+  paidAt: string | null;
+  reference: string | null;
+};
+
+export function getBookingReceipt(bookingId: string) {
+  return apiClient.get<BookingReceipt>(API_ENDPOINTS.BOOKINGS.RECEIPT(bookingId));
 }

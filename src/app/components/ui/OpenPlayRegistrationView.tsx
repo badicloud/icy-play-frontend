@@ -11,11 +11,19 @@ import { formatClock, formatPeso, formatSessionDate, openPlayHref, openPlayLevel
 import {
   getOpenPlayRegistration,
   registrationStep,
+  startOpenPlayCheckout,
   sendOpenPlayReceipt,
   type OpenPlayRegistration,
 } from "@auth/openPlayRegistrationApi";
 import CheckoutSteps from "./CheckoutSteps";
 import HoldCountdown from "./HoldCountdown";
+import {
+  ConfirmingPayment,
+  OnlinePaymentPanel,
+  PaidLate,
+  useReturnedFromGateway,
+  useVerifyWhileConfirming,
+} from "./OnlinePaymentPanel";
 import CheckInPassCard from "./CheckInPassCard";
 import VenueContactCard from "./VenueContactCard";
 import PublicFooter from "./PublicFooter";
@@ -249,7 +257,10 @@ function Outcome({
         <div className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-6">
           <h2 className="text-lg font-bold text-green-900">You are registered</h2>
           <p className="mt-1.5 text-green-800">
-            {registration.facilityName} has checked your payment. See you on {formatSessionDate(registration.date)}{" "}
+            {registration.paymentChannel === "Direct"
+              ? "Your payment went through."
+              : `${registration.facilityName} has checked your payment.`}{" "}
+            See you on {formatSessionDate(registration.date)}{" "}
             at {formatClock(registration.startsAt)}.
             {registration.checkInPassState === "Active" && " Show the QR below at the desk when you arrive."}
           </p>
@@ -341,15 +352,43 @@ function Outcome({
 function OpenPlayRegistrationView({ registrationId }: { registrationId: string }) {
   const client = useQueryClient();
 
+  const returned = useReturnedFromGateway();
+
   const registration = useQuery({
     queryKey: ["open-play-registration", registrationId],
     queryFn: () => getOpenPlayRegistration(registrationId),
     enabled: registrationId !== "",
     staleTime: 0,
     refetchOnMount: "always",
-    // Held up at the desk: once scanned, the QR turns to "Used" on the
-    // player's own screen without them reloading.
-    refetchInterval: (query) => (query.state.data?.checkInPassState === "Active" ? 10_000 : false),
+    // Back from paying online, and the gateway's word not in yet: every few
+    // seconds until it is. Held up at the desk: once scanned, the QR turns to
+    // "Used" on the player's own screen without them reloading.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+
+      if (
+        returned === "success" &&
+        data?.paymentChannel === "Direct" &&
+        data.status === "PendingPayment" &&
+        !data.hasLapsed
+      ) {
+        return 3000;
+      }
+
+      return data?.checkInPassState === "Active" ? 10_000 : false;
+    },
+  });
+
+  // The webhook usually says it first; this is for when it does not.
+  useVerifyWhileConfirming({
+    purpose: "OpenPlayRegistration",
+    subjectId: registrationId === "" ? null : registrationId,
+    active:
+      returned === "success" &&
+      registration.data?.paymentChannel === "Direct" &&
+      registration.data.status === "PendingPayment" &&
+      !registration.data.hasLapsed,
+    refreshKey: ["open-play-registration", registrationId],
   });
 
   function changed(updated: OpenPlayRegistration) {
@@ -384,6 +423,7 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
 
   const detail = registration.data;
   const step = registrationStep(detail);
+  const direct = detail.paymentChannel === "Direct";
 
   return (
     <Shell>
@@ -397,7 +437,16 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
 
       <Summary registration={detail} />
 
-      {detail.hasLapsed ? (
+      {detail.hasLapsed && direct && returned === "success" ? (
+        <>
+          <PaidLate venueName={detail.facilityName} />
+          <VenueContactCard
+            venueName={detail.facilityName}
+            phone={detail.contactPhone}
+            email={detail.contactEmail}
+          />
+        </>
+      ) : detail.hasLapsed ? (
         <div className="mt-6 rounded-[24px] border border-amber-200 bg-amber-50 p-6">
           <h2 className="text-lg font-bold text-amber-900">This hold has run out</h2>
           <p className="mt-1.5 text-amber-800">
@@ -410,6 +459,18 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
             Try again
           </Link>
         </div>
+      ) : step === 2 && direct && returned === "success" ? (
+        <ConfirmingPayment />
+      ) : step === 2 && direct ? (
+        <OnlinePaymentPanel
+          amount={detail.total}
+          holdsUntil={detail.holdsUntil}
+          what="spot"
+          cancelled={returned === "cancelled"}
+          onExpired={() => void registration.refetch()}
+          startCheckout={() => startOpenPlayCheckout(detail.registrationId)}
+          confirmsWhat="You are registered, with your check-in pass,"
+        />
       ) : step === 2 ? (
         <Pay registration={detail} onExpired={() => void registration.refetch()} onSent={changed} />
       ) : (

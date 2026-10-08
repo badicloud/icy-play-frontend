@@ -456,9 +456,30 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
           </dl>
 
           <h3 className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-            Payment receipt
+            {booking.paymentChannel === "Direct" ? "Payment" : "Payment receipt"}
           </h3>
-          {booking.receiptUrl === null ? (
+          {/* Paid online, there is no receipt to send: the payment itself is
+              the record, and the history below says when it went through. */}
+          {booking.paymentChannel === "Direct" ? (
+            <p className="mt-2 text-sm text-slate-500">
+              {booking.status === "Confirmed"
+                ? "Paid online. A receipt was emailed to you by our payment partner."
+                : booking.status === "PendingPayment" && !booking.hasLapsed
+                  ? "Waiting for your online payment."
+                  : "Paid online."}
+              {booking.status === "Confirmed" && (
+                <>
+                  {" "}
+                  <Link
+                    href={`/bookings/${booking.id}/receipt`}
+                    className="font-bold text-[#2563EB] underline-offset-4 hover:underline"
+                  >
+                    View receipt
+                  </Link>
+                </>
+              )}
+            </p>
+          ) : booking.receiptUrl === null ? (
             <p className="mt-2 text-sm text-slate-400">Nothing sent yet.</p>
           ) : (
             <div className="mt-2">
@@ -511,24 +532,10 @@ function Card({ booking, onMove }: { booking: BookingDetail; onMove: () => void 
               </button>
             )}
 
-            {/* The limit is the venue's own dial, set from its desk, so the
-                number has to come from the booking rather than be written in
-                here. A venue that allows one move would have been told three. */}
-            {/* Closed by the venue's notice rather than by the count. Said, so
-                a button that was there last week is not simply gone. */}
-            {booking.movesLeft > 0 && booking.isInsideMoveNotice && booking.upgradeStatus === null && (
-              <span className="text-sm font-semibold text-slate-400">
-                {`Moves close ${booking.moveNoticeDays === 1 ? "a day" : `${booking.moveNoticeDays} days`} before a booking starts — contact the venue if you need to change it.`}
-              </span>
-            )}
-
-            {booking.movesLeft === 0 && (
-              <span className="text-sm font-semibold text-slate-400">
-                {Number.isFinite(booking.moveLimit)
-                  ? `Moved ${booking.moveLimit} ${booking.moveLimit === 1 ? "time" : "times"} — this booking stays where it is.`
-                  : "No moves left — this booking stays where it is."}
-              </span>
-            )}
+            {/* Nothing is said when a booking cannot be moved: a line on every
+                card that cannot be acted on was noise. The move rules are in
+                the booking policy, and the move screen says them when it is
+                open. */}
           </div>
         </div>
       )}

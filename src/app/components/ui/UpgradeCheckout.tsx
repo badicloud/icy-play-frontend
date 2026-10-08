@@ -15,6 +15,7 @@ import {
   peso,
   quoteMove,
   requestUpgrade,
+  startUpgradeCheckout,
   upgradeStep,
   type BookingDetail,
   type MoveQuote,
@@ -25,6 +26,13 @@ import {
 import CheckoutSteps from "./CheckoutSteps";
 import MoveReasonPicker, { answerOf, NO_REASON, type MoveReasonDraft } from "./MoveReasonPicker";
 import HoldCountdown from "./HoldCountdown";
+import {
+  ConfirmingPayment,
+  OnlinePaymentPanel,
+  PaidLate,
+  useReturnedFromGateway,
+  useVerifyWhileConfirming,
+} from "./OnlinePaymentPanel";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 
@@ -97,9 +105,32 @@ function UpgradeCheckout({
   // Which step this is, asked of the server rather than held on the page.
   // Somebody who has paid and come back tomorrow should land on where they
   // are, not on a review of a decision they already made.
+  const returned = useReturnedFromGateway();
+
   const upgrade = useQuery({
     queryKey: ["upgrade", bookingId],
     queryFn: () => getOpenUpgrade(bookingId),
+    // Back from paying online, and the gateway's word not in yet: ask again
+    // every few seconds until the upgrade has gone through.
+    refetchInterval: (query) =>
+      returned === "success" &&
+      query.state.data?.paymentChannel === "Direct" &&
+      query.state.data.status === "AwaitingPayment" &&
+      !query.state.data.hasLapsed
+        ? 3000
+        : false,
+  });
+
+  // The webhook usually says it first; this is for when it does not.
+  useVerifyWhileConfirming({
+    purpose: "BookingUpgrade",
+    subjectId: upgrade.data?.id ?? null,
+    active:
+      returned === "success" &&
+      upgrade.data?.paymentChannel === "Direct" &&
+      upgrade.data.status === "AwaitingPayment" &&
+      !upgrade.data.hasLapsed,
+    refreshKey: ["upgrade", bookingId],
   });
 
   const open = upgrade.data ?? null;
@@ -129,11 +160,19 @@ function UpgradeCheckout({
     return <Lost />;
   }
 
+  // Paid online and gone through: there is no open upgrade any more, because
+  // the booking has moved. Said here, before the page would offer to price a
+  // move all over again.
+  if (open === null && returned === "success") {
+    return <UpgradeDone detail={detail} />;
+  }
+
   if (open !== null) {
     return (
       <Pay
         detail={detail}
         upgrade={open}
+        returned={returned}
         onChanged={(updated) => {
           client.setQueryData(["upgrade", bookingId], updated);
           moved();
@@ -275,13 +314,27 @@ function Review({
           and the box that accepts it in one amber panel, so nobody ticks a
           checkbox whose consequence is somewhere else on the page. */}
       <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5">
-        <p className="text-sm leading-6 font-semibold text-amber-900">
-          Your booking stays exactly as it is until the venue approves this upgrade. Once they do,
-          the hours you are leaving go back on sale.
-        </p>
-        <p className="mt-2 text-sm leading-6 font-semibold text-amber-900">
-          You pay the venue directly. IcyPlay never holds your money, so we cannot refund it.
-        </p>
+        {priced.paymentChannel === "Direct" ? (
+          <>
+            <p className="text-sm leading-6 font-semibold text-amber-900">
+              You pay the difference online. Your booking moves the moment the payment goes
+              through, and the hours you are leaving go back on sale.
+            </p>
+            <p className="mt-2 text-sm leading-6 font-semibold text-amber-900">
+              A small processing fee is added depending on how you pay. Upgrades are not refunded.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm leading-6 font-semibold text-amber-900">
+              Your booking stays exactly as it is until the venue approves this upgrade. Once they
+              do, the hours you are leaving go back on sale.
+            </p>
+            <p className="mt-2 text-sm leading-6 font-semibold text-amber-900">
+              You pay the venue directly. IcyPlay never holds your money, so we cannot refund it.
+            </p>
+          </>
+        )}
 
         <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm font-semibold text-amber-900">
           <input
@@ -358,19 +411,35 @@ function Review({
 function Pay({
   detail,
   upgrade,
+  returned,
   onChanged,
   onExpired,
   onGoneBack,
 }: {
   detail: BookingDetail;
   upgrade: UpgradeRequest;
+  /** What the payment gateway said when it sent the customer back, if it did. */
+  returned: "success" | "cancelled" | null;
   onChanged: (updated: UpgradeRequest) => void;
   /** The hold ran out. Read the upgrade again and let the server say so. */
   onExpired: () => void;
   onGoneBack: () => void;
 }) {
-  const canBePaid = detail.gcashNumber !== null || detail.gcashQrCodeUrl !== null;
   const step = upgradeStep(upgrade);
+
+  if (upgrade.paymentChannel === "Direct") {
+    return (
+      <PayOnline
+        detail={detail}
+        upgrade={upgrade}
+        returned={returned}
+        onExpired={onExpired}
+        onGoneBack={onGoneBack}
+      />
+    );
+  }
+
+  const canBePaid = detail.gcashNumber !== null || detail.gcashQrCodeUrl !== null;
 
   return (
     <Shell>
@@ -772,6 +841,100 @@ function SentReceipt({
 }
 
 /** Step four: nothing left for the customer to do but wait. */
+/**
+ * The upgrade on a venue paid online: the difference goes through the payment
+ * gateway, and paid in time with the hours still free, the booking moves by
+ * itself. Nothing is sent to the desk to check.
+ */
+function PayOnline({
+  detail,
+  upgrade,
+  returned,
+  onExpired,
+  onGoneBack,
+}: {
+  detail: BookingDetail;
+  upgrade: UpgradeRequest;
+  returned: "success" | "cancelled" | null;
+  onExpired: () => void;
+  onGoneBack: () => void;
+}) {
+  return (
+    <Shell>
+      <Crumbs />
+
+      <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+        Pay {peso(upgrade.balanceDue)} to upgrade
+      </h1>
+      <p className="mt-2 text-slate-500">
+        Your upgrade to {upgrade.toCourtName} is written down and waiting. Your booking moves the
+        moment the payment goes through.
+      </p>
+
+      <div className="mt-6">
+        <CheckoutSteps current={2} />
+      </div>
+
+      {upgrade.hasLapsed && returned === "success" ? (
+        <PaidLate venueName={detail.facilityName} />
+      ) : upgrade.hasLapsed ? (
+        <Lapsed onGoneBack={onGoneBack} />
+      ) : returned === "success" ? (
+        <ConfirmingPayment />
+      ) : (
+        <OnlinePaymentPanel
+          amount={upgrade.balanceDue}
+          holdsUntil={upgrade.holdsUntil}
+          what="new hours"
+          cancelled={returned === "cancelled"}
+          onExpired={onExpired}
+          startCheckout={() => startUpgradeCheckout(detail.id, upgrade.id)}
+          confirmsWhat="Your booking moves"
+        />
+      )}
+
+      <Panel>
+        <h2 className="text-lg font-extrabold text-[#071955]">What you are changing to</h2>
+
+        <Hours courtName={upgrade.toCourtName} slots={upgrade.slots} />
+
+        <dl className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
+          <Line label="What those hours cost you now" value={peso(upgrade.rentalNow)} />
+          <Line
+            label={`What they cost on ${upgrade.toCourtName}`}
+            value={peso(upgrade.rentalNew)}
+          />
+          <div className="flex justify-between gap-4 border-t border-slate-100 pt-2">
+            <dt className="font-bold text-[#071955]">Difference to pay</dt>
+            <dd className="text-lg font-extrabold text-[#071955]">{peso(upgrade.balanceDue)}</dd>
+          </div>
+        </dl>
+      </Panel>
+    </Shell>
+  );
+}
+
+/** Paid online and gone through: the booking has moved. */
+function UpgradeDone({ detail }: { detail: BookingDetail }) {
+  return (
+    <Shell>
+      <Crumbs />
+      <div className="mt-6 rounded-3xl border border-green-200 bg-green-50 p-6">
+        <h2 className="text-lg font-bold text-green-900">Your upgrade went through</h2>
+        <p className="mt-1.5 text-green-800">
+          Your payment is in and your booking has moved. We have emailed you the details.
+        </p>
+        <Link
+          href={`/bookings/${detail.id}`}
+          className="mt-4 inline-block rounded-full bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white"
+        >
+          See your booking
+        </Link>
+      </div>
+    </Shell>
+  );
+}
+
 function Waiting({ detail, upgrade }: { detail: BookingDetail; upgrade: UpgradeRequest }) {
   return (
     <div className="mt-6 rounded-3xl border border-blue-200 bg-blue-50 p-6">

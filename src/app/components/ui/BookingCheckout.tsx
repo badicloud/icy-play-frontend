@@ -13,10 +13,18 @@ import {
   createReceiptUploadSignature,
   getBooking,
   peso,
+  startBookingCheckout,
   type BookingDetail,
 } from "@auth/bookingApi";
 import CheckoutSteps from "./CheckoutSteps";
 import HoldCountdown from "./HoldCountdown";
+import {
+  ConfirmingPayment,
+  OnlinePaymentPanel,
+  PaidLate,
+  useReturnedFromGateway,
+  useVerifyWhileConfirming,
+} from "./OnlinePaymentPanel";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
 import VenueContactCard from "./VenueContactCard";
@@ -49,10 +57,33 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
     void client.invalidateQueries({ queryKey: ["my-bookings"] });
   }
 
+  const returned = useReturnedFromGateway();
+
   const booking = useQuery({
     queryKey: ["booking", bookingId],
     queryFn: () => getBooking(bookingId),
     enabled: bookingId !== "",
+    // Back from paying, and the gateway's word not in yet: ask again every few
+    // seconds until it is. It usually lands before the page does.
+    refetchInterval: (query) =>
+      returned === "success" &&
+      query.state.data?.paymentChannel === "Direct" &&
+      query.state.data.status === "PendingPayment" &&
+      !query.state.data.hasLapsed
+        ? 3000
+        : false,
+  });
+
+  // The webhook usually says it first; this is for when it does not.
+  useVerifyWhileConfirming({
+    purpose: "Booking",
+    subjectId: bookingId === "" ? null : bookingId,
+    active:
+      returned === "success" &&
+      booking.data?.paymentChannel === "Direct" &&
+      booking.data.status === "PendingPayment" &&
+      !booking.data.hasLapsed,
+    refreshKey: ["booking", bookingId],
   });
 
   if (booking.isPending) {
@@ -82,6 +113,7 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
 
   const detail = booking.data;
   const step = checkoutStep(detail);
+  const direct = detail.paymentChannel === "Direct";
 
   return (
     <main className="min-h-screen bg-[#f5f9ff]">
@@ -97,13 +129,27 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
           {detail.facilityName} · {detail.sportName}
         </p>
 
-        {detail.hasLapsed ? (
+        {detail.hasLapsed && direct && returned === "success" ? (
+          <PaidLateWithContact detail={detail} />
+        ) : detail.hasLapsed ? (
           <Lapsed detail={detail} />
         ) : (
           <>
             <Summary detail={detail} />
 
-            {step === 2 && (
+            {step === 2 && direct && returned === "success" && <ConfirmingPayment />}
+
+            {step === 2 && direct && returned !== "success" && (
+              <OnlinePaymentPanel
+                amount={detail.total}
+                holdsUntil={detail.holdsUntil}
+                cancelled={returned === "cancelled"}
+                onExpired={() => void booking.refetch()}
+                startCheckout={() => startBookingCheckout(detail.id)}
+              />
+            )}
+
+            {step === 2 && !direct && (
               <Pay
                 detail={detail}
                 onExpired={() => void booking.refetch()}
@@ -177,11 +223,20 @@ function Summary({ detail }: { detail: BookingDetail }) {
           <dd className="font-bold text-[#071955]">{peso(detail.platformFeeTotal)}</dd>
         </div>
         <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-slate-200 pt-3">
-          <dt className="font-extrabold text-[#071955]">Pay the venue</dt>
+          {/* Online, the money goes through the gateway rather than to the
+              venue's own GCash, and a processing fee is added on its page. */}
+          <dt className="font-extrabold text-[#071955]">
+            {detail.paymentChannel === "Direct" ? "Total" : "Pay the venue"}
+          </dt>
           <dd className="text-2xl font-extrabold tracking-tight text-[#071955]">
             {peso(detail.total)}
           </dd>
         </div>
+        {detail.paymentChannel === "Direct" && (
+          <p className="text-xs font-medium text-slate-500">
+            Plus a small processing fee, shown on the payment page once you pick how to pay.
+          </p>
+        )}
       </dl>
     </section>
   );
@@ -566,8 +621,16 @@ function Waiting({
       <div className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-6">
         <h2 className="text-lg font-bold text-green-900">Your booking is confirmed</h2>
         <p className="mt-1.5 text-green-800">
-          {detail.facilityName} has checked your payment. The court is yours — turn up and play.
+          {detail.paymentChannel === "Direct"
+            ? "Your payment went through. The court is yours — turn up and play. We have emailed you the details."
+            : `${detail.facilityName} has checked your payment. The court is yours — turn up and play.`}
         </p>
+        <Link
+          href={`/bookings/${detail.id}/receipt`}
+          className="mt-4 inline-block rounded-full border border-green-300 bg-white px-5 py-2.5 text-sm font-bold text-green-800 transition hover:border-green-500"
+        >
+          View your receipt
+        </Link>
       </div>
     );
   }
@@ -621,6 +684,20 @@ function Waiting({
         Book another court
       </Link>
     </div>
+  );
+}
+
+/** Paid after the hold ran out, with who to talk to about it. */
+function PaidLateWithContact({ detail }: { detail: BookingDetail }) {
+  return (
+    <>
+      <PaidLate venueName={detail.facilityName} />
+      <VenueContactCard
+        venueName={detail.facilityName}
+        phone={detail.contactPhone}
+        email={detail.contactEmail}
+      />
+    </>
   );
 }
 

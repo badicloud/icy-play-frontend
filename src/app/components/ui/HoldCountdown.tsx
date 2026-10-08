@@ -26,12 +26,18 @@ function HoldCountdown({
   compact = false,
   onExpired,
   what = "court",
+  paidOnline = false,
 }: {
   holdsUntil: string;
   compact?: boolean;
   onExpired?: () => void;
   /** What is being held: a court for a booking, a spot for an open play. */
   what?: string;
+  /**
+   * Paid through the payment gateway rather than by receipt. There is
+   * nothing to upload, and what stops the clock is the payment going through.
+   */
+  paidOnline?: boolean;
 }) {
   const [left, setLeft] = useState(() => Date.parse(holdsUntil) - Date.now());
   const told = useRef(false);
@@ -85,8 +91,10 @@ function HoldCountdown({
           : "border-blue-200 bg-blue-50 text-[#071955]"
       }`}
     >
-      Your {what} is held for <span className="font-extrabold">{shown}</span>. Upload your receipt
-      before then and the clock stops.
+      Your {what} is held for <span className="font-extrabold">{shown}</span>.{" "}
+      {paidOnline
+        ? "Finish paying online before then and it is yours."
+        : "Upload your receipt before then and the clock stops."}
     </p>
   );
 }
