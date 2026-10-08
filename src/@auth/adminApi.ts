@@ -194,6 +194,14 @@ export function replaceContractDocument(
   );
 }
 
+/** Starts a signed term that has not begun yet, today. Its end date stays as it was. */
+export function activateContract(id: string, contractId: string, reason: string | null) {
+  return apiClient.post<void, { reason: string | null }>(
+    API_ENDPOINTS.ADMIN.ACTIVATE_CONTRACT(id, contractId),
+    { reason },
+  );
+}
+
 export function cancelContract(id: string, contractId: string, reason: string | null) {
   return apiClient.post<void, { reason: string | null }>(
     API_ENDPOINTS.ADMIN.CANCEL_CONTRACT(id, contractId),
@@ -243,6 +251,7 @@ export const activityActionLabels: Record<string, string> = {
   FacilityHoursUpdated: "Opening hours changed",
   ContractCommenced: "Contract commenced",
   ContractCancelled: "Contract cancelled",
+  ContractActivated: "Contract started early",
   ContractDocumentReplaced: "Signed agreement replaced",
   ContractRatesUpdated: "Platform rates changed",
   ContractTermUpdated: "Contract dates changed",
@@ -411,12 +420,26 @@ export type ContractDetail = {
   /** Per cent of each billing kept for maintenance and commission. */
   commissionPercentage: number;
   createdAt: string;
+  /** How customers pay under this term. Set by the platform admin only. */
+  paymentMode: PaymentMode;
+  /** How long a booking paid online holds its court, in minutes. */
+  onlineHoldMinutes: number;
+  /** Signed, not cancelled, not begun yet: can be started early. The server's today decides. */
+  isUpcoming: boolean;
 };
+
+/**
+ * Manual: the customer pays the venue's GCash and uploads a receipt the desk
+ * checks. Direct: the customer pays through the payment gateway and it confirms
+ * the booking by itself. Never both.
+ */
+export type PaymentMode = "Manual" | "Direct";
 
 /** What IcyPlay charges unless a term says otherwise. */
 export const platformRateDefaults = {
   hourlyRate: 15,
   commissionPercentage: 3,
+  onlineHoldMinutes: 15,
 };
 
 export type ContractTermPayload = {
@@ -441,6 +464,8 @@ export type ContractRatesPayload = {
   platformHourlyRate: number;
   commissionPercentage: number;
   reason: string | null;
+  paymentMode: PaymentMode;
+  onlineHoldMinutes: number;
 };
 
 export function updateContractRates(

@@ -35,6 +35,7 @@ import BusinessEditDialog from "../edit/BusinessEditDialog";
 import PaymentDetailsDialog from "../edit/PaymentDetailsDialog";
 import BookingRulesDialog from "../edit/BookingRulesDialog";
 import AttendantsPanel from "./AttendantsPanel";
+import ActivateContractDialog from "../edit/ActivateContractDialog";
 import CancelContractDialog from "../edit/CancelContractDialog";
 import ContractRatesDialog from "../edit/ContractRatesDialog";
 import ContractTermDialog from "../edit/ContractTermDialog";
@@ -429,15 +430,26 @@ function peso(amount: number) {
   })}`;
 }
 
+/**
+ * Whether a term can be brought forward: signed, not cancelled, and not yet
+ * begun — answered by the server, whose "today" is the one that counts.
+ * Whether another term is in the way is also the server's to say, on save.
+ */
+function canStartEarly(contract: ContractDetail) {
+  return contract.isUpcoming;
+}
+
 function ContractRow({
   contract,
   onCancel,
+  onActivate,
   onReplaceAgreement,
   onEditRates,
   onEditTerm,
 }: {
   contract: ContractDetail;
   onCancel: () => void;
+  onActivate: () => void;
   onReplaceAgreement: () => void;
   onEditRates: () => void;
   onEditTerm: () => void;
@@ -526,6 +538,17 @@ function ContractRow({
           <span className="text-slate-400"> · </span>
           <span className="font-bold text-[#071955]">{contract.commissionPercentage}%</span> of that
           bill for maintenance
+          <span className="text-slate-400"> · </span>
+          {contract.paymentMode === "Direct" ? (
+            <>
+              paid <span className="font-bold text-[#071955]">online</span>, held{" "}
+              {contract.onlineHoldMinutes} min
+            </>
+          ) : (
+            <>
+              paid by <span className="font-bold text-[#071955]">GCash receipt</span>
+            </>
+          )}
         </p>
         {!contract.cancelledAt && (
           <button
@@ -533,10 +556,22 @@ function ContractRow({
             onClick={onEditRates}
             className="text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
           >
-            Change rates
+            Change rates and payment
           </button>
         )}
       </div>
+
+      {/* A signed term still waiting for its date, and nothing live today: the
+          owner is off sale until it arrives unless it is started now. */}
+      {canStartEarly(contract) && (
+        <button
+          type="button"
+          onClick={onActivate}
+          className="mr-4 mt-1.5 text-sm font-bold text-[#164eaa] transition hover:text-[#071955]"
+        >
+          Start this term today
+        </button>
+      )}
 
       {!contract.cancelledAt && (
         <button
@@ -646,6 +681,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
   // Cancelling ends a contract and can take a facility off the booking portal,
   // so it is confirmed rather than fired from the row it sits on.
   const [cancelling, setCancelling] = useState<ContractDetail | null>(null);
+  const [activating, setActivating] = useState<ContractDetail | null>(null);
   const [replacingAgreement, setReplacingAgreement] = useState<ContractDetail | null>(null);
   const [editingRates, setEditingRates] = useState<ContractDetail | null>(null);
   const [editingTerm, setEditingTerm] = useState<ContractDetail | null>(null);
@@ -1018,6 +1054,7 @@ function AdminFacilityOwnerDetailView({ facilityOwnerId }: { facilityOwnerId: st
                         key={contract.id}
                         contract={contract}
                         onCancel={() => setCancelling(contract)}
+                        onActivate={() => setActivating(contract)}
                         onReplaceAgreement={() => setReplacingAgreement(contract)}
                         onEditRates={() => setEditingRates(contract)}
                         onEditTerm={() => setEditingTerm(contract)}
@@ -1126,6 +1163,12 @@ key={facility.id}
               facilityOwnerId={facilityOwnerId}
               contract={replacingAgreement}
               onClose={() => setReplacingAgreement(null)}
+            />
+
+            <ActivateContractDialog
+              facilityOwnerId={facilityOwnerId}
+              contract={activating}
+              onClose={() => setActivating(null)}
             />
 
             <CancelContractDialog

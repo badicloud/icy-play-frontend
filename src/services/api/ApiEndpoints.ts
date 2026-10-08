@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
     MINE: `${API_V1}/open-play-registrations`,
     ONE: (registrationId: string) => `${API_V1}/open-play-registrations/${registrationId}`,
     RECEIPT: (registrationId: string) => `${API_V1}/open-play-registrations/${registrationId}/receipt`,
+    CHECKOUT: (registrationId: string) => `${API_V1}/open-play-registrations/${registrationId}/checkout`,
   },
   BOOKINGS: {
     ROOT: `${API_V1}/bookings`,
@@ -63,6 +64,12 @@ export const API_ENDPOINTS = {
     UPGRADE: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade`,
     UPGRADE_RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/upgrade/receipt`,
     RECEIPT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/receipt`,
+    CHECKOUT: (bookingId: string) => `${API_V1}/bookings/${bookingId}/checkout`,
+    UPGRADE_CHECKOUT: (bookingId: string, upgradeId: string) =>
+      `${API_V1}/bookings/${bookingId}/upgrade/${upgradeId}/checkout`,
+  },
+  PAYMENTS: {
+    VERIFY: (purpose: string, subjectId: string) => `${API_V1}/payments/${purpose}/${subjectId}/verify`,
   },
   CUSTOMER_UPLOAD_SIGNATURE: `${API_V1}/assets/upload-signature`,
   ADMIN: {
@@ -104,6 +111,8 @@ export const API_ENDPOINTS = {
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/rates`,
     CANCEL_CONTRACT: (id: string, contractId: string) =>
       `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/cancel`,
+    ACTIVATE_CONTRACT: (id: string, contractId: string) =>
+      `${API_V1}/admin/facility-owners/${id}/contracts/${contractId}/activate`,
     SEED_VENUE: `${API_V1}/admin/seed/venue`,
     SEED_VENUES: `${API_V1}/admin/seed/venues`,
     SEED_ALLOWED: `${API_V1}/admin/seed/allowed`,
@@ -156,6 +165,9 @@ export const API_ENDPOINTS = {
     OPEN_PLAY_CHECK_IN_CODE: `${API_V1}/desk/settings/open-play-check-in-code`,
     ATTENDANT_MONEY: (attendantId: string) => `${API_V1}/desk/attendants/${attendantId}/money`,
     VENUES: `${API_V1}/desk/venues`,
+    TRANSACTIONS: `${API_V1}/desk/transactions`,
+    TRANSACTIONS_SUMMARY: `${API_V1}/desk/transactions/summary`,
+    TRANSACTIONS_SEEN: `${API_V1}/desk/transactions/seen`,
     BOOKINGS: `${API_V1}/desk/bookings`,
     COURTS: `${API_V1}/desk/courts`,
     COURT_SCHEDULE: (courtId: string) => `${API_V1}/desk/courts/${courtId}/schedule`,

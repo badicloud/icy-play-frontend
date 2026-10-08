@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  activateContract,
   cancelContract,
   getFacilityOwnerActivity,
   renewContract,
@@ -24,6 +25,7 @@ import {
   type UpdateFacilityPayload,
   type UpdateHoursPayload,
   type UploadedFile,
+  type PaymentMode,
 } from "../adminApi";
 import { adminFacilityOwnerQueryKey } from "./useAdminFacilityOwner";
 import { adminFacilityOwnersQueryKey } from "./useAdminFacilityOwners";
@@ -105,6 +107,8 @@ export function useUpdateContractRates(id: string) {
     platformHourlyRate: number;
     commissionPercentage: number;
     reason: string | null;
+    paymentMode: PaymentMode;
+    onlineHoldMinutes: number;
   }>(id, ({ contractId, ...payload }) => updateContractRates(id, contractId, payload));
 }
 
@@ -194,5 +198,11 @@ export function useUpdateBookingRules(id: string) {
 export function useCancelContract(id: string) {
   return useEdit<{ contractId: string; reason: string | null }>(id, ({ contractId, reason }) =>
     cancelContract(id, contractId, reason),
+  );
+}
+
+export function useActivateContract(id: string) {
+  return useEdit<{ contractId: string; reason: string | null }>(id, ({ contractId, reason }) =>
+    activateContract(id, contractId, reason),
   );
 }
