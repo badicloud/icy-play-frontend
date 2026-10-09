@@ -98,6 +98,14 @@ function Receipt({ receipt }: { receipt: BookingReceipt }) {
         <p className="font-bold text-[#071955]">{receipt.courtName}</p>
         <p className="text-sm text-slate-500">{receipt.sportName}</p>
         <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {/* Moved since it was paid for: what this payment bought, not the
+              hours it is on now, which another payment may have paid for. */}
+          {receipt.originalSummary && (
+            <li className="flex justify-between gap-4 px-4 py-2.5 text-sm">
+              <span className="text-slate-700">{receipt.originalSummary}</span>
+              <span className="font-semibold text-[#071955]">{peso(receipt.rentalTotal)}</span>
+            </li>
+          )}
           {receipt.slots.map((slot) => (
             <li key={`${slot.date}-${slot.startsAt}`} className="flex justify-between gap-4 px-4 py-2.5 text-sm">
               <span className="text-slate-700">
@@ -123,7 +131,6 @@ function Receipt({ receipt }: { receipt: BookingReceipt }) {
               label={
                 <>
                   Payment processing fee
-                  {payment.description === "Upgrade" ? " (upgrade)" : ""}
                   <span className="block text-xs text-slate-400">
                     {methodName(payment.paymentMethod)}, via PayMongo · VAT incl.
                   </span>
@@ -134,18 +141,6 @@ function Receipt({ receipt }: { receipt: BookingReceipt }) {
           ) : null,
         )}
 
-        {/* An upgrade's difference, paid on its own, is part of what was
-            handed over; the hours above are already the ones moved onto. */}
-        {receipt.payments
-          .filter((payment) => payment.description === "Upgrade")
-          .map((payment) => (
-            <Row
-              key={`${payment.reference}-upgrade`}
-              label="Upgrade difference"
-              value={peso(payment.amountCharged - payment.processingFee)}
-            />
-          ))}
-
         <div className="border-t-2 border-slate-300 pt-3">
           <Row label="Amount paid" value={peso(receipt.amountPaid)} strong />
         </div>
@@ -155,7 +150,7 @@ function Receipt({ receipt }: { receipt: BookingReceipt }) {
         {online ? (
           receipt.payments.map((payment) => (
             <p key={payment.reference ?? payment.description}>
-              {payment.description}: paid {moment(payment.paidAt)} with {methodName(payment.paymentMethod)}
+              Paid {moment(payment.paidAt)} with {methodName(payment.paymentMethod)}
               {payment.reference && (
                 <>
                   {" "}
@@ -167,6 +162,14 @@ function Receipt({ receipt }: { receipt: BookingReceipt }) {
         ) : (
           <p>Paid by GCash to {receipt.facilityName}, and checked by the venue.</p>
         )}
+        {/* An upgrade is its own payment with its own receipt, emailed when it
+            went through. Named here so it can be found, never added in. */}
+        {(receipt.upgrades ?? []).map((upgrade) => (
+          <p key={upgrade.receiptNumber} className="mt-1">
+            Upgraded to {upgrade.toCourtName} since — a separate payment of {peso(upgrade.amountPaid)} with
+            its own receipt, <span className="font-mono">{upgrade.receiptNumber}</span>, sent to your email.
+          </p>
+        ))}
       </section>
 
       <p className="mt-6 text-xs text-slate-400">

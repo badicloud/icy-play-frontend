@@ -974,13 +974,28 @@ export type BookingReceipt = {
   /** Court rental and platform fee: what the booking itself costs. */
   bookingTotal: number;
   paymentChannel: "Manual" | "Direct";
-  /** Each online payment: the booking's own, and any upgrade since. */
+  /** The booking's own online payment. An upgrade has a receipt of its own. */
   payments: ReceiptPayment[];
   /** The gateway's fees across those payments, paid on top by the customer. */
   processingFeeTotal: number;
   /** Everything handed over: the booking, upgrades, and the gateway's fees. */
   amountPaid: number;
   confirmedAt: string | null;
+  /**
+   * Set when the booking has moved since: what this payment bought, in a
+   * sentence, in place of the hours it is on now.
+   */
+  originalSummary: string | null;
+  /** Upgrades paid for since, each a payment with its own receipt. */
+  upgrades: UpgradeReceiptSummary[] | null;
+};
+
+export type UpgradeReceiptSummary = {
+  receiptNumber: string;
+  fromCourtName: string | null;
+  toCourtName: string;
+  amountPaid: number;
+  paidAt: string | null;
 };
 
 export type ReceiptPayment = {
