@@ -115,6 +115,19 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
   const step = checkoutStep(detail);
   const direct = detail.paymentChannel === "Direct";
 
+  // Straight on to the gateway, without the button, for a booking paid online
+  // that is waiting to be paid and has not just come back from the gateway.
+  // Once per booking in this tab: someone who presses Back on the gateway's
+  // page lands here, and must find the button rather than be sent straight
+  // back to it.
+  const autoStartKey = `icyplay.checkout.auto.${detail.id}`;
+  const autoStart =
+    direct &&
+    detail.status === "PendingPayment" &&
+    !detail.hasLapsed &&
+    returned === null &&
+    !alreadyStarted(autoStartKey);
+
   return (
     <main className="min-h-screen bg-[#f5f9ff]">
       <PublicHeader />
@@ -146,6 +159,8 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
                 cancelled={returned === "cancelled"}
                 onExpired={() => void booking.refetch()}
                 startCheckout={() => startBookingCheckout(detail.id)}
+                startImmediately={autoStart}
+                onAutoStart={() => rememberStarted(autoStartKey)}
               />
             )}
 
@@ -727,6 +742,24 @@ function Shell({ children }: { children: React.ReactNode }) {
       <PublicFooter />
     </main>
   );
+}
+
+/** Whether this tab has already sent the customer to the gateway for this booking. */
+function alreadyStarted(key: string) {
+  try {
+    return window.sessionStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function rememberStarted(key: string) {
+  try {
+    window.sessionStorage.setItem(key, "1");
+  } catch {
+    // Without storage it may open the gateway again on Back. Not worse than
+    // that.
+  }
 }
 
 function longDate(iso: string) {

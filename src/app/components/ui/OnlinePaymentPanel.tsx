@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiClient, API_ENDPOINTS } from "@/services/api";
 import { peso, type CheckoutStarted } from "@auth/bookingApi";
@@ -43,6 +43,8 @@ export function OnlinePaymentPanel({
   onExpired,
   startCheckout,
   confirmsWhat = "Your booking is confirmed",
+  startImmediately = false,
+  onAutoStart,
 }: {
   amount: number;
   holdsUntil: string;
@@ -54,16 +56,49 @@ export function OnlinePaymentPanel({
   startCheckout: () => Promise<CheckoutStarted>;
   /** What happens the moment it goes through, said to the customer. */
   confirmsWhat?: string;
+  /**
+   * Open the gateway at once, without waiting for the button. A loading state
+   * shows only for as long as the gateway takes to answer; if it cannot be
+   * opened, the panel comes back with the reason and its button to try again.
+   */
+  startImmediately?: boolean;
+  /** Called once when it opens the gateway by itself, so the page can remember it did. */
+  onAutoStart?: () => void;
 }) {
   const [problem, setProblem] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   const start = useMutation({
     mutationFn: startCheckout,
-    // A full navigation, not a router push: the gateway is another site.
-    onSuccess: (started) => window.location.assign(started.checkoutUrl),
+    onSuccess: (started) => {
+      setLeaving(true);
+      // A full navigation, not a router push: the gateway is another site.
+      window.location.assign(started.checkoutUrl);
+    },
     onError: (error) =>
       setProblem(error instanceof ApiError ? error.message : "That did not work. Try again."),
   });
+
+  // Started by itself once, and remembered as such: the page around this
+  // stops asking for it the moment it begins, and the loading state must not
+  // give way to the button while the gateway is still opening.
+  const [auto, setAuto] = useState(false);
+  const startedOnce = useRef(false);
+
+  useEffect(() => {
+    if (startImmediately && !startedOnce.current) {
+      startedOnce.current = true;
+      setAuto(true);
+      onAutoStart?.();
+      start.mutate();
+    }
+  }, [startImmediately, start, onAutoStart]);
+
+  // On the way to the gateway, by itself or by the button: nothing to read or
+  // press here until its page takes over.
+  if (((startImmediately || auto) && problem === null && !start.isError) || leaving) {
+    return <NavigatingToPayment />;
+  }
 
   return (
     <>
@@ -144,6 +179,24 @@ export function useVerifyWhileConfirming({
     refetchInterval: active ? 4000 : false,
     retry: false,
   });
+}
+
+/** On the way to the gateway: shown only until its page replaces this one. */
+function NavigatingToPayment() {
+  return (
+    <div className="mt-6 flex items-center gap-4 rounded-[24px] border border-blue-200 bg-blue-50 p-6">
+      <span
+        className="h-8 w-8 shrink-0 animate-spin rounded-full border-4 border-blue-200 border-t-[#2563EB]"
+        aria-hidden
+      />
+      <div>
+        <h2 className="text-lg font-bold text-[#071955]">Navigating you to payment…</h2>
+        <p className="mt-1 text-slate-600">
+          Your court is held while you pay. Opening our payment partner, PayMongo.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 /** Back from the gateway, and its word not in yet. The page asks again until it is. */
