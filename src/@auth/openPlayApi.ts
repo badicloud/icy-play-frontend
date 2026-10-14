@@ -8,6 +8,8 @@ export type CatalogOpenPlaySession = {
   /** yyyy-MM-dd */
   date: string;
   spotsLeft: number;
+  /** Spots the venue filled with free players to make up the game. A count, never names. */
+  addedByVenue: number;
   /** Venue wall-clock time, yyyy-MM-ddTHH:mm:ss. */
   registrationClosesAt: string;
   isOpenForRegistration: boolean;

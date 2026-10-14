@@ -209,6 +209,9 @@ export const API_ENDPOINTS = {
       `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/check-in/scan`,
     CHECK_IN_PLAYER: (registrationId: string) => `${API_V1}/desk/open-play-check-ins/${registrationId}`,
     CHECK_IN_UNDO: (registrationId: string) => `${API_V1}/desk/open-play-check-ins/${registrationId}/undo`,
+    FREE_PLAYERS: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/free-players`,
+    FREE_PLAYER: (freePlayerId: string) => `${API_V1}/desk/open-play-free-players/${freePlayerId}`,
     OPEN_PLAY_REQUEST_CONFIRM: (registrationId: string) =>
       `${API_V1}/desk/open-play-requests/${registrationId}/confirm`,
     OPEN_PLAY_REQUEST_REJECT: (registrationId: string) =>

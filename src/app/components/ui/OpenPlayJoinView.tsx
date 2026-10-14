@@ -126,6 +126,7 @@ function OpenPlayJoinView() {
           </p>
           <p className="mt-0.5 text-sm text-slate-500">
             {session.spotsLeft} of {openPlay.maxPlayers} spots left
+            {session.addedByVenue > 0 && ` · ${session.addedByVenue} added by the venue`}
           </p>
         </div>
 

@@ -6,9 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/services/api";
 import {
+  addFreePlayer,
   checkInByHand,
   checkInScreenHref,
   getCheckInRoster,
+  removeFreePlayer,
   scanForCheckIn,
   undoCheckIn,
   type CheckInPlayer,
@@ -166,6 +168,40 @@ function DeskCheckInView() {
     setAsking({ kind, player });
   }
 
+  // Free players: somebody the venue puts in to make up a game.
+  const [adding, setAdding] = useState(false);
+  const [freeName, setFreeName] = useState("");
+  const [freeMobile, setFreeMobile] = useState("");
+  const [nameMissing, setNameMissing] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const addFree = useMutation({
+    mutationFn: () => addFreePlayer(openPlayId, date, freeName.trim(), freeMobile.trim()),
+    onSuccess: (fresh) => {
+      keep(fresh);
+      setAdding(false);
+      setFreeName("");
+      setFreeMobile("");
+    },
+  });
+
+  const removeFree = useMutation({
+    mutationFn: (freePlayerId: string) => removeFreePlayer(freePlayerId),
+    onSuccess: (fresh) => {
+      keep(fresh);
+      setRemoving(null);
+    },
+  });
+
+  function submitFree() {
+    if (freeName.trim() === "") {
+      setNameMissing(true);
+      return;
+    }
+
+    addFree.mutate();
+  }
+
   // mutate is stable, so the camera is never restarted by a re-render.
   const { mutate: sendScan } = scan;
   const onScan = useCallback((text: string) => sendScan(text), [sendScan]);
@@ -305,7 +341,14 @@ function DeskCheckInView() {
 
           <section className="rounded-[24px] border border-slate-200 bg-white p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-bold text-[#071955]">Registered players</h2>
+              <div>
+                <h2 className="font-bold text-[#071955]">Players</h2>
+                {session.freeSpots > 0 && (
+                  <p className="text-xs text-slate-500">
+                    {session.freePlayers} of {session.freeSpots} free spots used
+                  </p>
+                )}
+              </div>
               <input
                 type="search"
                 value={search}
@@ -314,6 +357,91 @@ function DeskCheckInView() {
                 className="w-48 rounded-full border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#2563EB]"
               />
             </div>
+
+            {session.freeSpots > 0 &&
+              (adding ? (
+                <form
+                  className="mt-4 space-y-2 rounded-2xl bg-slate-50 p-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitFree();
+                  }}
+                >
+                  <p className="text-sm font-bold text-[#071955]">Add a free player</p>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={freeName}
+                      onChange={(event) => {
+                        setFreeName(event.target.value);
+                        setNameMissing(false);
+                      }}
+                      maxLength={100}
+                      placeholder="Name, e.g. Coach Ramon"
+                      aria-label="Name"
+                      className="min-w-[10rem] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-[#2563EB]"
+                    />
+                    <input
+                      value={freeMobile}
+                      onChange={(event) => setFreeMobile(event.target.value)}
+                      maxLength={30}
+                      inputMode="tel"
+                      placeholder="Mobile (optional)"
+                      aria-label="Mobile number"
+                      className="min-w-[8rem] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-[#2563EB]"
+                    />
+                  </div>
+                  {nameMissing && <p className="text-sm font-semibold text-red-600">Enter the player&apos;s name first.</p>}
+                  {addFree.error && (
+                    <p className="text-sm font-semibold text-red-600">
+                      {addFree.error instanceof ApiError ? addFree.error.message : "That did not work. Try again."}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    No payment and no platform fee.{session.isOpen ? " They are checked in as they are added." : ""}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={addFree.isPending}
+                      className="rounded-full bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {addFree.isPending ? "Adding…" : "Add"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdding(false);
+                        setNameMissing(false);
+                        addFree.reset();
+                      }}
+                      className="rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition hover:text-slate-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={!session.canAddFreePlayer}
+                    onClick={() => {
+                      addFree.reset();
+                      setAdding(true);
+                    }}
+                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-50"
+                  >
+                    + Add free player
+                  </button>
+                  {!session.canAddFreePlayer && (
+                    <span className="text-xs text-slate-500">
+                      {session.freePlayers >= session.freeSpots
+                        ? "Every free spot for this session is used."
+                        : "No spot left, or the session has ended."}
+                    </span>
+                  )}
+                </div>
+              ))}
 
             {session.players.length === 0 ? (
               <p className="mt-6 text-center text-sm text-slate-500">Nobody is registered for this session yet.</p>
@@ -329,11 +457,52 @@ function DeskCheckInView() {
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-slate-900">{player.fullName}</span>
+                        <span className="flex items-center gap-2">
+                          <span className="truncate font-semibold text-slate-900">{player.fullName}</span>
+                          {player.isFree && (
+                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                              Free
+                            </span>
+                          )}
+                        </span>
                         <span className="block text-xs text-slate-500">
                           {player.checkedInAt ? `Arrived ${arrivedAt(player.checkedInAt)}` : "Not here yet"}
+                          {player.mobile ? ` · ${player.mobile}` : ""}
                         </span>
                       </span>
+
+                      {player.isFree &&
+                        (removing === player.registrationId ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={removeFree.isPending}
+                              onClick={() => removeFree.mutate(player.registrationId)}
+                              className="rounded-full bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+                            >
+                              {removeFree.isPending ? "Removing…" : "Remove"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRemoving(null)}
+                              className="rounded-full px-2 py-1.5 text-sm font-semibold text-slate-500"
+                            >
+                              Keep
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeFree.reset();
+                              setRemoving(player.registrationId);
+                            }}
+                            className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-400 transition hover:text-red-700"
+                            aria-label={`Remove ${player.fullName}`}
+                          >
+                            Remove
+                          </button>
+                        ))}
 
                       {player.checkedInAt ? (
                         <button
@@ -358,9 +527,15 @@ function DeskCheckInView() {
                   );
                 })}
                 {players.length === 0 && (
-                  <li className="py-6 text-center text-sm text-slate-500">No registered player by that name.</li>
+                  <li className="py-6 text-center text-sm text-slate-500">No player by that name.</li>
                 )}
               </ul>
+            )}
+
+            {removeFree.error && (
+              <p className="mt-3 text-sm font-semibold text-red-600">
+                {removeFree.error instanceof ApiError ? removeFree.error.message : "That did not work. Try again."}
+              </p>
             )}
           </section>
         </div>

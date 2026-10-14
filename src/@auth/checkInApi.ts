@@ -1,12 +1,17 @@
 import { apiClient, API_ENDPOINTS } from "@/services/api";
 
 export type CheckInPlayer = {
+  /** The registration, or a free player's own id when isFree. Check-in by hand takes either. */
   registrationId: string;
   /** For the desk's own screen. */
   fullName: string;
   /** "Juan C.": for the wide screen anybody walking past can read. */
   displayName: string;
   checkedInAt: string | null;
+  /** Put in for free by the venue, not registered and paid. */
+  isFree: boolean;
+  /** A free player's mobile, for the desk. Never a registered player's. */
+  mobile: string | null;
 };
 
 export type CheckInRoster = {
@@ -25,6 +30,11 @@ export type CheckInRoster = {
   registered: number;
   checkedIn: number;
   players: CheckInPlayer[];
+  /** How many the desk may put in for free, and how many it has. */
+  freeSpots: number;
+  freePlayers: number;
+  /** Whether one more can go in for free right now: the server's answer. */
+  canAddFreePlayer: boolean;
 };
 
 export type CheckInOutcome =
@@ -63,6 +73,22 @@ export function checkInByHand(registrationId: string, code: string) {
 /** Takes a check-in back, which makes the player's QR good again: needs the code too. */
 export function undoCheckIn(registrationId: string, code: string) {
   return apiClient.post<CheckInRoster, { code: string }>(API_ENDPOINTS.DESK.CHECK_IN_UNDO(registrationId), { code });
+}
+
+/**
+ * Puts a player into the session for free, to make up a game. Checked in at
+ * once when the door is open: the desk is adding somebody standing at it.
+ */
+export function addFreePlayer(openPlayId: string, date: string, fullName: string, mobile: string) {
+  return apiClient.post<CheckInRoster, { fullName: string; mobile: string | null }>(
+    API_ENDPOINTS.DESK.FREE_PLAYERS(openPlayId, date),
+    { fullName, mobile: mobile.trim() === "" ? null : mobile },
+  );
+}
+
+/** Takes a free player back out. Their spot opens again. */
+export function removeFreePlayer(freePlayerId: string) {
+  return apiClient.delete<CheckInRoster>(API_ENDPOINTS.DESK.FREE_PLAYER(freePlayerId));
 }
 
 /** The desk's check-in page for one session, and its wide screen. */

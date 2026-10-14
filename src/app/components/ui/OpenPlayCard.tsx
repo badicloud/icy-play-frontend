@@ -66,17 +66,29 @@ function LevelBadge({ level }: { level: string }) {
   );
 }
 
-function SpotsLeft({ left, max }: { left: number; max: number }) {
+function SpotsLeft({ left, max, addedByVenue = 0 }: { left: number; max: number; addedByVenue?: number }) {
+  // Players the venue put in to make up the game: a count, never who.
+  const added =
+    addedByVenue > 0 ? <span className="text-slate-500"> · {addedByVenue} added by the venue</span> : null;
+
   if (left === 0) {
-    return <span className="font-semibold text-red-700">Full</span>;
+    return (
+      <span>
+        <span className="font-semibold text-red-700">Full</span>
+        {added}
+      </span>
+    );
   }
 
   // Few enough left to be worth hurrying for.
   const tight = left <= Math.max(2, Math.floor(max / 4));
 
   return (
-    <span className={tight ? "font-semibold text-amber-700" : "text-slate-600"}>
-      {left} of {max} spots left
+    <span>
+      <span className={tight ? "font-semibold text-amber-700" : "text-slate-600"}>
+        {left} of {max} spots left
+      </span>
+      {added}
     </span>
   );
 }
@@ -114,7 +126,7 @@ export function OpenPlayTeaser({ openPlay }: { openPlay: CatalogOpenPlay }) {
       {next && (
         <p className="mt-1 text-sm">
           <span className="text-slate-500">Next: {formatSessionDate(next.date)} · </span>
-          <SpotsLeft left={next.spotsLeft} max={openPlay.maxPlayers} />
+          <SpotsLeft left={next.spotsLeft} max={openPlay.maxPlayers} addedByVenue={next.addedByVenue} />
         </p>
       )}
 
@@ -300,7 +312,7 @@ export function OpenPlayDetail({
               <SessionStatus mine={yours} onHoldExpired={onHoldExpired} />
             </span>
             <span className="mt-0.5 text-sm">
-              <SpotsLeft left={session.spotsLeft} max={openPlay.maxPlayers} />
+              <SpotsLeft left={session.spotsLeft} max={openPlay.maxPlayers} addedByVenue={session.addedByVenue} />
             </span>
             <span className="mt-2 text-sm">
               <span className="font-bold text-slate-950">{formatPeso(session.priceNow)}</span>

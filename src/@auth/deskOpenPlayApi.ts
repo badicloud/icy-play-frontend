@@ -33,6 +33,8 @@ export type OpenPlayInput = {
   earlyBird: OpenPlayEarlyBirdInput | null;
   /** How long before each session check-in opens. Left out, an hour. */
   checkInOpensMinutes?: number;
+  /** How many players the desk may put in for free per session. Left out, unchanged. */
+  freeSpots?: number;
 };
 
 /** One open play as the desk sees it, drafts included. */
@@ -80,6 +82,11 @@ export type DeskOpenPlay = {
   checkInOpensAt: string | null;
   /** Whether check-in for today's session is open right now, by the server's clock. */
   checkInOpen: boolean;
+  /**
+   * How many players the desk may put into each session for free, to make up
+   * a game. Inside maxPlayers, and not held back from paying players.
+   */
+  freeSpots: number;
 };
 
 /** Something already holding hours the open play wants. */
@@ -147,6 +154,8 @@ export type OpenPlaySource = {
   removePhoto: (openPlayId: string) => Promise<DeskOpenPlay>;
   /** Moves when check-in opens. Allowed after publishing. */
   setCheckInWindow: (openPlayId: string, minutesBeforeStart: number) => Promise<DeskOpenPlay>;
+  /** Sets how many free players the desk may add per session. Allowed after publishing. */
+  setFreeSpots: (openPlayId: string, freeSpots: number) => Promise<DeskOpenPlay>;
   /** Where Check in goes for a session, or null where this door does not run the door. */
   checkInHref: ((openPlayId: string, date: string) => string) | null;
 };
@@ -177,6 +186,8 @@ function calls(base: string) {
       apiClient.put<DeskOpenPlay, { minutesBeforeStart: number }>(`${one(openPlayId)}/check-in-window`, {
         minutesBeforeStart,
       }),
+    setFreeSpots: (openPlayId: string, freeSpots: number) =>
+      apiClient.put<DeskOpenPlay, { freeSpots: number }>(`${one(openPlayId)}/free-spots`, { freeSpots }),
   };
 }
 

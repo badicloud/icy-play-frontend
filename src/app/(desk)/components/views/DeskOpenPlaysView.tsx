@@ -158,6 +158,13 @@ function OpenPlayRow({
             From {formatSessionDate(openPlay.startDate)}
             {openPlay.endDate ? ` to ${formatSessionDate(openPlay.endDate)}` : ", until you end it"} · up to{" "}
             {openPlay.maxPlayers} players a session
+            {/* Inside the most players, not on top: the desk's to fill when a game is short. */}
+            {openPlay.freeSpots > 0 && (
+              <span className="font-semibold text-emerald-700">
+                {" "}
+                · {openPlay.freeSpots} free {openPlay.freeSpots === 1 ? "spot" : "spots"} for the venue to fill
+              </span>
+            )}
           </p>
           {/* Across every date. Registered means confirmed by the desk; a
               receipt nobody has checked yet is waiting, not registered. */}

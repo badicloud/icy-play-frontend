@@ -269,6 +269,9 @@ export const activityActionLabels: Record<string, string> = {
   OpenPlayEnded: "Open play ended",
   OpenPlayDraftDeleted: "Open play draft deleted",
   OpenPlayPhotoChanged: "Open play photo changed",
+  OpenPlayFreeSpotsChanged: "Open play free spots changed",
+  OpenPlayFreePlayerAdded: "Free player added to an open play",
+  OpenPlayFreePlayerRemoved: "Free player taken out of an open play",
 };
 
 export const roleLabels: Record<string, string> = {
