@@ -16,6 +16,11 @@ import PublicHeader from "./PublicHeader";
 
 type Filter = "upcoming" | "past";
 
+/** Every distinct value, in the order first seen: the choices a filter offers. */
+function distinct(values: string[]) {
+  return [...new Set(values)];
+}
+
 /**
  * What a row asks the player to do next, if anything: pay while the hold runs,
  * show their QR at the door, or nothing but wait.
@@ -134,6 +139,8 @@ function Row({
 function MyOpenPlaysView() {
   const [filter, setFilter] = useState<Filter>("upcoming");
   const [openId, setOpenId] = useState<string | null>(null);
+  // One sport at a time, or all of them.
+  const [sport, setSport] = useState("");
 
   const mine = useQuery({
     queryKey: ["my-open-plays"],
@@ -153,11 +160,28 @@ function MyOpenPlaysView() {
   const rows = mine.data ?? [];
   const upcoming = rows.filter((row) => !row.sessionHasEnded).reverse();
   const past = rows.filter((row) => row.sessionHasEnded);
-  const shown = filter === "upcoming" ? upcoming : past;
+  const inTab = filter === "upcoming" ? upcoming : past;
+
+  // The sports come from the player's own open plays in this tab, so picking
+  // one never leads to an empty list.
+  const sports = distinct(inTab.map((row) => row.sportName));
+  const shown = sport === "" ? inTab : inTab.filter((row) => row.sportName === sport);
+
+  function showTab(next: Filter) {
+    setFilter(next);
+    // A sport picked on one tab may not be on the other.
+    setSport("");
+  }
 
   const chip = (selected: boolean) =>
     `rounded-full border px-4 py-2 text-sm font-semibold transition ${
       selected ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-slate-200 bg-white text-slate-600"
+    }`;
+
+  // Quieter than the tabs above it: a narrowing, not a place.
+  const sportChip = (selected: boolean) =>
+    `rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+      selected ? "border-[#2563EB] bg-blue-50 text-[#2563EB]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
     }`;
 
   return (
@@ -171,13 +195,34 @@ function MyOpenPlaysView() {
         </p>
 
         <div className="mt-6 flex gap-2" role="tablist">
-          <button type="button" role="tab" aria-selected={filter === "upcoming"} onClick={() => setFilter("upcoming")} className={chip(filter === "upcoming")}>
+          <button type="button" role="tab" aria-selected={filter === "upcoming"} onClick={() => showTab("upcoming")} className={chip(filter === "upcoming")}>
             Upcoming {upcoming.length > 0 && `(${upcoming.length})`}
           </button>
-          <button type="button" role="tab" aria-selected={filter === "past"} onClick={() => setFilter("past")} className={chip(filter === "past")}>
+          <button type="button" role="tab" aria-selected={filter === "past"} onClick={() => showTab("past")} className={chip(filter === "past")}>
             Past
           </button>
         </div>
+
+        {/* Only worth showing when there is more than one sport to pick between. */}
+        {sports.length > 1 && (
+          <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by sport">
+            <span className="text-sm font-semibold text-slate-500">Sport:</span>
+            <button type="button" aria-pressed={sport === ""} onClick={() => setSport("")} className={sportChip(sport === "")}>
+              All sports
+            </button>
+            {sports.map((name) => (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={sport === name}
+                onClick={() => setSport(name)}
+                className={sportChip(sport === name)}
+              >
+                {name} ({inTab.filter((row) => row.sportName === name).length})
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-5 space-y-3">
           {mine.isPending && <div className="h-24 animate-pulse rounded-[24px] border border-slate-200 bg-white" />}
@@ -186,7 +231,7 @@ function MyOpenPlaysView() {
             <p className="rounded-2xl bg-red-50 px-4 py-3 text-red-800">Your open plays could not be loaded.</p>
           )}
 
-          {mine.isSuccess && shown.length === 0 && (
+          {mine.isSuccess && inTab.length === 0 && (
             <div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-lg font-semibold text-slate-950">
                 {filter === "upcoming" ? "No open plays coming up" : "Nothing here yet"}
