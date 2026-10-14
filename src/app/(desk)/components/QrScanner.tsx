@@ -9,6 +9,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 const SameCodeQuietMs = 10_000;
 
 /**
+ * A code is taken only once it has been read the same twice inside this
+ * long. A phone held up is read several times a second, so it passes at once;
+ * a pattern in the background that the detector mistakes for a code for one
+ * frame — a shelf, a shirt, a screen — almost never reads the same twice, and
+ * is dropped instead of sent off and answered "not a check-in QR".
+ */
+const ConfirmWithinMs = 1_500;
+
+/**
  * The phone's or tablet's camera, reading QR codes continuously: a code is
  * picked up the moment it is in view, with nothing to press.
  *
@@ -42,6 +51,8 @@ function QrScanner({
   const handler = useRef(onScan);
   const held = useRef(paused);
   const last = useRef<{ text: string; at: number } | null>(null);
+  // Read once, not yet trusted: waiting for the same text again.
+  const candidate = useRef<{ text: string; at: number } | null>(null);
 
   useEffect(() => {
     handler.current = onScan;
@@ -73,8 +84,21 @@ function QrScanner({
               return;
             }
 
-            const text = result.data;
+            const text = result.data.trim();
             const now = Date.now();
+
+            if (text === "") {
+              return;
+            }
+
+            // The first sighting of a code only marks it; the second, soon
+            // after, confirms it is really there.
+            if (!candidate.current || candidate.current.text !== text || now - candidate.current.at > ConfirmWithinMs) {
+              candidate.current = { text, at: now };
+              return;
+            }
+
+            candidate.current = null;
 
             if (last.current && last.current.text === text && now - last.current.at < SameCodeQuietMs) {
               return;
