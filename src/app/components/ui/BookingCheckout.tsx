@@ -154,6 +154,10 @@ function BookingCheckout({ bookingId }: { bookingId: string }) {
 
             {step === 2 && direct && returned !== "success" && (
               <OnlinePaymentPanel
+                purpose="Booking"
+                subjectId={detail.id}
+                refreshKey={["booking", bookingId]}
+                returnedFromWallet={returned === "returned"}
                 amount={detail.total}
                 holdsUntil={detail.holdsUntil}
                 cancelled={returned === "cancelled"}

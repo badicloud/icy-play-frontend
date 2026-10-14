@@ -70,6 +70,8 @@ export const API_ENDPOINTS = {
   },
   PAYMENTS: {
     VERIFY: (purpose: string, subjectId: string) => `${API_V1}/payments/${purpose}/${subjectId}/verify`,
+    OPTIONS: (purpose: string, subjectId: string) => `${API_V1}/payments/${purpose}/${subjectId}/options`,
+    START: (purpose: string, subjectId: string) => `${API_V1}/payments/${purpose}/${subjectId}/start`,
   },
   CUSTOMER_UPLOAD_SIGNATURE: `${API_V1}/assets/upload-signature`,
   ADMIN: {

@@ -32,6 +32,7 @@ import {
   PaidLate,
   useReturnedFromGateway,
   useVerifyWhileConfirming,
+  type GatewayReturn,
 } from "./OnlinePaymentPanel";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -135,6 +136,20 @@ function UpgradeCheckout({
 
   const open = upgrade.data ?? null;
 
+  // Waiting to be paid online on this page. Paid here — a QR code scanned
+  // without leaving — the upgrade goes through and there is no open one any
+  // more, with no return from a gateway to say why: this is what says so.
+  const [awaitedOnline, setAwaitedOnline] = useState(false);
+
+  if (
+    !awaitedOnline &&
+    open?.paymentChannel === "Direct" &&
+    open.status === "AwaitingPayment" &&
+    !open.hasLapsed
+  ) {
+    setAwaitedOnline(true);
+  }
+
   // Priced again here rather than carried from the last screen. A figure passed
   // through an address is a figure anybody can edit, and this one is what the
   // customer is about to be asked to pay. Not asked for once an upgrade exists:
@@ -163,7 +178,7 @@ function UpgradeCheckout({
   // Paid online and gone through: there is no open upgrade any more, because
   // the booking has moved. Said here, before the page would offer to price a
   // move all over again.
-  if (open === null && returned === "success") {
+  if (open === null && (returned === "success" || awaitedOnline)) {
     return <UpgradeDone detail={detail} />;
   }
 
@@ -178,7 +193,10 @@ function UpgradeCheckout({
           moved();
         }}
         onExpired={() => void upgrade.refetch()}
-        onGoneBack={() => client.setQueryData(["upgrade", bookingId], null)}
+        onGoneBack={() => {
+          setAwaitedOnline(false);
+          client.setQueryData(["upgrade", bookingId], null);
+        }}
       />
     );
   }
@@ -419,7 +437,7 @@ function Pay({
   detail: BookingDetail;
   upgrade: UpgradeRequest;
   /** What the payment gateway said when it sent the customer back, if it did. */
-  returned: "success" | "cancelled" | null;
+  returned: GatewayReturn;
   onChanged: (updated: UpgradeRequest) => void;
   /** The hold ran out. Read the upgrade again and let the server say so. */
   onExpired: () => void;
@@ -855,7 +873,7 @@ function PayOnline({
 }: {
   detail: BookingDetail;
   upgrade: UpgradeRequest;
-  returned: "success" | "cancelled" | null;
+  returned: GatewayReturn;
   onExpired: () => void;
   onGoneBack: () => void;
 }) {
@@ -883,6 +901,10 @@ function PayOnline({
         <ConfirmingPayment />
       ) : (
         <OnlinePaymentPanel
+          purpose="BookingUpgrade"
+          subjectId={upgrade.id}
+          refreshKey={["upgrade", detail.id]}
+          returnedFromWallet={returned === "returned"}
           amount={upgrade.balanceDue}
           holdsUntil={upgrade.holdsUntil}
           what="new hours"

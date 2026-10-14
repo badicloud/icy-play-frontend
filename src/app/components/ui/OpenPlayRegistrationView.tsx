@@ -463,6 +463,10 @@ function OpenPlayRegistrationView({ registrationId }: { registrationId: string }
         <ConfirmingPayment />
       ) : step === 2 && direct ? (
         <OnlinePaymentPanel
+          purpose="OpenPlayRegistration"
+          subjectId={detail.registrationId}
+          refreshKey={["open-play-registration", registrationId]}
+          returnedFromWallet={returned === "returned"}
           amount={detail.total}
           holdsUntil={detail.holdsUntil}
           what="spot"
