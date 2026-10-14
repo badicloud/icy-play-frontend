@@ -458,9 +458,14 @@ export type DeskSettings = {
   paymentMode: "Manual" | "Direct";
   /** How long a booking paid online holds its court, under that term. */
   onlineHoldMinutes: number;
+  /**
+   * Whether the code can be shown again, to the owner and the attendants.
+   * False for a code made before codes were kept readable.
+   */
+  canShowOpenPlayCheckInCode: boolean;
 };
 
-/** A freshly generated code: the only time it is ever sent, since only its hash is kept. */
+/** A freshly generated code, and the settings it changed. */
 export type GeneratedCheckInCode = {
   code: string;
   settings: DeskSettings;
@@ -469,6 +474,15 @@ export type GeneratedCheckInCode = {
 /** A new six-digit code for checking open play players in by hand, replacing any old one. The owner only. */
 export function generateOpenPlayCheckInCode() {
   return apiClient.post<GeneratedCheckInCode>(API_ENDPOINTS.DESK.OPEN_PLAY_CHECK_IN_CODE);
+}
+
+/**
+ * The venue's check-in code again, for the owner or an attendant. Null when it
+ * cannot be shown: it was made before codes were kept readable. Each look is
+ * recorded.
+ */
+export function showOpenPlayCheckInCode() {
+  return apiClient.get<{ code: string | null }>(API_ENDPOINTS.DESK.OPEN_PLAY_CHECK_IN_CODE);
 }
 
 export function getDeskSettings() {

@@ -8,6 +8,7 @@ import {
   getDeskSettings,
   getDeskSettingsHistory,
   generateOpenPlayCheckInCode,
+  showOpenPlayCheckInCode,
   updateDeskSettings,
   type DeskSettingChange,
   type DeskSettings,
@@ -244,12 +245,24 @@ function CheckInCodeSection({ settings }: { settings: DeskSettings }) {
   const client = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
+  // The current code, looked up again on asking. Hidden again on Hide.
+  const [shown, setShown] = useState<string | null>(null);
+
+  const show = useMutation({
+    mutationFn: showOpenPlayCheckInCode,
+    onSuccess: (result) => setShown(result.code),
+    onError: (error) =>
+      enqueueSnackbar(error instanceof ApiError ? error.message : "The code could not be shown. Try again.", {
+        variant: "error",
+      }),
+  });
 
   const generate = useMutation({
     mutationFn: generateOpenPlayCheckInCode,
     onSuccess: (made) => {
       client.setQueryData(["desk", "settings"], made.settings);
       setConfirming(false);
+      setShown(null);
       setFresh(made.code);
     },
     onError: (error) =>
@@ -292,8 +305,7 @@ function CheckInCodeSection({ settings }: { settings: DeskSettings }) {
           <p className="text-sm font-semibold text-emerald-900">Your new check-in code</p>
           <p className="mt-2 font-mono text-4xl font-extrabold tracking-[0.3em] text-emerald-950">{fresh}</p>
           <p className="mt-3 text-sm text-emerald-900">
-            Write it down and tell your attendants now. It is shown this once: we keep only a scrambled copy,
-            so it cannot be looked up later. Lost it? Generate a new one.
+            Tell your attendants. You and they can look it up here again with Show code.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button
@@ -308,16 +320,41 @@ function CheckInCodeSection({ settings }: { settings: DeskSettings }) {
               onClick={() => setFresh(null)}
               className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
-              I have written it down
+              Done
+            </button>
+          </div>
+        </div>
+      ) : shown ? (
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p className="text-sm font-semibold text-slate-700">The current check-in code</p>
+          <p className="mt-2 font-mono text-4xl font-extrabold tracking-[0.3em] text-[#071955]">{shown}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void copy(shown)}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              Copy code
+            </button>
+            <button
+              type="button"
+              onClick={() => setShown(null)}
+              className="rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Hide
             </button>
           </div>
         </div>
       ) : !settings.canSetOpenPlayCheckInCode ? (
-        <p className="mt-4 text-sm text-slate-600">
-          {settings.hasOpenPlayCheckInCode
-            ? "Ask the venue owner for the code."
-            : "The venue owner has not made one yet, so players can only be checked in by scanning their QR."}
-        </p>
+        settings.hasOpenPlayCheckInCode && settings.canShowOpenPlayCheckInCode ? (
+          <ShowCodeButton pending={show.isPending} onShow={() => show.mutate()} />
+        ) : (
+          <p className="mt-4 text-sm text-slate-600">
+            {settings.hasOpenPlayCheckInCode
+              ? "This code was made before codes could be shown here. Ask the venue owner for it, or to generate a new one so it shows here."
+              : "The venue owner has not made one yet, so players can only be checked in by scanning their QR."}
+          </p>
+        )
       ) : confirming ? (
         <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-amber-900">
@@ -342,16 +379,41 @@ function CheckInCodeSection({ settings }: { settings: DeskSettings }) {
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={generate.isPending}
-          onClick={() => (settings.hasOpenPlayCheckInCode ? setConfirming(true) : generate.mutate())}
-          className="mt-4 rounded-full bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-        >
-          {generate.isPending ? "Generating…" : settings.hasOpenPlayCheckInCode ? "Generate new code" : "Generate code"}
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {settings.hasOpenPlayCheckInCode && settings.canShowOpenPlayCheckInCode && (
+            <ShowCodeButton pending={show.isPending} onShow={() => show.mutate()} inline />
+          )}
+          <button
+            type="button"
+            disabled={generate.isPending}
+            onClick={() => (settings.hasOpenPlayCheckInCode ? setConfirming(true) : generate.mutate())}
+            className="rounded-full bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+          >
+            {generate.isPending ? "Generating…" : settings.hasOpenPlayCheckInCode ? "Generate new code" : "Generate code"}
+          </button>
+          {settings.hasOpenPlayCheckInCode && !settings.canShowOpenPlayCheckInCode && (
+            <p className="w-full text-sm text-slate-500">
+              This code was made before codes could be shown here. Generate a new one and it can be shown here
+              from then on.
+            </p>
+          )}
+        </div>
       )}
     </section>
+  );
+}
+
+/** Looks the current code up again. Each look is recorded. */
+function ShowCodeButton({ pending, onShow, inline = false }: { pending: boolean; onShow: () => void; inline?: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={onShow}
+      className={`${inline ? "" : "mt-4 "}rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:opacity-60`}
+    >
+      {pending ? "Showing…" : "Show code"}
+    </button>
   );
 }
 
