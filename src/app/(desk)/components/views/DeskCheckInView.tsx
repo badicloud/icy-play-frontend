@@ -516,7 +516,7 @@ function DeskCheckInView() {
                       {player.checkedInAt ? (
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={busy || !session.isOpen}
                           onClick={() => ask("undo", player)}
                           className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:text-red-700 disabled:opacity-60"
                         >

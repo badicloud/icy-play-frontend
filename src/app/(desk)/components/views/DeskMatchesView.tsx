@@ -412,7 +412,7 @@ function DeskMatchesView() {
             href={checkInHref(openPlayId, date)}
             className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
           >
-            Check in players
+            {session.isOver ? "View check-ins" : "Check in players"}
           </Link>
         </div>
 
@@ -453,7 +453,7 @@ function DeskMatchesView() {
               ),
             )}
 
-            {upcoming.length > 0 && (
+            {upcoming.length > 0 && !session.isOver && (
               <div className="space-y-4">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Up next</h2>
                 {upcoming.map((match) => {
@@ -531,14 +531,17 @@ function DeskMatchesView() {
                   {finished.map((match) =>
                     matchCard(
                       match,
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setResultFor({ matchId: match.matchId, correcting: true })}
-                        className="rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-60"
-                      >
-                        {match.result === null ? "Set result" : "Change result"}
-                      </button>,
+                      // Once the session is over, what was played stands.
+                      !session.isOver && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setResultFor({ matchId: match.matchId, correcting: true })}
+                          className="rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-60"
+                        >
+                          {match.result === null ? "Set result" : "Change result"}
+                        </button>
+                      ),
                     ),
                   )}
                 </div>
