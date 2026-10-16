@@ -212,6 +212,18 @@ export const API_ENDPOINTS = {
     FREE_PLAYERS: (openPlayId: string, date: string) =>
       `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/free-players`,
     FREE_PLAYER: (freePlayerId: string) => `${API_V1}/desk/open-play-free-players/${freePlayerId}`,
+    MATCHES: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/matches`,
+    MATCH_START: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/start`,
+    MATCH_FINISH: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/finish`,
+    MATCH_RESULT: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/result`,
+    OPEN_PLAY_LEADERBOARD: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/leaderboard`,
+    PARTICIPANT_DONE: (participantId: string) => `${API_V1}/desk/open-play-participants/${participantId}/done`,
+    PARTICIPANT_BACK_IN: (participantId: string) => `${API_V1}/desk/open-play-participants/${participantId}/back-in`,
+    PARTICIPANT_MOVE_TO_TEAM: (participantId: string) =>
+      `${API_V1}/desk/open-play-participants/${participantId}/move-to-team`,
+    PARTICIPANT_PLAY_NEXT_MATCH: (participantId: string) =>
+      `${API_V1}/desk/open-play-participants/${participantId}/play-next-match`,
     OPEN_PLAY_REQUEST_CONFIRM: (registrationId: string) =>
       `${API_V1}/desk/open-play-requests/${registrationId}/confirm`,
     OPEN_PLAY_REQUEST_REJECT: (registrationId: string) =>

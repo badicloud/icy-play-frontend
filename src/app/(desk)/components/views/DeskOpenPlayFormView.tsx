@@ -66,6 +66,8 @@ type Form = {
   checkInMinutes: string;
   /** How many players the desk may put in for free per session. */
   freeSpots: string;
+  /** Players per team for matches. Empty: the sport's own. */
+  playersPerTeam: string;
 };
 
 const blank: Form = {
@@ -90,6 +92,7 @@ const blank: Form = {
   leadUnit: "days",
   checkInMinutes: "60",
   freeSpots: "0",
+  playersPerTeam: "",
 };
 
 function fromOpenPlay(openPlay: DeskOpenPlay): Form {
@@ -118,6 +121,7 @@ function fromOpenPlay(openPlay: DeskOpenPlay): Form {
     leadUnit: lead.unit,
     checkInMinutes: String(openPlay.checkInOpensMinutes),
     freeSpots: String(openPlay.freeSpots),
+    playersPerTeam: openPlay.playersPerTeam === null ? "" : String(openPlay.playersPerTeam),
   };
 }
 
@@ -185,8 +189,16 @@ function toInput(form: Form): { input: OpenPlayInput | null; problem: string | n
         : null,
       checkInOpensMinutes: Number.isNaN(Number(form.checkInMinutes)) ? undefined : Number(form.checkInMinutes),
       freeSpots: Number.isInteger(Number(form.freeSpots)) ? Number(form.freeSpots) : undefined,
+      playersPerTeam: teamSizeOf(form.playersPerTeam),
     },
   };
+}
+
+/** Players per team as typed: empty for the sport's own, else a whole number. */
+function teamSizeOf(typed: string) {
+  const value = Number(typed);
+
+  return typed.trim() === "" || !Number.isInteger(value) ? null : value;
 }
 
 function UnitSelect({
@@ -330,6 +342,26 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
   // Free spots on a published open play, saved on their own like the check-in time.
   const freeSpots = useMutation({
     mutationFn: (count: number) => source.setFreeSpots(openPlayId!, count),
+    onSuccess: (updated) => {
+      client.setQueryData([...source.key, updated.openPlayId], updated);
+      refresh();
+    },
+  });
+
+  // Players per team on a published open play, saved on its own like the free spots.
+  const teamSize = useMutation({
+    mutationFn: (size: number | null) => source.setTeamSize(openPlayId!, size),
+    onSuccess: (updated) => {
+      client.setQueryData([...source.key, updated.openPlayId], updated);
+      refresh();
+    },
+  });
+
+  // The celebration background: saved at once, like the cover photo, once
+  // there is an open play to save it against.
+  const background = useMutation({
+    mutationFn: (picked: CoverPhoto | null) =>
+      picked === null ? source.removeBackground(openPlayId!) : source.setBackground(openPlayId!, picked),
     onSuccess: (updated) => {
       client.setQueryData([...source.key, updated.openPlayId], updated);
       refresh();
@@ -875,6 +907,82 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
               </p>
             )}
             {freeSpots.isSuccess && <p className="text-sm font-semibold text-green-700">Free spots saved.</p>}
+          </section>
+
+          {/* Outside the fieldset too: how the venue runs its games, and the
+              picture behind its winners, not what a player paid for. */}
+          <section className="space-y-4 rounded-3xl border border-slate-200 bg-white px-6 py-5">
+            <h2 className="text-lg font-bold text-[#071955]">Matches</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="op-team-size" className="text-sm text-slate-600">
+                Players per team
+              </label>
+              <input
+                id="op-team-size"
+                type="number"
+                min={1}
+                max={11}
+                step={1}
+                value={form.playersPerTeam}
+                placeholder={existing.data ? String(existing.data.teamSize) : "Sport's"}
+                disabled={existing.data?.status === "Ended"}
+                onChange={(event) => set("playersPerTeam", event.target.value)}
+                className={`${input} w-24`}
+              />
+              {locked && existing.data?.status === "Published" && (
+                <button
+                  type="button"
+                  disabled={
+                    teamSize.isPending ||
+                    teamSizeOf(form.playersPerTeam) === existing.data.playersPerTeam
+                  }
+                  onClick={() => teamSize.mutate(teamSizeOf(form.playersPerTeam))}
+                  className="rounded-full bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {teamSize.isPending ? "Saving…" : "Save"}
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-slate-500">
+              Players who check in are put into matches in the order they arrive: two teams of this many.
+              Leave it empty to use the sport&apos;s own
+              {existing.data && existing.data.playersPerTeam === null ? ` (${existing.data.teamSize})` : ""}.
+              {locked ? " This can still change after publishing." : ""}
+            </p>
+            {teamSize.isError && (
+              <p className="text-sm font-semibold text-red-700">
+                {teamSize.error instanceof ApiError ? teamSize.error.message : "The team size could not be saved."}
+              </p>
+            )}
+            {teamSize.isSuccess && <p className="text-sm font-semibold text-green-700">Team size saved.</p>}
+
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-sm font-bold text-[#071955]">Background for winners</p>
+              <p className="mb-3 text-sm text-slate-500">
+                Shown behind the winning team and the best players on the wide screen.
+              </p>
+              {openPlayId === null ? (
+                <p className="text-sm text-slate-500">Save the draft first, then add a background here.</p>
+              ) : (
+                <OpenPlayCoverPhoto
+                  upload={source.uploadPhoto}
+                  url={existing.data?.backgroundPhotoUrl ?? null}
+                  busy={background.isPending}
+                  disabled={existing.data?.status === "Ended"}
+                  label="background"
+                  hint="A wide picture works best. It can still be changed after publishing."
+                  onUploaded={(picked) => background.mutate(picked)}
+                  onRemove={() => background.mutate(null)}
+                />
+              )}
+              {background.isError && (
+                <p className="mt-2 text-sm font-semibold text-red-700">
+                  {background.error instanceof ApiError
+                    ? background.error.message
+                    : "The background could not be saved."}
+                </p>
+              )}
+            </div>
           </section>
 
           {problem && (

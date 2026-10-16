@@ -25,6 +25,7 @@ function OpenPlayCoverPhoto({
   busy,
   disabled = false,
   hint,
+  label = "cover photo",
   onUploaded,
   onRemove,
 }: {
@@ -35,6 +36,8 @@ function OpenPlayCoverPhoto({
   busy: boolean;
   disabled?: boolean;
   hint: string;
+  /** What the picture is, in words: "cover photo", "background". */
+  label?: string;
   onUploaded: (photo: CoverPhoto) => void;
   onRemove: () => void;
 }) {
@@ -90,7 +93,7 @@ function OpenPlayCoverPhoto({
       {url ? (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="Cover photo" className="h-56 w-full object-cover" />
+          <img src={url} alt={label.charAt(0).toUpperCase() + label.slice(1)} className="h-56 w-full object-cover" />
         </div>
       ) : (
         <button
@@ -100,7 +103,7 @@ function OpenPlayCoverPhoto({
           className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <AddPhotoAlternateOutlined />
-          <span className="text-sm font-semibold">{working ? "Uploading…" : "Upload a cover photo"}</span>
+          <span className="text-sm font-semibold">{working ? "Uploading…" : `Upload a ${label}`}</span>
           <span className="text-xs">JPG, PNG or WebP, up to 5 MB</span>
         </button>
       )}

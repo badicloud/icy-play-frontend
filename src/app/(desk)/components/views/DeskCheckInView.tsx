@@ -17,6 +17,7 @@ import {
   type CheckInRoster,
   type CheckInScanResult,
 } from "@auth/checkInApi";
+import { matchesHref } from "@auth/matchesApi";
 import { formatClock, formatSessionDate } from "@auth/openPlayApi";
 import CheckInCodeModal from "../CheckInCodeModal";
 import QrScanner from "../QrScanner";
@@ -264,6 +265,12 @@ function DeskCheckInView() {
               </p>
               <p className="text-xs font-semibold text-slate-500">checked in</p>
             </div>
+            <Link
+              href={matchesHref(openPlayId, date)}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+            >
+              Matches
+            </Link>
             <a
               href={checkInScreenHref(openPlayId, date)}
               target="_blank"
@@ -446,7 +453,9 @@ function DeskCheckInView() {
             {session.players.length === 0 ? (
               <p className="mt-6 text-center text-sm text-slate-500">Nobody is registered for this session yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-slate-100">
+              // Its own scroll, so a full session does not push the camera and
+              // the counts off the screen.
+              <ul className="mt-4 max-h-[60vh] divide-y divide-slate-100 overflow-y-auto pr-1">
                 {players.map((player) => {
                   const busy = byCode.isPending && byCode.variables?.player.registrationId === player.registrationId;
 

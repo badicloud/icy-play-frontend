@@ -35,6 +35,8 @@ export type OpenPlayInput = {
   checkInOpensMinutes?: number;
   /** How many players the desk may put in for free per session. Left out, unchanged. */
   freeSpots?: number;
+  /** Players per team for matches. Null: the sport's own. */
+  playersPerTeam?: number | null;
 };
 
 /** One open play as the desk sees it, drafts included. */
@@ -87,6 +89,12 @@ export type DeskOpenPlay = {
    * a game. Inside maxPlayers, and not held back from paying players.
    */
   freeSpots: number;
+  /** Players per team as set on the open play; null when it uses the sport's. */
+  playersPerTeam: number | null;
+  /** Players per team in force: the open play's own, else the sport's. */
+  teamSize: number;
+  /** Behind the winning team and the best players on the wide screen. */
+  backgroundPhotoUrl: string | null;
 };
 
 /** Something already holding hours the open play wants. */
@@ -156,6 +164,10 @@ export type OpenPlaySource = {
   setCheckInWindow: (openPlayId: string, minutesBeforeStart: number) => Promise<DeskOpenPlay>;
   /** Sets how many free players the desk may add per session. Allowed after publishing. */
   setFreeSpots: (openPlayId: string, freeSpots: number) => Promise<DeskOpenPlay>;
+  /** Players per team for matches, or null for the sport's. Allowed after publishing. */
+  setTeamSize: (openPlayId: string, playersPerTeam: number | null) => Promise<DeskOpenPlay>;
+  setBackground: (openPlayId: string, photo: { publicId: string; secureUrl: string }) => Promise<DeskOpenPlay>;
+  removeBackground: (openPlayId: string) => Promise<DeskOpenPlay>;
   /** Where Check in goes for a session, or null where this door does not run the door. */
   checkInHref: ((openPlayId: string, date: string) => string) | null;
 };
@@ -188,6 +200,14 @@ function calls(base: string) {
       }),
     setFreeSpots: (openPlayId: string, freeSpots: number) =>
       apiClient.put<DeskOpenPlay, { freeSpots: number }>(`${one(openPlayId)}/free-spots`, { freeSpots }),
+    setTeamSize: (openPlayId: string, playersPerTeam: number | null) =>
+      apiClient.put<DeskOpenPlay, { playersPerTeam: number | null }>(`${one(openPlayId)}/team-size`, { playersPerTeam }),
+    setBackground: (openPlayId: string, photo: { publicId: string; secureUrl: string }) =>
+      apiClient.put<DeskOpenPlay, { publicId: string; secureUrl: string }>(`${one(openPlayId)}/background`, {
+        publicId: photo.publicId,
+        secureUrl: photo.secureUrl,
+      }),
+    removeBackground: (openPlayId: string) => apiClient.delete<DeskOpenPlay>(`${one(openPlayId)}/background`),
   };
 }
 

@@ -19,6 +19,7 @@ import {
   type OpenPlaySource,
   type OpenPlayStatus,
 } from "@auth/deskOpenPlayApi";
+import { matchesHref } from "@auth/matchesApi";
 import {
   formatClock,
   formatEarlyBird,
@@ -230,12 +231,20 @@ function OpenPlayRow({
             server's clock; before then it says when it opens. */}
         {openPlay.status === "Published" && checkInHref && openPlay.sessionToday && (
           openPlay.checkInOpen ? (
-            <Link
-              href={checkInHref(openPlay.openPlayId, openPlay.sessionToday)}
-              className={`${button} border-green-600 bg-green-600 text-white hover:bg-green-700`}
-            >
-              Check in players
-            </Link>
+            <>
+              <Link
+                href={checkInHref(openPlay.openPlayId, openPlay.sessionToday)}
+                className={`${button} border-green-600 bg-green-600 text-white hover:bg-green-700`}
+              >
+                Check in players
+              </Link>
+              <Link
+                href={matchesHref(openPlay.openPlayId, openPlay.sessionToday)}
+                className={`${button} border-slate-200 bg-white text-slate-700 hover:border-slate-300`}
+              >
+                Matches
+              </Link>
+            </>
           ) : (
             <span className={`${button} border-slate-200 bg-slate-50 text-slate-500`}>
               {openPlay.checkInOpensAt
