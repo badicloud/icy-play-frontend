@@ -321,7 +321,9 @@ export function OpenPlayDetail({
               )}
             </span>
             <span className="mt-1 text-xs text-slate-500">
-              {session.isOpenForRegistration
+              {session.isOpenForRegistration && openPlay.registrationOpenUntilEnd
+                ? `Join any time until ${formatClock(session.registrationClosesAt.slice(11))}`
+                : session.isOpenForRegistration
                 ? `Registration closes ${formatClock(session.registrationClosesAt.slice(11))}${
                     session.registrationClosesAt.slice(0, 10) === session.date
                       ? ""

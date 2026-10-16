@@ -55,6 +55,8 @@ export type CatalogOpenPlay = {
   upcomingSessions: CatalogOpenPlaySession[];
   /** Its own cover, else the court's or the venue's photo. Null when none has one. */
   coverPhotoUrl: string | null;
+  /** Players can join a session already under way, up to its end. */
+  registrationOpenUntilEnd: boolean;
 };
 
 export function getOpenPlays(filter?: { sport?: string | null; facility?: string | null }) {

@@ -55,6 +55,8 @@ type Form = {
   startDate: string;
   endDate: string;
   runsUntilEnded: boolean;
+  /** Registration stays open until each session ends, instead of closing before it starts. */
+  openUntilEnd: boolean;
   cutoffAmount: string;
   cutoffUnit: Unit;
   earlyBird: boolean;
@@ -83,6 +85,7 @@ const blank: Form = {
   startDate: "",
   endDate: "",
   runsUntilEnded: true,
+  openUntilEnd: false,
   cutoffAmount: "1",
   cutoffUnit: "hours",
   earlyBird: false,
@@ -112,6 +115,7 @@ function fromOpenPlay(openPlay: DeskOpenPlay): Form {
     startDate: openPlay.startDate,
     endDate: openPlay.endDate ?? "",
     runsUntilEnded: openPlay.endDate === null,
+    openUntilEnd: openPlay.registrationOpenUntilEnd,
     cutoffAmount: cutoff.amount,
     cutoffUnit: cutoff.unit,
     earlyBird: openPlay.earlyBird !== null,
@@ -158,8 +162,8 @@ function toInput(form: Form): { input: OpenPlayInput | null; problem: string | n
     lead: number(form.leadAmount),
   };
 
-  if ([values.maxPlayers, values.fee, values.cutoff].some(Number.isNaN)) {
-    return { input: null, problem: "Fill in the number of players, the fee, and the cut-off." };
+  if ([values.maxPlayers, values.fee].some(Number.isNaN) || (!form.openUntilEnd && Number.isNaN(values.cutoff))) {
+    return { input: null, problem: "Fill in the number of players, the fee, and when registration closes." };
   }
 
   if (form.earlyBird && [values.discount, values.lead].some(Number.isNaN)) {
@@ -179,7 +183,9 @@ function toInput(form: Form): { input: OpenPlayInput | null; problem: string | n
       days: form.days,
       startDate: form.startDate,
       endDate: form.runsUntilEnded ? null : form.endDate,
-      registrationCutoffMinutes: Math.round(values.cutoff * unitMinutes[form.cutoffUnit]),
+      // Open until the end, the cut-off before the start does not apply.
+      registrationCutoffMinutes: form.openUntilEnd ? 0 : Math.round(values.cutoff * unitMinutes[form.cutoffUnit]),
+      registrationOpenUntilEnd: form.openUntilEnd,
       earlyBird: form.earlyBird
         ? {
             discountKind: form.discountKind,
@@ -192,6 +198,39 @@ function toInput(form: Form): { input: OpenPlayInput | null; problem: string | n
       playersPerTeam: teamSizeOf(form.playersPerTeam),
     },
   };
+}
+
+/**
+ * When registration closes for a session, in words, from the times on the
+ * form: "5:00 PM, an hour before it starts".
+ */
+function closingExample(form: Form) {
+  const [hours, minutes] = form.startsAt.split(":").map(Number);
+
+  if (form.openUntilEnd) {
+    return `Players can join any time until ${formatClock(form.endsAt)}, when the session ends — even after it has started.`;
+  }
+
+  const before = Math.round(Number(form.cutoffAmount) * unitMinutes[form.cutoffUnit]);
+
+  if (Number.isNaN(hours) || !Number.isFinite(before) || before < 0) {
+    return null;
+  }
+
+  if (before === 0) {
+    return `Registration closes right when the session starts, at ${formatClock(form.startsAt)}.`;
+  }
+
+  const at = hours * 60 + minutes - before;
+  const daysBefore = Math.ceil(-at / (24 * 60));
+  const clock = ((at % (24 * 60)) + 24 * 60) % (24 * 60);
+  const time = formatClock(`${Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`);
+
+  return at >= 0
+    ? `A session starting at ${formatClock(form.startsAt)} closes for registration at ${time}.`
+    : `A session starting at ${formatClock(form.startsAt)} closes for registration at ${time}, ${
+        daysBefore === 1 ? "the day before" : `${daysBefore} days before`
+      }.`;
 }
 
 /** Players per team as typed: empty for the sport's own, else a whole number. */
@@ -695,31 +734,82 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
             </section>
 
             <section className="space-y-4 rounded-3xl border border-slate-200 bg-white px-6 py-5">
-              <h2 className="text-lg font-bold text-[#071955]">Registration</h2>
-
               <div>
-                <label htmlFor="op-cutoff" className={label}>
-                  Registration closes
-                </label>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <input
-                    id="op-cutoff"
-                    type="number"
-                    min={0}
-                    value={form.cutoffAmount}
-                    onChange={(event) => set("cutoffAmount", event.target.value)}
-                    className={`${input} w-28`}
-                  />
-                  <UnitSelect
-                    id="op-cutoff-unit"
-                    value={form.cutoffUnit}
-                    disabled={locked}
-                    units={["minutes", "hours"]}
-                    onChange={(unit) => set("cutoffUnit", unit)}
-                  />
-                  <span className="text-sm text-slate-500">before each session starts</span>
-                </div>
+                <h2 className="text-lg font-bold text-[#071955]">Registration</h2>
+                <p className="mt-1 text-sm text-slate-500">Until when can players join each session?</p>
               </div>
+
+              <div role="radiogroup" aria-label="When registration closes" className="grid gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    {
+                      untilEnd: false,
+                      title: "Until it starts",
+                      text: "Registration closes before each session begins.",
+                    },
+                    {
+                      untilEnd: true,
+                      title: "Until it ends",
+                      text: "Late players can still join while the game is on.",
+                    },
+                  ] as const
+                ).map((choice) => {
+                  const chosen = form.openUntilEnd === choice.untilEnd;
+
+                  return (
+                    <label
+                      key={choice.title}
+                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                        chosen ? "border-[#2563EB] bg-blue-50/60 ring-1 ring-[#2563EB]" : "border-slate-200 hover:border-slate-300"
+                      } ${locked ? "cursor-not-allowed opacity-70" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="op-closes"
+                        className="mt-1 accent-[#2563EB]"
+                        checked={chosen}
+                        onChange={() => set("openUntilEnd", choice.untilEnd)}
+                      />
+                      <span>
+                        <span className="block font-bold text-[#071955]">{choice.title}</span>
+                        <span className="mt-0.5 block text-sm text-slate-600">{choice.text}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {!form.openUntilEnd && (
+                <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                  <label htmlFor="op-cutoff" className={label}>
+                    How long before it starts?
+                  </label>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <input
+                      id="op-cutoff"
+                      type="number"
+                      min={0}
+                      value={form.cutoffAmount}
+                      onChange={(event) => set("cutoffAmount", event.target.value)}
+                      className={`${input} w-28`}
+                    />
+                    <UnitSelect
+                      id="op-cutoff-unit"
+                      value={form.cutoffUnit}
+                      disabled={locked}
+                      units={["minutes", "hours"]}
+                      onChange={(unit) => set("cutoffUnit", unit)}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">Enter 0 to close it right at the start.</p>
+                </div>
+              )}
+
+              {closingExample(form) && (
+                <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[#071955]">
+                  {closingExample(form)}
+                </p>
+              )}
 
               <label className="flex items-center gap-2 text-sm font-bold text-[#071955]">
                 <input

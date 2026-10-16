@@ -12,6 +12,20 @@ export type CheckInPlayer = {
   isFree: boolean;
   /** A free player's mobile, for the desk. Never a registered player's. */
   mobile: string | null;
+  /** Where they are in the matches; null until they have checked in. */
+  lineup: CheckInLineup | null;
+};
+
+/** A checked-in player's place in the session's matches, as the matches page has it. */
+export type CheckInLineup = {
+  /** On court, in a match still to come, waiting, or done for the day. */
+  state: "Playing" | "InMatch" | "Waiting" | "Done";
+  /** The match they are in, when playing or in one to come. */
+  matchNumber: number | null;
+  /** Finished matches they were on court in. */
+  played: number;
+  /** On court in a match that started: they stay on record, so cannot be removed. */
+  hasPlayed: boolean;
 };
 
 export type CheckInRoster = {

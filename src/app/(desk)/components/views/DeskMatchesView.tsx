@@ -162,6 +162,7 @@ function DeskMatchesView() {
     canMarkDone: boolean,
     canPlayNext: boolean,
     otherTeam: "A" | "B" | null,
+    onCourt = false,
   ) {
     if (player === null) {
       return (
@@ -197,13 +198,19 @@ function DeskMatchesView() {
                 Free
               </span>
             )}
+            {/* On court now: the game counts once the match is finished. */}
             <span
-              title="Matches played this session"
+              title={onCourt ? "In the match on court now" : "Matches played this session"}
               className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                player.played === 0 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
+                onCourt
+                  ? "inline-flex items-center gap-1 bg-orange-100 text-orange-800"
+                  : player.played === 0
+                    ? "bg-blue-50 text-blue-700"
+                    : "bg-slate-100 text-slate-600"
               }`}
             >
-              {gamesText(player.played)}
+              {onCourt && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" aria-hidden />}
+              {onCourt ? "Playing" : gamesText(player.played)}
             </span>
           </span>
           {canMarkDone && !asking && !askingNext && (
@@ -385,7 +392,14 @@ function DeskMatchesView() {
                 </p>
                 <ul className="space-y-2">
                   {(team === "A" ? match.teamA : match.teamB).map((player, index) =>
-                    playerChip(player, index, canMarkDone, isNext, isNext ? (team === "A" ? "B" : "A") : null),
+                    playerChip(
+                      player,
+                      index,
+                      canMarkDone,
+                      isNext,
+                      isNext ? (team === "A" ? "B" : "A") : null,
+                      match.status === "Playing",
+                    ),
                   )}
                 </ul>
               </div>

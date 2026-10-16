@@ -128,6 +128,11 @@ function OpenPlayJoinView() {
             {session.spotsLeft} of {openPlay.maxPlayers} spots left
             {session.addedByVenue > 0 && ` · ${session.addedByVenue} added by the venue`}
           </p>
+          {openPlay.registrationOpenUntilEnd && (
+            <p className="mt-1 text-sm font-semibold text-[#2563EB]">
+              Late players welcome: you can join until {formatClock(openPlay.endsAt)}, even after it has started.
+            </p>
+          )}
         </div>
 
         <dl className="flex flex-col gap-2 px-6 py-5">

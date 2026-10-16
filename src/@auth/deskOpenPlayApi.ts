@@ -30,6 +30,8 @@ export type OpenPlayInput = {
   startDate: string;
   endDate: string | null;
   registrationCutoffMinutes: number;
+  /** Registration stays open until each session ends; the cut-off is then not used. */
+  registrationOpenUntilEnd?: boolean;
   earlyBird: OpenPlayEarlyBirdInput | null;
   /** How long before each session check-in opens. Left out, an hour. */
   checkInOpensMinutes?: number;
@@ -95,6 +97,8 @@ export type DeskOpenPlay = {
   teamSize: number;
   /** Behind the winning team and the best players on the wide screen. */
   backgroundPhotoUrl: string | null;
+  /** Players can still join a session while it is being played, up to its end. */
+  registrationOpenUntilEnd: boolean;
 };
 
 /** Something already holding hours the open play wants. */

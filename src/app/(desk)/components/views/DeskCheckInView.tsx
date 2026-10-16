@@ -13,6 +13,7 @@ import {
   removeFreePlayer,
   scanForCheckIn,
   undoCheckIn,
+  type CheckInLineup,
   type CheckInPlayer,
   type CheckInRoster,
   type CheckInScanResult,
@@ -86,6 +87,27 @@ function arrivedAt(moment: string) {
  *
  * Whether check-in is open is the server's answer, on the venue's clock.
  */
+/** Where a checked-in player is in the matches, in the same colours as the matches page. */
+function LineupBadge({ lineup }: { lineup: CheckInLineup }) {
+  const badge = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold";
+
+  switch (lineup.state) {
+    case "Playing":
+      return (
+        <span className={`${badge} bg-orange-100 text-orange-800`}>
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" aria-hidden />
+          Playing{lineup.matchNumber ? ` · Match ${lineup.matchNumber}` : ""}
+        </span>
+      );
+    case "InMatch":
+      return <span className={`${badge} bg-blue-50 text-blue-700`}>In Match {lineup.matchNumber}</span>;
+    case "Done":
+      return <span className={`${badge} bg-slate-100 text-slate-500`}>Done for today</span>;
+    default:
+      return <span className={`${badge} bg-slate-100 text-slate-600`}>Waiting</span>;
+  }
+}
+
 function DeskCheckInView() {
   const params = useSearchParams();
   const openPlayId = params.get("openPlay") ?? "";
@@ -239,6 +261,8 @@ function DeskCheckInView() {
   }
 
   const session = roster.data;
+  // Free spots still to give out this session.
+  const freeLeft = Math.max(0, session.freeSpots - session.freePlayers);
   const needle = search.trim().toLowerCase();
   const players = needle
     ? session.players.filter((player) => player.fullName.toLowerCase().includes(needle))
@@ -374,7 +398,12 @@ function DeskCheckInView() {
                     submitFree();
                   }}
                 >
-                  <p className="text-sm font-bold text-[#071955]">Add a free player</p>
+                  <p className="text-sm font-bold text-[#071955]">
+                    Add a free player{" "}
+                    <span className="font-semibold text-slate-500">
+                      · {freeLeft} {freeLeft === 1 ? "spot" : "spots"} left
+                    </span>
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     <input
                       value={freeName}
@@ -431,21 +460,29 @@ function DeskCheckInView() {
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    disabled={!session.canAddFreePlayer}
+                    disabled={!session.canAddFreePlayer || freeLeft === 0}
                     onClick={() => {
                       addFree.reset();
                       setAdding(true);
                     }}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-50"
+                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 disabled:hover:border-slate-200 disabled:hover:text-slate-400"
                   >
                     + Add free player
                   </button>
-                  {!session.canAddFreePlayer && (
-                    <span className="text-xs text-slate-500">
-                      {session.freePlayers >= session.freeSpots
-                        ? "Every free spot for this session is used."
-                        : "No spot left, or the session has ended."}
-                    </span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      freeLeft === 0
+                        ? "bg-slate-100 text-slate-500"
+                        : freeLeft <= 2
+                          ? "bg-amber-100 text-amber-900"
+                          : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {freeLeft === 0 ? "No free spots left" : `${freeLeft} free ${freeLeft === 1 ? "spot" : "spots"} left`}
+                  </span>
+                  {/* Free spots to spare, but the session is full or over. */}
+                  {!session.canAddFreePlayer && freeLeft > 0 && (
+                    <span className="text-xs text-slate-500">No spot left, or the session has ended.</span>
                   )}
                 </div>
               ))}
@@ -473,14 +510,23 @@ function DeskCheckInView() {
                               Free
                             </span>
                           )}
+                          {player.lineup && <LineupBadge lineup={player.lineup} />}
                         </span>
                         <span className="block text-xs text-slate-500">
                           {player.checkedInAt ? `Arrived ${arrivedAt(player.checkedInAt)}` : "Not here yet"}
+                          {player.lineup &&
+                            ` · ${
+                              player.lineup.played === 0
+                                ? "No games yet"
+                                : `${player.lineup.played} ${player.lineup.played === 1 ? "game" : "games"}`
+                            }`}
                           {player.mobile ? ` · ${player.mobile}` : ""}
                         </span>
                       </span>
 
+                      {/* Somebody who has been on court stays on record with their matches. */}
                       {player.isFree &&
+                        !player.lineup?.hasPlayed &&
                         (removing === player.registrationId ? (
                           <span className="flex items-center gap-1">
                             <button

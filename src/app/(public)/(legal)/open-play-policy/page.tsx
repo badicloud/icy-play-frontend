@@ -141,12 +141,17 @@ const sections = [
     ),
   },
   {
-    title: "Registration closes before each session",
+    title: "When registration closes",
     content: (
       <>
         <p>
-          Each open play closes registration a set time before each session starts, on the venue&apos;s own
-          clock. After that, the session cannot be joined through IcyPlay. The time is shown on each date.
+          Each open play closes registration either a set time before each session starts or, if the venue
+          lets late players join, when the session ends. Either way it is on the venue&apos;s own clock, and
+          the closing time is shown on each date. After that, the session cannot be joined through IcyPlay.
+        </p>
+        <p>
+          If you join a session that has already started, you join it as it stands: matches already under way
+          are not replayed, the venue&apos;s fee is the same, and the rest of this policy applies as usual.
         </p>
       </>
     ),
