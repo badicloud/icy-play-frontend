@@ -214,6 +214,13 @@ export const API_ENDPOINTS = {
     FREE_PLAYER: (freePlayerId: string) => `${API_V1}/desk/open-play-free-players/${freePlayerId}`,
     MATCHES: (openPlayId: string, date: string) =>
       `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/matches`,
+    RESULT_PHOTO_SIGNATURE: `${API_V1}/desk/open-play-result-photos/signature`,
+    RESULT_PHOTO: (openPlayId: string, date: string, kind: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/photos/${kind}`,
+    SESSION_END: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/end`,
+    SESSION_REOPEN: (openPlayId: string, date: string) =>
+      `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/reopen`,
     MATCH_START: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/start`,
     MATCH_FINISH: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/finish`,
     MATCH_RESULT: (matchId: string) => `${API_V1}/desk/open-play-matches/${matchId}/result`,

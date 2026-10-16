@@ -8,11 +8,13 @@ import { ApiError } from "@/services/api";
 import { checkInHref } from "@auth/checkInApi";
 import {
   correctMatchResult,
+  endSession,
   finishMatch,
   getMatchBoard,
   markPlayerDone,
   playNextMatch,
   putPlayerBackIn,
+  reopenSession,
   moveToTeam,
   startMatch,
   type MatchBoard,
@@ -23,6 +25,7 @@ import { formatClock, formatSessionDate } from "@auth/openPlayApi";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import MatchLeaderboard from "../MatchLeaderboard";
 import MatchResultForm from "../MatchResultForm";
+import SessionResults from "../SessionResults";
 
 function Page({ children }: { children: ReactNode }) {
   return (
@@ -75,6 +78,8 @@ function DeskMatchesView() {
   const [pick, setPick] = useState("");
   // Whose options menu is open.
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // "End session" asked about.
+  const [ending, setEnding] = useState(false);
   const [shortStart, setShortStart] = useState<string | null>(null);
   // The match whose "Who won?" is open: finishing it, or putting its result right.
   const [resultFor, setResultFor] = useState<{ matchId: string; correcting: boolean } | null>(null);
@@ -98,6 +103,7 @@ function DeskMatchesView() {
       setDoneFor(null);
       setNextFor(null);
       setMenuFor(null);
+      setEnding(false);
       setShortStart(null);
       setResultFor(null);
     },
@@ -422,13 +428,51 @@ function DeskMatchesView() {
               {session.unitLabel} {session.courtName} · {session.sportName}, {session.playersPerTeam} per team
             </p>
           </div>
-          <Link
-            href={checkInHref(openPlayId, date)}
-            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
-          >
-            {session.isOver ? "View check-ins" : "Check in players"}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={checkInHref(openPlayId, date)}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+            >
+              {session.isOver ? "View check-ins" : "Check in players"}
+            </Link>
+            {session.endedAt === null && session.matches.length > 0 && !ending && (
+              <button
+                type="button"
+                onClick={() => setEnding(true)}
+                className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                End session
+              </button>
+            )}
+          </div>
         </div>
+
+        {ending && session.endedAt === null && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-sm text-red-900">
+              {courtBusy
+                ? "A match is still on the court. Finish it first, then end the session."
+                : "End the session? No more games: the matches not started are dropped and the results stand."}
+            </p>
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || courtBusy}
+                onClick={() => act.mutate(() => endSession(openPlayId, date))}
+                className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+              >
+                {busy ? "Ending…" : "Yes, end it"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnding(false)}
+                className="rounded-full px-3 py-2 text-sm font-semibold text-slate-600"
+              >
+                Keep playing
+              </button>
+            </span>
+          </div>
+        )}
 
         {problem && (
           <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
@@ -437,9 +481,29 @@ function DeskMatchesView() {
         )}
 
         {session.isOver && (
-          <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            This session has ended. The matches below are what was played.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-sm text-slate-600">
+              This session has ended. The matches below are what was played.
+            </p>
+            {session.canReopen && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => act.mutate(() => reopenSession(openPlayId, date))}
+                className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-60"
+              >
+                Reopen session
+              </button>
+            )}
+          </div>
+        )}
+
+        {session.isOver && session.group.length > 0 && (
+          <SessionResults
+            board={session}
+            date={date}
+            onPhotos={(photos) => client.setQueryData<MatchBoard>(key, (old) => (old ? { ...old, photos } : old))}
+          />
         )}
 
         {session.matches.length === 0 ? (
@@ -454,7 +518,9 @@ function DeskMatchesView() {
             {playing.map((match) =>
               matchCard(
                 match,
-                !session.isOver && (
+                // The last game can run past the session's time; it can be
+                // finished until the desk ends the session.
+                session.endedAt === null && (
                   <button
                     type="button"
                     disabled={busy}
@@ -564,7 +630,8 @@ function DeskMatchesView() {
           </>
         )}
 
-        {session.waiting.length > 0 && (
+        {/* Once the session is over nobody is waiting for a game: everybody who came is in the results. */}
+        {session.waiting.length > 0 && !session.isOver && (
           <section className="rounded-[24px] border border-slate-200 bg-white p-5">
             <h2 className="font-bold text-[#071955]">Waiting</h2>
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -577,32 +644,34 @@ function DeskMatchesView() {
           </section>
         )}
 
-        <section className="rounded-[24px] border border-slate-200 bg-white p-5">
-          <h2 className="font-bold text-[#071955]">Done for today</h2>
-          {session.done.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">
-              Nobody yet. Press Done beside a player who is tired, hurt or leaving, and the matches adjust.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y divide-slate-100">
-              {session.done.map((player) => (
-                <li key={player.participantId} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-sm font-semibold text-slate-700">{player.fullName}</span>
-                  {!session.isOver && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => act.mutate(() => putPlayerBackIn(player.participantId))}
-                      className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-60"
-                    >
-                      Back in
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {(!session.isOver || session.done.length > 0) && (
+          <section className="rounded-[24px] border border-slate-200 bg-white p-5">
+            <h2 className="font-bold text-[#071955]">Done for today</h2>
+            {session.done.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-500">
+                Nobody yet. Press Done beside a player who is tired, hurt or leaving, and the matches adjust.
+              </p>
+            ) : (
+              <ul className="mt-3 divide-y divide-slate-100">
+                {session.done.map((player) => (
+                  <li key={player.participantId} className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-sm font-semibold text-slate-700">{player.fullName}</span>
+                    {!session.isOver && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => act.mutate(() => putPlayerBackIn(player.participantId))}
+                        className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#2563EB] hover:text-[#2563EB] disabled:opacity-60"
+                      >
+                        Back in
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
     </Page>
   );

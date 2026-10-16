@@ -1,4 +1,5 @@
 import { apiClient, API_ENDPOINTS } from "@/services/api";
+import { uploadToCloudinary, type UploadedAsset, type UploadSignature } from "./cloudinaryUpload";
 
 /** One player on the matches board. */
 export type MatchBoardPlayer = {
@@ -76,7 +77,63 @@ export type MatchBoard = {
   done: MatchBoardPlayer[];
   /** Most wins first. Only matches with a result count. */
   standings: MatchStanding[];
+  /** When the desk ended the session; null while it runs. */
+  endedAt: string | null;
+  /** Ended by the desk before its time was up: it can be opened again until then. */
+  canReopen: boolean;
+  /** The winners of the last match won; null until somebody has won one. */
+  winningTeam: MatchWinningTeam | null;
+  /** Everybody who checked in, for the group photo. */
+  group: MatchBoardPlayer[];
+  /** The photos taken of the results, one of each kind at most. */
+  photos: MatchResultPhoto[];
 };
+
+/** What a result photo is of. The teams change every game, so the group is the other choice to the winners. */
+export type ResultPhotoKind = "BestPlayers" | "WinningTeam" | "Group";
+
+/** A photo of a session's results, kept two days. */
+export type MatchResultPhoto = {
+  kind: ResultPhotoKind;
+  url: string;
+  takenAt: string;
+  /** When it is deleted: two days after it was taken. */
+  expiresAt: string;
+};
+
+/** Puts a photo straight into Cloudinary, in the results folder the API signs for. */
+export async function uploadResultPhoto(file: File): Promise<UploadedAsset> {
+  return uploadToCloudinary(file, await apiClient.post<UploadSignature>(API_ENDPOINTS.DESK.RESULT_PHOTO_SIGNATURE));
+}
+
+/** Saves an uploaded photo as the session's photo of that kind, in place of any before. */
+export function saveResultPhoto(openPlayId: string, date: string, kind: ResultPhotoKind, photo: UploadedAsset) {
+  return apiClient.put<MatchResultPhoto[], { publicId: string; secureUrl: string }>(
+    API_ENDPOINTS.DESK.RESULT_PHOTO(openPlayId, date, kind),
+    { publicId: photo.publicId, secureUrl: photo.secureUrl },
+  );
+}
+
+export function removeResultPhoto(openPlayId: string, date: string, kind: ResultPhotoKind) {
+  return apiClient.delete<MatchResultPhoto[]>(API_ENDPOINTS.DESK.RESULT_PHOTO(openPlayId, date, kind));
+}
+
+/** The session's winning team: the winners of the last match won. */
+export type MatchWinningTeam = {
+  matchNumber: number;
+  team: "A" | "B";
+  players: MatchBoardPlayer[];
+};
+
+/** Ends the session: no more games, and the results stand. Not while a match is on court. */
+export function endSession(openPlayId: string, date: string) {
+  return apiClient.post<MatchBoard>(API_ENDPOINTS.DESK.SESSION_END(openPlayId, date));
+}
+
+/** Opens an ended session again, while its time is not up. */
+export function reopenSession(openPlayId: string, date: string) {
+  return apiClient.post<MatchBoard>(API_ENDPOINTS.DESK.SESSION_REOPEN(openPlayId, date));
+}
 
 /** One registered player over every session of the open play. */
 export type SeriesStanding = {
