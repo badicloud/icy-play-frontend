@@ -189,7 +189,15 @@ function MyOpenPlaysView() {
       <PublicHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-8 lg:px-8">
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#071955]">My open plays</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#071955]">My open plays</h1>
+          <Link
+            href="/my-rewards"
+            className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:border-amber-300"
+          >
+            My rewards
+          </Link>
+        </div>
         <p className="mt-1 text-slate-600">
           You are registered once the venue has checked your payment. Until then your spot is kept for you.
         </p>

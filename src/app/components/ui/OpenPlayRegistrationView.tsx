@@ -69,6 +69,17 @@ function Summary({ registration }: { registration: OpenPlayRegistration }) {
             <dd className="font-bold text-green-700">−{formatPeso(registration.discount)}</dd>
           </div>
         )}
+        {registration.voucherDiscount > 0 && (
+          <div className="flex justify-between gap-4 text-sm">
+            <dt className="font-semibold text-green-700">
+              Best player voucher
+              {registration.voucherLabel && (
+                <span className="block text-xs font-normal text-green-700/80">{registration.voucherLabel}</span>
+              )}
+            </dt>
+            <dd className="font-bold text-green-700">−{formatPeso(registration.voucherDiscount)}</dd>
+          </div>
+        )}
         <div className="flex justify-between gap-4 text-sm">
           <dt className="font-semibold text-slate-600">Platform fee</dt>
           <dd className="font-bold text-[#071955]">{formatPeso(registration.platformFee)}</dd>

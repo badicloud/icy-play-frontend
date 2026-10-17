@@ -10,6 +10,7 @@ import WarningAmberOutlined from "@mui/icons-material/WarningAmberOutlined";
 import Breadcrumbs from "@/app/components/ui/Breadcrumbs";
 import { ApiError } from "@/services/api";
 import OpenPlayCoverPhoto, { type CoverPhoto } from "../OpenPlayCoverPhoto";
+import OpenPlayRewardSection from "../OpenPlayRewardSection";
 import {
   deskOpenPlaySource,
   weekdays,
@@ -1074,6 +1075,18 @@ export function OpenPlayForm({ source }: { source: OpenPlaySource }) {
               )}
             </div>
           </section>
+
+          {/* Outside the fieldset as well: the venue's gift to its best
+              players, not something a player paid for. */}
+          <OpenPlayRewardSection
+            openPlay={existing.data ?? null}
+            source={source}
+            showStubsLink={source.checkInHref !== null}
+            onSaved={(updated) => {
+              client.setQueryData([...source.key, updated.openPlayId], updated);
+              refresh();
+            }}
+          />
 
           {problem && (
             <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">

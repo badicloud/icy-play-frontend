@@ -67,6 +67,10 @@ export type OpenPlayRegistration = {
    * gateway, which registers the player by itself once paid in time.
    */
   paymentChannel: "Manual" | "Direct";
+  /** What a best player voucher took off the venue's fee, after the early bird. */
+  voucherDiscount: number;
+  /** "₱50 off an open play": the voucher used, in words; null for none. */
+  voucherLabel: string | null;
 };
 
 /** Active: it gets them in. Used: they are checked in. Expired: the session ended without them. */
@@ -77,11 +81,16 @@ export type CheckInPassState = "Active" | "Used" | "Expired";
  * to the open play policy; the server refuses without it. Pressing it again
  * while holding a spot answers with the same registration.
  */
-export function registerForOpenPlay(openPlayId: string, date: string) {
-  return apiClient.post<OpenPlayRegistration, { date: string; agreedToPolicy: boolean }>(
-    API_ENDPOINTS.OPEN_PLAY_REGISTRATIONS.REGISTER(openPlayId),
-    { date, agreedToPolicy: true },
-  );
+export function registerForOpenPlay(
+  openPlayId: string,
+  date: string,
+  // A best player voucher: the one picked, or none. Left out, the server uses the best one.
+  voucher?: { voucherId?: string; noVoucher?: boolean },
+) {
+  return apiClient.post<
+    OpenPlayRegistration,
+    { date: string; agreedToPolicy: boolean; voucherId?: string; noVoucher?: boolean }
+  >(API_ENDPOINTS.OPEN_PLAY_REGISTRATIONS.REGISTER(openPlayId), { date, agreedToPolicy: true, ...voucher });
 }
 
 export function getOpenPlayRegistration(registrationId: string) {
@@ -179,6 +188,8 @@ export type DeskOpenPlayRequest = {
   discount: number;
   platformFee: number;
   total: number;
+  /** What a best player voucher took off the venue's fee. */
+  voucherDiscount: number;
   receiptUrl: string | null;
   submittedAt: string | null;
   confirmedAt: string | null;

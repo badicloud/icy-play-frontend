@@ -34,6 +34,12 @@ const badges: Record<ResultPhotoKind, string> = {
   Group: "TODAY'S PLAYERS",
 };
 
+function FreeBadge() {
+  return (
+    <span className="ml-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Free</span>
+  );
+}
+
 function Names({ players }: { players: MatchBoardPlayer[] }) {
   return (
     <ul className="mt-3 flex flex-wrap gap-2">
@@ -43,6 +49,7 @@ function Names({ players }: { players: MatchBoardPlayer[] }) {
           className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-800 ring-1 ring-slate-200"
         >
           {player.fullName}
+          {player.isFree && <FreeBadge />}
         </li>
       ))}
     </ul>
@@ -206,7 +213,55 @@ function SessionResults({ board, date, onPhotos }: Props) {
                 {mostWins} {mostWins === 1 ? "win" : "wins"}
                 {best.length > 1 ? ", level" : ""}
               </p>
-              <Names players={best.map((standing) => standing.player)} />
+              {board.rewardOffered === null ? (
+                <Names players={best.map((standing) => standing.player)} />
+              ) : (
+                <>
+                  <p className="mt-2 text-xs font-semibold text-amber-900">Reward: {board.rewardOffered}</p>
+                  {best.some(({ player }) => player.isFree) && (
+                    <p className="mt-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-[#071955]">
+                      Free players get no voucher or reward: the venue added them, so they have no account to
+                      receive it. Only players who registered do.
+                    </p>
+                  )}
+                  {/* Each best player, with what they were given, or why not. */}
+                  <ul className="mt-2 space-y-1.5">
+                    {best.map(({ player }) => {
+                      const reward = board.rewards.find((given) => given.participantId === player.participantId);
+
+                      return (
+                        <li
+                          key={player.participantId}
+                          className="rounded-xl bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-amber-200"
+                        >
+                          <span className="font-semibold text-slate-900">{player.fullName}</span>
+                          {player.isFree && <FreeBadge />}
+                          {reward ? (
+                            <>
+                              {" "}
+                              got {reward.kind === "ClaimStub" ? `a claim stub for ${reward.label}` : reward.label}
+                              {reward.code && <span className="ml-1 font-mono text-xs text-slate-500">({reward.code})</span>}
+                              <span className="block text-xs text-slate-500">
+                                {reward.status === "Used" || reward.status === "Claimed"
+                                  ? reward.status
+                                  : `Valid until ${expiry(reward.expiresAt)}`}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="block text-xs text-slate-500">
+                              {player.isFree
+                                ? "No voucher or reward: free player."
+                                : board.endedAt === null
+                                  ? "Given when you end the session."
+                                  : "No reward given: the reward was set after the session ended, or the prizes ran out."}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
               <PhotoSlot kind="BestPlayers" />
             </>
           )}

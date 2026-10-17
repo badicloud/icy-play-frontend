@@ -66,7 +66,8 @@ function RequestCard({
           <p className="text-2xl font-extrabold text-[#071955]">{formatPeso(request.total)}</p>
           <p className="text-xs text-slate-500">
             {formatPeso(request.registrationFee)} fee
-            {request.discount > 0 ? ` − ${formatPeso(request.discount)} early bird` : ""} +{" "}
+            {request.discount > 0 ? ` − ${formatPeso(request.discount)} early bird` : ""}
+            {request.voucherDiscount > 0 ? ` − ${formatPeso(request.voucherDiscount)} voucher` : ""} +{" "}
             {formatPeso(request.platformFee)} platform
           </p>
         </div>

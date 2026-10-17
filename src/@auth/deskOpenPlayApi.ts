@@ -14,6 +14,25 @@ export type OpenPlayEarlyBirdInput = {
   leadMinutes: number;
 };
 
+/**
+ * What the best players earn when a session ends: a voucher off their next
+ * open play at the venue, or a prize collected at the desk with a claim stub.
+ */
+export type OpenPlayRewardInput = {
+  kind: "None" | "Voucher" | "ClaimStub";
+  /** A voucher's. */
+  discountKind?: "Fixed" | "Percentage" | null;
+  discountValue?: number | null;
+  /** A percentage voucher's most it takes off, in pesos; null for no limit. */
+  maxDiscount?: number | null;
+  /** A claim stub's prize, e.g. "Free Gatorade". */
+  prize?: string | null;
+  /** How many claim stubs to give, over all sessions. */
+  quantity?: number | null;
+  /** Days from when it is given to when it expires. */
+  validDays?: number | null;
+};
+
 /** What the desk fills in to create or change a draft. */
 export type OpenPlayInput = {
   bookableCourtId: string;
@@ -99,6 +118,12 @@ export type DeskOpenPlay = {
   backgroundPhotoUrl: string | null;
   /** Players can still join a session while it is being played, up to its end. */
   registrationOpenUntilEnd: boolean;
+  /** What the best players earn when a session ends; null for nothing. */
+  reward: OpenPlayRewardInput | null;
+  /** Claim stubs: how many there are, how many have been given, and claimed. */
+  claimStubs: number;
+  claimStubsGiven: number;
+  claimStubsClaimed: number;
 };
 
 /** Something already holding hours the open play wants. */
@@ -170,6 +195,8 @@ export type OpenPlaySource = {
   setFreeSpots: (openPlayId: string, freeSpots: number) => Promise<DeskOpenPlay>;
   /** Players per team for matches, or null for the sport's. Allowed after publishing. */
   setTeamSize: (openPlayId: string, playersPerTeam: number | null) => Promise<DeskOpenPlay>;
+  /** What the best players earn. Allowed after publishing. */
+  setReward: (openPlayId: string, reward: OpenPlayRewardInput) => Promise<DeskOpenPlay>;
   setBackground: (openPlayId: string, photo: { publicId: string; secureUrl: string }) => Promise<DeskOpenPlay>;
   removeBackground: (openPlayId: string) => Promise<DeskOpenPlay>;
   /** Where Check in goes for a session, or null where this door does not run the door. */
@@ -206,6 +233,8 @@ function calls(base: string) {
       apiClient.put<DeskOpenPlay, { freeSpots: number }>(`${one(openPlayId)}/free-spots`, { freeSpots }),
     setTeamSize: (openPlayId: string, playersPerTeam: number | null) =>
       apiClient.put<DeskOpenPlay, { playersPerTeam: number | null }>(`${one(openPlayId)}/team-size`, { playersPerTeam }),
+    setReward: (openPlayId: string, reward: OpenPlayRewardInput) =>
+      apiClient.put<DeskOpenPlay, OpenPlayRewardInput>(`${one(openPlayId)}/reward`, reward),
     setBackground: (openPlayId: string, photo: { publicId: string; secureUrl: string }) =>
       apiClient.put<DeskOpenPlay, { publicId: string; secureUrl: string }>(`${one(openPlayId)}/background`, {
         publicId: photo.publicId,

@@ -422,6 +422,12 @@ function HeaderAccountMenu() {
               onSelect={close}
             />
             <MenuItem
+              href="/my-rewards"
+              icon={<BookingsIcon />}
+              label="My rewards"
+              onSelect={close}
+            />
+            <MenuItem
               href="/account"
               icon={<AccountIcon />}
               label="Account settings"

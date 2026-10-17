@@ -87,6 +87,23 @@ export type MatchBoard = {
   group: MatchBoardPlayer[];
   /** The photos taken of the results, one of each kind at most. */
   photos: MatchResultPhoto[];
+  /** What the session gave its best players when it ended. */
+  rewards: MatchReward[];
+  /** The open play's reward for best players, in words; null for none. */
+  rewardOffered: string | null;
+};
+
+/** A reward a session gave one of its best players. */
+export type MatchReward = {
+  participantId: string;
+  fullName: string;
+  kind: "Voucher" | "ClaimStub";
+  /** "₱50 off an open play", "20% off an open play, up to ₱100", or the prize. */
+  label: string;
+  /** A claim stub's code; null for a voucher. */
+  code: string | null;
+  expiresAt: string;
+  status: string;
 };
 
 /** What a result photo is of. The teams change every game, so the group is the other choice to the winners. */

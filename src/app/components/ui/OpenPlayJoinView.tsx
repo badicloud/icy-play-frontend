@@ -15,6 +15,7 @@ import {
   openPlayLevel,
 } from "@auth/openPlayApi";
 import { registerForOpenPlay } from "@auth/openPlayRegistrationApi";
+import { getMyRewards, voucherOff } from "@auth/myRewardsApi";
 import CheckoutSteps from "./CheckoutSteps";
 import PublicFooter from "./PublicFooter";
 import PublicHeader from "./PublicHeader";
@@ -54,14 +55,31 @@ function OpenPlayJoinView() {
   const openPlay = openPlays.data?.find((entry) => entry.openPlayId === openPlayId);
   const session = openPlay?.upcomingSessions.find((entry) => entry.date === date);
 
+  // The player's best player vouchers, for the ones good at this venue.
+  const rewards = useQuery({
+    queryKey: ["my-rewards"],
+    queryFn: getMyRewards,
+    enabled: isAuthenticated,
+    staleTime: 0,
+  });
+  // The voucher picked: undefined for the best one, "none" for none.
+  const [voucherPick, setVoucherPick] = useState<string | undefined>(undefined);
+
   const register = useMutation({
-    mutationFn: () => registerForOpenPlay(openPlayId, date),
+    mutationFn: () =>
+      registerForOpenPlay(
+        openPlayId,
+        date,
+        voucherPick === "none" ? { noVoucher: true } : voucherPick ? { voucherId: voucherPick } : undefined,
+      ),
     onSuccess: (registration) => {
       // A spot is now held: the player's own list and the spots left on the
       // public page have both changed, and the cache would otherwise keep
       // showing them as they were for minutes.
       client.setQueryData(["open-play-registration", registration.registrationId], registration);
       void client.invalidateQueries({ queryKey: ["my-open-plays"] });
+      // A voucher used here is now held for this registration.
+      void client.invalidateQueries({ queryKey: ["my-rewards"] });
       void client.invalidateQueries({ queryKey: ["catalog", "open-plays"] });
       router.push(`/open-play/registrations/${registration.registrationId}`);
     },
@@ -96,6 +114,20 @@ function OpenPlayJoinView() {
   // The registration keeps its own copy once the spot is held, and that is
   // what the next step shows.
   const discount = session.earlyBirdNow ? openPlay.registrationFee + openPlay.platformFee - session.priceNow : 0;
+  // The vouchers good here, the one taking the most first, then the one running out soonest:
+  // the same order the server picks by.
+  const venueFee = openPlay.registrationFee - discount;
+  const vouchers = (rewards.data?.vouchers ?? [])
+    .filter(
+      (voucher) =>
+        voucher.facilityId === openPlay.facilityId &&
+        voucher.status === "Available" &&
+        new Date(voucher.expiresAt).getTime() > Date.now(),
+    )
+    .sort((a, b) => voucherOff(b, venueFee) - voucherOff(a, venueFee) || a.expiresAt.localeCompare(b.expiresAt));
+  const voucher =
+    voucherPick === "none" ? null : (vouchers.find((candidate) => candidate.voucherId === voucherPick) ?? vouchers[0] ?? null);
+  const voucherAmount = voucher ? voucherOff(voucher, venueFee) : 0;
   const closed = !session.isOpenForRegistration || session.spotsLeft === 0;
   const here = `/open-play/join?openPlay=${openPlayId}&date=${date}`;
 
@@ -146,13 +178,54 @@ function OpenPlayJoinView() {
               <dd className="font-bold text-green-700">−{formatPeso(discount)}</dd>
             </div>
           )}
+          {vouchers.length > 0 && (
+            <div className="rounded-2xl bg-emerald-50 px-3 py-2.5">
+              <div className="flex justify-between gap-4 text-sm">
+                <dt className="font-semibold text-emerald-800">Best player voucher</dt>
+                <dd className="font-bold text-emerald-800">{voucher ? `−${formatPeso(voucherAmount)}` : "Not used"}</dd>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-emerald-900">
+                {vouchers.length > 1 || voucher === null ? (
+                  <select
+                    aria-label="Voucher to use"
+                    value={voucher ? voucher.voucherId : "none"}
+                    onChange={(event) => setVoucherPick(event.target.value)}
+                    className="rounded-lg border border-emerald-200 bg-white px-2 py-1 text-xs font-semibold text-emerald-900"
+                  >
+                    {vouchers.map((candidate) => (
+                      <option key={candidate.voucherId} value={candidate.voucherId}>
+                        {candidate.label} · expires {new Date(candidate.expiresAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+                      </option>
+                    ))}
+                    <option value="none">Don&apos;t use a voucher</option>
+                  </select>
+                ) : (
+                  <>
+                    <span>
+                      {voucher.label} · expires{" "}
+                      {new Date(voucher.expiresAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setVoucherPick("none")}
+                      className="font-semibold text-emerald-900 underline underline-offset-2"
+                    >
+                      Don&apos;t use it
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex justify-between gap-4 text-sm">
             <dt className="font-semibold text-slate-600">Platform fee</dt>
             <dd className="font-bold text-[#071955]">{formatPeso(openPlay.platformFee)}</dd>
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-slate-200 pt-3">
             <dt className="font-extrabold text-[#071955]">Pay the venue</dt>
-            <dd className="text-2xl font-extrabold tracking-tight text-[#071955]">{formatPeso(session.priceNow)}</dd>
+            <dd className="text-2xl font-extrabold tracking-tight text-[#071955]">
+              {formatPeso(session.priceNow - voucherAmount)}
+            </dd>
           </div>
         </dl>
       </section>

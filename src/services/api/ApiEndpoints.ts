@@ -45,6 +45,7 @@ export const API_ENDPOINTS = {
   OPEN_PLAYS: {
     ROOT: `${API_V1}/open-plays`,
   },
+  MY_REWARDS: `${API_V1}/my-rewards`,
   OPEN_PLAY_REGISTRATIONS: {
     REGISTER: (openPlayId: string) => `${API_V1}/open-plays/${openPlayId}/registrations`,
     MINE: `${API_V1}/open-play-registrations`,
@@ -215,6 +216,8 @@ export const API_ENDPOINTS = {
     MATCHES: (openPlayId: string, date: string) =>
       `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/matches`,
     RESULT_PHOTO_SIGNATURE: `${API_V1}/desk/open-play-result-photos/signature`,
+    CLAIM_STUBS: (openPlayId: string) => `${API_V1}/desk/open-plays/${openPlayId}/claim-stubs`,
+    CLAIM_STUB_CLAIM: `${API_V1}/desk/claim-stubs/claim`,
     RESULT_PHOTO: (openPlayId: string, date: string, kind: string) =>
       `${API_V1}/desk/open-plays/${openPlayId}/sessions/${date}/photos/${kind}`,
     SESSION_END: (openPlayId: string, date: string) =>

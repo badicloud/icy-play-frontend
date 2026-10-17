@@ -19,6 +19,7 @@ import {
   type OpenPlaySource,
   type OpenPlayStatus,
 } from "@auth/deskOpenPlayApi";
+import { claimStubsHref } from "@auth/claimStubsApi";
 import { matchesHref } from "@auth/matchesApi";
 import {
   formatClock,
@@ -252,6 +253,15 @@ function OpenPlayRow({
                 : "Check-in is closed"}
             </span>
           )
+        )}
+
+        {checkInHref && openPlay.claimStubs > 0 && (
+          <Link
+            href={claimStubsHref(openPlay.openPlayId)}
+            className={`${button} border-slate-200 bg-white text-slate-700 hover:border-slate-300`}
+          >
+            Claim stubs ({openPlay.claimStubsGiven - openPlay.claimStubsClaimed} to collect)
+          </Link>
         )}
 
         {openPlay.status === "Published" && (
