@@ -173,6 +173,51 @@ const sections = [
     ),
   },
   {
+    title: "Rewards for best players",
+    content: (
+      <>
+        <p>
+          Some open plays reward the best players of a session: everyone level on the most wins when the venue
+          ends it. The reward is the venue&apos;s, and is either a voucher or a prize. Only players who registered
+          through IcyPlay receive one; a player the venue added for free has no account to receive it.
+        </p>
+        <p>
+          <strong>A voucher</strong> takes an amount, or a percentage up to any limit shown, off the venue&apos;s
+          fee for a later open play at the same venue. It is applied when you join, after any early-bird
+          discount, and you can choose not to use it. One voucher per registration. It does not reduce the
+          platform fee, cannot be used for court bookings or at another venue, and is not cash.
+        </p>
+        <p>
+          While you pay, the voucher is held for that registration. If you are registered, it is used; if the
+          registration does not go through — your hold runs out, or the venue turns the payment down — it is
+          yours to use again until it expires.
+        </p>
+        <p>
+          <strong>A prize</strong> comes as a claim stub with a code and a QR. Show it at the venue&apos;s desk to
+          collect it; the venue marks it collected. Prizes are given while they last, and what they are and
+          whether they are in stock is the venue&apos;s responsibility.
+        </p>
+        <p>
+          Vouchers and claim stubs are under My rewards, each with the date it expires. After that date it can
+          no longer be used or collected. If the venue reopens a session because its results were wrong, any
+          reward from it that has not been used or collected is taken back.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "Photos at the end of a session",
+    content: (
+      <>
+        <p>
+          When a session ends, the venue may take photos of its best players, the winning team or the whole
+          group, and make a share image from them. These photos are kept for two days, then deleted from
+          IcyPlay. If you would rather not be in a photo, tell the venue&apos;s desk.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "Cancelled sessions",
     content: (
       <>
@@ -204,7 +249,7 @@ function Page() {
       backHref="/open-play"
       backLabel="Back to open play"
       title="Open Play Policy"
-      effectiveDate="October 4, 2026"
+      effectiveDate="October 17, 2026"
       summary="You pay the venue directly, so IcyPlay holds none of your money and cannot refund it. Your spot is held while you pay, and you are registered only once the venue confirms your payment. Your QR code checks you in once, at that session only. Please read this before you join an open play."
       sections={sections}
     />
